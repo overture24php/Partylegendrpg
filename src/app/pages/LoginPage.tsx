@@ -1,0 +1,192 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router';
+import { User, Lock, Eye, EyeOff } from 'lucide-react';
+import { ImageWithFallback } from '../components/figma/ImageWithFallback';
+import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+import { motion } from 'motion/react';
+
+export default function LoginPage() {
+  const [username, setUsername]       = useState('');
+  const [password, setPassword]       = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading]     = useState(false);
+  const [error, setError]             = useState('');
+  const { loginByUsername }           = useAuth();
+  const { lang, setLang, t }          = useLanguage();
+  const navigate                      = useNavigate();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
+    const result = await loginByUsername(username.trim(), password);
+    setIsLoading(false);
+    if (result.error) {
+      setError(result.error);
+    } else {
+      navigate('/loading');
+    }
+  };
+
+  return (
+    <div className="size-full flex items-center justify-center relative overflow-hidden">
+      <ImageWithFallback
+        src="https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1776870641/afcdfbf9-c32b-47d9-b062-7f93ea8573ce.png"
+        alt="Background"
+        className="absolute inset-0 w-full h-full object-cover"
+      />
+      <div className="absolute inset-0 bg-black/60" />
+      <div className="absolute inset-0"
+        style={{ background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.75) 100%)' }} />
+
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: 'easeOut' }}
+        className="w-full max-w-md px-6 relative z-10"
+      >
+        {/* Card */}
+        <div
+          className="bg-black/50 backdrop-blur-xl rounded-2xl border border-blue-500/20 p-8 shadow-2xl"
+          style={{ boxShadow: '0 0 40px rgba(59,130,246,0.08), inset 0 1px 0 rgba(255,255,255,0.04)' }}
+        >
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-5 p-3 bg-red-900/40 border border-red-500/30 rounded-lg text-red-300 text-sm text-center"
+            >
+              {error}
+            </motion.div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Username */}
+            <div>
+              <label className="block text-xs font-medium text-blue-300/70 mb-2 tracking-widest uppercase">
+                {t('login.username')}
+              </label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-400/40" />
+                <input
+                  type="text"
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/25 focus:outline-none focus:border-blue-500/50 focus:bg-white/8 transition-all text-sm"
+                  placeholder={t('login.placeholder_username')}
+                  autoComplete="username"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="block text-xs font-medium text-blue-300/70 mb-2 tracking-widest uppercase">
+                {t('login.password')}
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-400/40" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  className="w-full pl-10 pr-12 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/25 focus:outline-none focus:border-blue-500/50 focus:bg-white/8 transition-all text-sm"
+                  placeholder={t('login.placeholder_password')}
+                  autoComplete="current-password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Forgot password */}
+            <div className="flex justify-end">
+              <button type="button" className="text-xs text-blue-400/60 hover:text-blue-300 transition-colors">
+                {t('login.forgot')}
+              </button>
+            </div>
+
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3.5 rounded-xl text-sm font-medium tracking-widest uppercase transition-all duration-200 disabled:opacity-50"
+              style={{
+                background: isLoading
+                  ? 'rgba(30,58,138,0.4)'
+                  : 'linear-gradient(135deg, #1d4ed8, #1e40af, #1e3a8a)',
+                boxShadow: isLoading ? 'none' : '0 0 20px rgba(29,78,216,0.35), inset 0 1px 0 rgba(255,255,255,0.08)',
+                color: '#bfdbfe',
+              }}
+            >
+              {isLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  {t('login.loading')}
+                </span>
+              ) : (
+                t('login.submit')
+              )}
+            </button>
+          </form>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 my-6">
+            <div className="flex-1 h-px bg-white/10" />
+            <span className="text-white/25 text-xs">{t('login.or')}</span>
+            <div className="flex-1 h-px bg-white/10" />
+          </div>
+
+          {/* Register link */}
+          <p className="text-center text-xs text-white/40">
+            {t('login.no_account')}{' '}
+            <button
+              onClick={() => navigate('/register')}
+              className="text-blue-400 hover:text-blue-300 font-medium transition-colors"
+            >
+              {t('login.register_link')}
+            </button>
+          </p>
+        </div>
+
+        {/* ── Language Switcher ── */}
+        <div className="flex items-center justify-center gap-2 mt-5">
+          <button
+            onClick={() => setLang('id')}
+            className="px-4 py-1.5 rounded-lg text-xs tracking-widest uppercase transition-all duration-200"
+            style={{
+              background: lang === 'id' ? 'rgba(29,78,216,0.35)' : 'transparent',
+              border: lang === 'id' ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(255,255,255,0.1)',
+              color: lang === 'id' ? '#93c5fd' : 'rgba(255,255,255,0.3)',
+            }}
+          >
+            ID
+          </button>
+          <div className="w-px h-3 bg-white/15" />
+          <button
+            onClick={() => setLang('en')}
+            className="px-4 py-1.5 rounded-lg text-xs tracking-widest uppercase transition-all duration-200"
+            style={{
+              background: lang === 'en' ? 'rgba(29,78,216,0.35)' : 'transparent',
+              border: lang === 'en' ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(255,255,255,0.1)',
+              color: lang === 'en' ? '#93c5fd' : 'rgba(255,255,255,0.3)',
+            }}
+          >
+            EN
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
