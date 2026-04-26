@@ -122,7 +122,14 @@ function LucasSpritePlayer({ rarityColor }: { rarityColor: string }) {
 
       const cW    = canvas.width;
       const cH    = canvas.height;
-      const scale = Math.min(cW / img.naturalWidth, cH / img.naturalHeight);
+
+      // ── Bug fix: constrain scale so drawH ≤ 17/20 × cH  ─────────────────────
+      // When height-constrained the old formula gave dy = 17cH/20 − cH = −0.15cH
+      // (top 15% clipped).  Cap at (17/20) so feet land at row-17 and head ≥ top.
+      const scale = Math.min(
+        cW / img.naturalWidth,
+        (17 * cH) / (20 * img.naturalHeight),
+      );
       const drawW = img.naturalWidth  * scale;
       const drawH = img.naturalHeight * scale;
 
@@ -413,7 +420,7 @@ export function HeroDetailView({
       <div style={{ position:'absolute', inset:0, zIndex:2, background:'radial-gradient(ellipse 60% 45% at 50% 105%, rgba(60,0,120,0.35) 0%, transparent 70%)', pointerEvents:'none' }}/>
       <div style={{ position:'absolute', left:'50%', top:'50%', transform:'translate(-50%,-50%)', width:'320px', height:'480px', zIndex:2, background:`radial-gradient(ellipse 80% 90% at 50% 60%, ${rarityColor}20 0%, transparent 70%)`, pointerEvents:'none' }}/>
 
-      {/* ── Floating BACK button — top-left ───��─────────────────────────────── */}
+      {/* ── Floating BACK button — top-left ────────────────────────────────── */}
       <button onClick={onClose} style={{
         position: 'absolute', top: '14px', left: '14px', zIndex: 20,
         display: 'flex', alignItems: 'center', gap: '6px',
@@ -586,7 +593,7 @@ export function HeroDetailView({
           viewBox="0 0 200 40"
           preserveAspectRatio="xMinYMid meet"
           xmlns="http://www.w3.org/2000/svg"
-          style={{ overflow: 'visible' }}
+          style={{ display: 'block', overflow: 'hidden' }}
         >
           <text
             x="0" y="34"
@@ -796,7 +803,7 @@ export function HeroDetailView({
           H18 (1 col = 5%) = power icon
           I18–M18 (5 cols = 25%) = power number, same SVG text size as hero name
           z:15
-      ═════════════════════════════════════════════════════════════════════= */}
+      ═════════��═══════════════════════════════════════════════════════════= */}
 
       {/* Background bar — H18 to M18 */}
       <div style={{
