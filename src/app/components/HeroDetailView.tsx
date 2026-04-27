@@ -420,7 +420,7 @@ export function HeroDetailView({
       <div style={{ position:'absolute', inset:0, zIndex:2, background:'radial-gradient(ellipse 60% 45% at 50% 105%, rgba(60,0,120,0.35) 0%, transparent 70%)', pointerEvents:'none' }}/>
       <div style={{ position:'absolute', left:'50%', top:'50%', transform:'translate(-50%,-50%)', width:'320px', height:'480px', zIndex:2, background:`radial-gradient(ellipse 80% 90% at 50% 60%, ${rarityColor}20 0%, transparent 70%)`, pointerEvents:'none' }}/>
 
-      {/* ── Floating BACK button — top-left ────────────────────────────────── */}
+      {/* ── Floating BACK button — top-left ─────��──────────────────────────── */}
       <button onClick={onClose} style={{
         position: 'absolute', top: '14px', left: '14px', zIndex: 20,
         display: 'flex', alignItems: 'center', gap: '6px',
@@ -553,7 +553,7 @@ export function HeroDetailView({
         );
       })()}
 
-      {/* ══════════════════════════════════════════════════════════════════════
+      {/* ═════════════════════════════════════════════════════════════���════════
           A4–C4 │ Thin dark-orange bottom rule — align-down, fade right
           left:0%, top:calc(20% - 1.5px), width:15%
           z:15
@@ -571,44 +571,46 @@ export function HeroDetailView({
 
       {/* ══════════════════════════════════════════════════════════════════════
           B3–C3 │ Hero Name  — col B→C, row 3, h=1 grid, z:15
-          SVG text fills full 1-grid height, white fill + black frame stroke
+          HTML span replaces SVG text — SVG intrinsic-size in flex context
+          caused the bar to stretch in deployed Safari/Chrome builds.
           col B starts at 5%,  width 2 cols = 10%
-      ════════════════════════════════════════════════════════════════════════ */}
+      ═══════════════════════════════════════════════════════════════════��════ */}
       <div style={{
         position: 'absolute',
         left: '5%', top: '10%',
         width: '10%',   /* 2 grid columns */
         height: '5%',   /* 1 grid row     */
         zIndex: 15,
+        overflow: 'hidden',
+        pointerEvents: 'none',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'flex-start',
-        overflow: 'hidden',
-        pointerEvents: 'none',
+        /* Prevent flex from growing beyond explicit width */
+        minWidth: 0,
+        maxWidth: '10%',
+        flexShrink: 0,
       }}>
-        {/* SVG text: fill white, stroke black (paintOrder:stroke) — height = 1 grid */}
-        <svg
-          width="100%"
-          height="100%"
-          viewBox="0 0 200 40"
-          preserveAspectRatio="xMinYMid meet"
-          xmlns="http://www.w3.org/2000/svg"
-          style={{ display: 'block', overflow: 'hidden' }}
-        >
-          <text
-            x="0" y="34"
-            fontFamily="'Cinzel', serif"
-            fontWeight="900"
-            fontSize="36"
-            fill="white"
-            stroke="black"
-            strokeWidth="4"
-            paintOrder="stroke"
-            letterSpacing="3"
-          >
-            {name.toUpperCase()}
-          </text>
-        </svg>
+        <span style={{
+          display: 'block',
+          color: 'white',
+          fontFamily: "'Cinzel', serif",
+          fontWeight: 900,
+          /* 1.8vw = ~23px at our 1280-wide design viewport */
+          fontSize: '1.8vw',
+          letterSpacing: '0.12em',
+          /* Replicate SVG stroke="black" strokeWidth="4" paintOrder="stroke" */
+          WebkitTextStroke: '2px black',
+          textShadow: '0 2px 8px rgba(0,0,0,0.85)',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          lineHeight: 1.1,
+          /* Shrink text if name is extra-long without wrapping */
+          minWidth: 0,
+          maxWidth: '100%',
+        }}>
+          {name.toUpperCase()}
+        </span>
       </div>
 
       {/* ── Left Stats Panel — glass, top:0, content offset 4 grid rows ─────── */}
@@ -746,7 +748,7 @@ export function HeroDetailView({
           Posisi IDENTIK dengan GamePageLayout ResourceBox:
             4.5/8 = 56.25%  |  5.5/8 = 68.75%  |  6.5/8 = 81.25%
           Width=1/8=12.5%, Height=1/12=8.33%, z:25
-      ═════════════════════════════════════════════════════════════════════= */}
+      ═════════════════════���═══════════════════════════════════════════════= */}
 
       {/* Hero EXP — col 4.5/8 (= GamePageLayout) */}
       <CurrencyBox left={`${(4.5/8)*100}%`}>
@@ -803,7 +805,7 @@ export function HeroDetailView({
           H18 (1 col = 5%) = power icon
           I18–M18 (5 cols = 25%) = power number, same SVG text size as hero name
           z:15
-      ═════════��═══════════════════════════════════════════════════════════= */}
+      ════════════════════════════════════════════════════════════════════= */}
 
       {/* Background bar — H18 to M18 */}
       <div style={{
