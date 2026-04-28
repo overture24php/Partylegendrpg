@@ -1,9 +1,13 @@
 import { useState } from 'react';
 import { GamePageLayout } from '../components/GamePageLayout';
 import { HeroDetailView } from '../components/HeroDetailView';
+import { EmmaDetailView } from '../components/EmmaDetailView';
+import { useChromaKeyDataUrl } from '../utils/chromaKey';
 
 // ─── Cloudinary base ───────────────────────────────────────────────────────────
-const LUCAS_ILUST = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777137886/ILUST_LUCAS_rpwdoz.png';
+const LUCAS_ILUST_SRC = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777378794/lcs1_vh9tjj.png';
+// Emma card illustration — frame 1, green-screen, chroma key applied client-side
+const EMMA_ILUST_SRC  = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777378782/em1_gpl2ri.png';
 
 // ─── Rarity configs ───────────────────────────────────────────────────────────
 const HERO_RARITIES = [
@@ -19,6 +23,7 @@ const HERO = {
   name: 'Lucas',
   rarity: 'rare',
   level: 1,
+  heroType: 'Fighter',
   stats: {
     hp: 1250,
     pAtk: 320,
@@ -27,6 +32,23 @@ const HERO = {
     mDef: 190,
     speed: 310,
     expCurrent: 120,
+    expMax: 1000,
+  },
+};
+
+const EMMA = {
+  name: 'Emma',
+  rarity: 'rare',
+  level: 1,
+  heroType: 'Support',
+  stats: {
+    hp: 980,
+    pAtk: 140,
+    mAtk: 310,
+    pDef: 175,
+    mDef: 280,
+    speed: 340,
+    expCurrent: 0,
     expMax: 1000,
   },
 };
@@ -47,12 +69,15 @@ function fiveStarPath(cx: number, cy: number, R: number, r: number): string {
   return `M ${pts.join(' L ')} Z`;
 }
 
-function HeroCard({ name, rarity, level, ilust }: { name: string; rarity: string; level: number; ilust: string }) {
+function HeroCard({ name, rarity, level, ilust, heroType }: { name: string; rarity: string; level: number; ilust: string; heroType: string }) {
   const cfg     = HERO_RARITIES.find(r => r.id === rarity) ?? HERO_RARITIES[3];
   const clipId  = `hc-clip-${name}`;
   const tgId    = `hc-tg-${name}`;
   const barFade = `hc-bar-${name}`;
   const botFade = `hc-botfade-${name}`;
+
+  // ── Chroma key: load raw green-screen image, process pixels, get data URL ──
+  const chromaUrl = useChromaKeyDataUrl(ilust);
 
   const sx = cfg.text === 'SS' ? 210 : 218;
   const sy = 321;
@@ -91,7 +116,7 @@ function HeroCard({ name, rarity, level, ilust }: { name: string; rarity: string
       <rect x="3" y="3" width="244" height="394" rx="10" ry="10" fill={cfg.fill}/>
       <rect x="3" y="3" width="244" height="394" rx="10" ry="10" fill="none" stroke="rgba(0,0,0,0.35)" strokeWidth="2"/>
 
-      <image href={ilust} x="3" y="3" width="244" height="394" preserveAspectRatio="xMidYMax slice" clipPath={`url(#${clipId})`}/>
+      <image href={chromaUrl ?? ''} x="3" y="3" width="244" height="394" preserveAspectRatio="xMidYMax slice" clipPath={`url(#${clipId})`}/>
 
       <rect x="3" y="280" width="244" height="77" fill={`url(#${botFade})`} clipPath={`url(#${clipId})`}/>
       <rect x="3" y="291" width="185" height="25" fill={`url(#${barFade})`}/>
@@ -99,7 +124,7 @@ function HeroCard({ name, rarity, level, ilust }: { name: string; rarity: string
       <text x="11" y="304" textAnchor="start" dominantBaseline="middle"
         fill="#ffffff" fontFamily="'Cinzel',serif" fontSize="13" fontWeight="700" letterSpacing="2"
         style={{ filter: 'drop-shadow(0 1px 4px rgba(0,0,0,1))' }}
-      >Fighter</text>
+      >{heroType}</text>
 
       {Array.from({ length: cfg.stars }).map((_, i) => (
         <path key={i} d={fiveStarPath(RS_X0 + i * RS_STEP, RS_CY, RS_R, RS_r)}
@@ -143,9 +168,11 @@ function HeroCard({ name, rarity, level, ilust }: { name: string; rarity: string
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function HeroPage() {
-  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailOpen, setDetailOpen]           = useState(false);
+  const [emmaDetailOpen, setEmmaDetailOpen]   = useState(false);
 
-  const cfg = HERO_RARITIES.find(r => r.id === HERO.rarity) ?? HERO_RARITIES[3];
+  const cfg     = HERO_RARITIES.find(r => r.id === HERO.rarity)  ?? HERO_RARITIES[3];
+  const emmaCfg = HERO_RARITIES.find(r => r.id === EMMA.rarity)  ?? HERO_RARITIES[3];
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100dvh', background: '#1a0535', overflow: 'hidden' }}>
@@ -157,7 +184,7 @@ export default function HeroPage() {
       {/* ── Page title ── */}
       <div style={{ position:'absolute', top:'13%', left:'50%', transform:'translateX(-50%)', zIndex:10, textAlign:'center', pointerEvents:'none' }}>
         <div style={{ color:'rgba(255,215,0,0.95)', fontFamily:"'Cinzel',serif", fontSize:'clamp(12px,2vw,20px)', fontWeight:800, letterSpacing:'0.28em', textShadow:'0 2px 16px rgba(200,100,255,0.5), 0 1px 4px rgba(0,0,0,0.9)' }}>HEROES</div>
-        <div style={{ marginTop:'3px', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', fontSize:'clamp(7px,0.85vw,9px)', letterSpacing:'0.14em' }}>1 HERO COLLECTED</div>
+        <div style={{ marginTop:'3px', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', fontSize:'clamp(7px,0.85vw,9px)', letterSpacing:'0.14em' }}>2 HEROES COLLECTED</div>
       </div>
 
       {/* ── Gold separator ── */}
@@ -172,21 +199,31 @@ export default function HeroPage() {
         alignContent: 'flex-start', alignItems: 'flex-start', justifyContent: 'flex-start',
         gap: '8px',
       }}>
-        {/* Hero card — click to open detail */}
+        {/* Lucas card */}
         <div
           style={{ width: `${CARD_W}px`, height: `${CARD_H}px`, flexShrink: 0, cursor: 'pointer', transition: 'transform 0.15s' }}
           onClick={() => setDetailOpen(true)}
           onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.06)')}
           onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
         >
-          <HeroCard name={HERO.name} rarity={HERO.rarity} level={HERO.level} ilust={LUCAS_ILUST}/>
+          <HeroCard name={HERO.name} rarity={HERO.rarity} level={HERO.level} ilust={LUCAS_ILUST_SRC} heroType={HERO.heroType}/>
+        </div>
+
+        {/* Emma card */}
+        <div
+          style={{ width: `${CARD_W}px`, height: `${CARD_H}px`, flexShrink: 0, cursor: 'pointer', transition: 'transform 0.15s' }}
+          onClick={() => setEmmaDetailOpen(true)}
+          onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.06)')}
+          onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+        >
+          <HeroCard name={EMMA.name} rarity={EMMA.rarity} level={EMMA.level} ilust={EMMA_ILUST_SRC} heroType={EMMA.heroType}/>
         </div>
       </div>
 
       {/* ── Shared game overlay UI ── */}
       <GamePageLayout activeTab="hero" hidePlayerInfo/>
 
-      {/* ── Hero detail overlay ── */}
+      {/* ── Lucas detail overlay ── */}
       {detailOpen && (
         <HeroDetailView
           name={HERO.name}
@@ -195,9 +232,24 @@ export default function HeroPage() {
           rarityColor={cfg.fill}
           rarityShine={cfg.shine}
           level={HERO.level}
-          ilust={LUCAS_ILUST}
+          ilust={LUCAS_ILUST_SRC}
           stats={HERO.stats}
           onClose={() => setDetailOpen(false)}
+        />
+      )}
+
+      {/* ── Emma detail overlay ── */}
+      {emmaDetailOpen && (
+        <EmmaDetailView
+          name={EMMA.name}
+          rarity={EMMA.rarity}
+          rarityLabel={emmaCfg.label}
+          rarityColor={emmaCfg.fill}
+          rarityShine={emmaCfg.shine}
+          level={EMMA.level}
+          ilust={EMMA_ILUST_SRC}
+          stats={EMMA.stats}
+          onClose={() => setEmmaDetailOpen(false)}
         />
       )}
     </div>

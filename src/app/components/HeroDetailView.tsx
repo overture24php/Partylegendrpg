@@ -11,13 +11,14 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import { useState, useEffect, useRef } from 'react';
-import { LUCAS_FRAMES, lucasImgCache, isCacheReady } from '../utils/lucasCache';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { LUCAS_FRAMES, lucasImgCache, isCacheReady, LUCAS_FRAME_MS, LUCAS_PINGPONG, lucasChromaCache, isChromaCacheReady } from '../utils/lucasCache';
+import { applyChromaKey } from '../utils/chromaKey';
 import { useAuth } from '../context/AuthContext';
 
-const ANIM_FPS = 12;
+// ANIM_FPS removed — interval driven by LUCAS_FRAME_MS (500ms per frame)
 
-// ─── Number formatter K / M / B ───────────────────────────────────────────────
+// ─── Number formatter K / M / B ───���────────────────────────────────────────
 function fmtNum(n: number): string {
   if (n >= 1_000_000_000) return `${+(n / 1_000_000_000).toFixed(1)}B`;
   if (n >= 1_000_000)     return `${+(n / 1_000_000).toFixed(1)}M`;
@@ -52,22 +53,61 @@ function LucasSpritePlayer({ rarityColor }: { rarityColor: string }) {
   const canvasRef    = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const cacheRef     = useRef<HTMLImageElement[]>([]);
-  const frameRef     = useRef(0);
+  const seqRef       = useRef(0);
   const rafRef       = useRef<number | null>(null);
-  const lastTimeRef  = useRef<number>(0);
+  const lastTimeRef  = useRef<number>(-Infinity);
 
-  // Synchronous warm-cache check — no setState round-trip if LoadingPage already ran
+  // Synchronous warm-cache check — chroma cache preferred (zero per-frame pixel work)
   const [loaded, setLoaded] = useState<boolean>(() => {
-    if (isCacheReady()) {
+    if (isChromaCacheReady() || isCacheReady()) {
       cacheRef.current = lucasImgCache.slice();
       return true;
     }
     return false;
   });
 
+  // ── Draw one frame by ping-pong index — MUST be declared before any effect that uses it ──
+  const drawFrame = useCallback((frameIdx: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const cW = canvas.width;
+    const cH = canvas.height;
+
+    const chromaCanvas = lucasChromaCache[frameIdx];
+    const rawImg       = cacheRef.current[frameIdx];
+    if (!chromaCanvas && (!rawImg || rawImg.naturalWidth === 0)) return;
+
+    const srcW = chromaCanvas ? chromaCanvas.width  : rawImg.naturalWidth;
+    const srcH = chromaCanvas ? chromaCanvas.height : rawImg.naturalHeight;
+    const scale = Math.min(cW / srcW, (17 * cH) / (20 * srcH));
+    const drawW = srcW * scale;
+    const drawH = srcH * scale;
+    const colW  = (cW + 336) / 20;
+    const dx    = (cW - drawW) / 2 - colW;
+    const dy    = 17 * cH / 20 - drawH;
+
+    ctx.clearRect(0, 0, cW, cH);
+    if (chromaCanvas) {
+      ctx.drawImage(chromaCanvas, dx, dy, drawW, drawH);
+    } else {
+      const off = document.createElement('canvas');
+      off.width  = Math.ceil(drawW);
+      off.height = Math.ceil(drawH);
+      const offCtx = off.getContext('2d', { willReadFrequently: true });
+      if (!offCtx) return;
+      offCtx.drawImage(rawImg, 0, 0, off.width, off.height);
+      const id = offCtx.getImageData(0, 0, off.width, off.height);
+      applyChromaKey(id.data);
+      offCtx.putImageData(id, 0, 0);
+      ctx.drawImage(off, dx, dy, drawW, drawH);
+    }
+  }, []);
+
   // ── Fallback preload (only if LoadingPage was skipped) ─────────────────────
   useEffect(() => {
-    if (loaded) return; // already warm
+    if (loaded) return;
     let settled = 0;
     const total = LUCAS_FRAMES.length;
     LUCAS_FRAMES.forEach((src, i) => {
@@ -78,6 +118,7 @@ function LucasSpritePlayer({ rarityColor }: { rarityColor: string }) {
         return;
       }
       const img = new Image();
+      img.crossOrigin = 'anonymous';
       img.onload = img.onerror = () => {
         lucasImgCache[i] = img;
         settled++;
@@ -88,7 +129,8 @@ function LucasSpritePlayer({ rarityColor }: { rarityColor: string }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Canvas size — imperative, no setState round-trip ──────────────────────
+  // ── Canvas size — setting canvas.width/height clears the canvas (DOM spec).
+  // Redraw immediately after every resize so there is zero blank time.
   useEffect(() => {
     const canvas = canvasRef.current;
     const el     = containerRef.current;
@@ -96,58 +138,33 @@ function LucasSpritePlayer({ rarityColor }: { rarityColor: string }) {
     const sync = () => {
       canvas.width  = el.clientWidth  || 300;
       canvas.height = el.clientHeight || 500;
+      drawFrame(LUCAS_PINGPONG[seqRef.current]);
+      lastTimeRef.current = performance.now();
     };
-    sync(); // immediate on mount
+    sync();
     const ro = new ResizeObserver(sync);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [drawFrame]);
 
-  // ── RAF animation loop ─────────────────────────────────────────────────────
+  // ── RAF animation loop — ping-pong sequence ────────────────────────────────
   useEffect(() => {
     if (!loaded) return;
-    const INTERVAL = 1000 / ANIM_FPS;
+    seqRef.current = 0;
+    lastTimeRef.current = -Infinity;
+    drawFrame(LUCAS_PINGPONG[0]);
+    lastTimeRef.current = performance.now();
+
     const loop = (ts: number) => {
       rafRef.current = requestAnimationFrame(loop);
-      if (ts - lastTimeRef.current < INTERVAL) return;
+      if (ts - lastTimeRef.current < LUCAS_FRAME_MS) return;
       lastTimeRef.current = ts;
-
-      frameRef.current = (frameRef.current + 1) % LUCAS_FRAMES.length;
-      const img    = cacheRef.current[frameRef.current];
-      const canvas = canvasRef.current;
-      if (!img || !canvas || img.naturalWidth === 0) return;
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      const cW    = canvas.width;
-      const cH    = canvas.height;
-
-      // ── Bug fix: constrain scale so drawH ≤ 17/20 × cH  ─────────────────────
-      // When height-constrained the old formula gave dy = 17cH/20 − cH = −0.15cH
-      // (top 15% clipped).  Cap at (17/20) so feet land at row-17 and head ≥ top.
-      const scale = Math.min(
-        cW / img.naturalWidth,
-        (17 * cH) / (20 * img.naturalHeight),
-      );
-      const drawW = img.naturalWidth  * scale;
-      const drawH = img.naturalHeight * scale;
-
-      // ── Grid-relative pos: target col I (idx 9) / row 17 (full-screen grid) ─
-      // No top bar → canvas top = screen top = 0 → cH = screenH
-      // 1 col = screenW/20 = (cW + 336)/20  (336 = left 256 + right 80)
-      // 1 row = screenH/20 = cH/20
-      // Horizontal: original calibrated formula — canvas-center shifted left 1 col
-      const colW = (cW + 336) / 20;             // 1 grid-col width in screen px
-      const dx   = (cW - drawW) / 2 - colW;     // shift left 1 col from center
-      const dy   = 17 * cH / 20 - drawH;        // feet at row 17 (full-screen grid)
-
-      ctx.clearRect(0, 0, cW, cH);
-      ctx.drawImage(img, dx, dy, drawW, drawH);
+      seqRef.current = (seqRef.current + 1) % LUCAS_PINGPONG.length;
+      drawFrame(LUCAS_PINGPONG[seqRef.current]);
     };
     rafRef.current = requestAnimationFrame(loop);
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-  }, [loaded]);
+  }, [loaded, drawFrame]);
 
   const filterStyle = `drop-shadow(0 0 40px ${rarityColor}55) drop-shadow(0 8px 24px rgba(0,0,0,0.9))`;
 
@@ -176,7 +193,7 @@ function LucasSpritePlayer({ rarityColor }: { rarityColor: string }) {
   );
 }
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 interface HeroStats {
   hp: number; pAtk: number; mAtk: number;
   pDef: number; mDef: number; speed: number;
@@ -186,6 +203,10 @@ interface HeroDetailViewProps {
   name: string; rarity: string; rarityLabel: string;
   rarityColor: string; rarityShine: string;
   level: number; ilust: string; stats: HeroStats; onClose: () => void;
+  /** Optional: custom sprite player node (default: LucasSpritePlayer) */
+  spritePlayer?: React.ReactNode;
+  /** Optional: portrait-mode background URL (default: Lucas portrait) */
+  portraitBg?: string;
 }
 
 const BADGE_COLORS: Record<string, string> = {
@@ -313,7 +334,7 @@ const RARITY_TEXT: Record<string, string> = {
   mythic: 'SS', legendary: 'S', epic: 'A', rare: 'B', common: 'C',
 };
 
-// ─── Rarity star count (matches SvgLibraryPage HERO_CARD_CFGS) ───────────────
+// ─── Rarity star count (matches SvgLibraryPage HERO_CARD_CFGS) ──────────────
 const RARITY_STARS: Record<string, number> = {
   common: 1, rare: 2, epic: 3, legendary: 4, mythic: 5,
 };
@@ -332,12 +353,15 @@ function fiveStarPath(cx: number, cy: number, R: number, r: number): string {
 }
 
 // ─── Background ───────────────────────────────────────────────────────────────
-const HERO_DETAIL_BG = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777273613/Screenshot_58_zqpqvr.png';
+const HERO_DETAIL_BG = 'https://res.cloudinary.com/dhkethrmc/image/upload/v1777381178/ChatGPT_Image_Apr_28_2026_07_59_00_PM_ud1ln3.png';
+const PORTRAIT_BG    = 'https://res.cloudinary.com/dhkethrmc/image/upload/v1777379718/ChatGPT_Image_Apr_28_2026_07_34_14_PM_uxwirc.png';
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ── Main Component ───────────────────────────────────────────────────────────
 export function HeroDetailView({
   name, rarity, rarityLabel, rarityColor, rarityShine,
   level, ilust, stats, onClose,
+  spritePlayer,
+  portraitBg,
 }: HeroDetailViewProps) {
   const [activeTab, setActiveTab] = useState<string>('levelup');
   const { user } = useAuth();
@@ -359,6 +383,22 @@ export function HeroDetailView({
   const [showGrid,  setShowGrid]  = useState(false);
   const gridCanvasRef             = useRef<HTMLCanvasElement>(null);
   const rootRef                   = useRef<HTMLDivElement>(null);
+
+  // ── Portrait / Animated mode toggle (F2–H2 button) ───────────────────────────
+  // isPortrait=false → animated mode (default): animated BG + sprite visible
+  // isPortrait=true  → portrait mode: static portrait BG + sprite hidden
+  const [isPortrait, setIsPortrait] = useState(false);
+  const [cooldown,   setCooldown]   = useState(false);
+  const cooldownRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleModeToggle = () => {
+    if (cooldown) return;
+    setIsPortrait(prev => !prev);
+    setCooldown(true);
+    cooldownRef.current = setTimeout(() => setCooldown(false), 3000);
+  };
+
+  useEffect(() => () => { if (cooldownRef.current) clearTimeout(cooldownRef.current); }, []);
 
   useEffect(() => {
     const drawGrid = () => {
@@ -404,21 +444,25 @@ export function HeroDetailView({
   return (
     <div ref={rootRef} style={{ position: 'fixed', inset: 0, zIndex: 200, background: '#000', overflow: 'hidden' }}>
 
-      {/* ── Layer 0: background ── */}
-      <img src={HERO_DETAIL_BG} alt="" style={{
+      {/* ── Layer 0: background — switches between animated BG and portrait BG ── */}
+      <img src={isPortrait ? (portraitBg ?? PORTRAIT_BG) : HERO_DETAIL_BG} alt="" style={{
         position: 'absolute', inset: 0,
         width: '100%', height: '100%',
         objectFit: 'cover', objectPosition: 'center center',
         zIndex: 0, pointerEvents: 'none', userSelect: 'none', display: 'block',
       }}/>
 
-      {/* ── Layer 1: vignette ── */}
-      <div style={{ position:'absolute', inset:0, zIndex:1, background:'rgba(0,0,0,0.32)', pointerEvents:'none' }}/>
+      {/* ── Layer 1: vignette — hidden in portrait mode to preserve original brightness ── */}
+      {!isPortrait && (
+        <div style={{ position:'absolute', inset:0, zIndex:1, background:'rgba(0,0,0,0.32)', pointerEvents:'none' }}/>
+      )}
 
-      {/* ── Layer 2: rarity glows ── */}
-      <div style={{ position:'absolute', inset:0, zIndex:2, background:'radial-gradient(ellipse 90% 55% at 50% 0%, rgba(130,40,220,0.28) 0%, transparent 65%)', pointerEvents:'none' }}/>
-      <div style={{ position:'absolute', inset:0, zIndex:2, background:'radial-gradient(ellipse 60% 45% at 50% 105%, rgba(60,0,120,0.35) 0%, transparent 70%)', pointerEvents:'none' }}/>
-      <div style={{ position:'absolute', left:'50%', top:'50%', transform:'translate(-50%,-50%)', width:'320px', height:'480px', zIndex:2, background:`radial-gradient(ellipse 80% 90% at 50% 60%, ${rarityColor}20 0%, transparent 70%)`, pointerEvents:'none' }}/>
+      {/* ── Layer 2: rarity glows — hidden in portrait mode ── */}
+      {!isPortrait && (<>
+        <div style={{ position:'absolute', inset:0, zIndex:2, background:'radial-gradient(ellipse 90% 55% at 50% 0%, rgba(130,40,220,0.28) 0%, transparent 65%)', pointerEvents:'none' }}/>
+        <div style={{ position:'absolute', inset:0, zIndex:2, background:'radial-gradient(ellipse 60% 45% at 50% 105%, rgba(60,0,120,0.35) 0%, transparent 70%)', pointerEvents:'none' }}/>
+        <div style={{ position:'absolute', left:'50%', top:'50%', transform:'translate(-50%,-50%)', width:'320px', height:'480px', zIndex:2, background:`radial-gradient(ellipse 80% 90% at 50% 60%, ${rarityColor}20 0%, transparent 70%)`, pointerEvents:'none' }}/>
+      </>)}
 
       {/* ── Floating BACK button — top-left ────────────────────────────────── */}
       <button onClick={onClose} style={{
@@ -440,7 +484,7 @@ export function HeroDetailView({
           A3–D3 │ Rarity color bar — full-width bg strip behind icon + name
           Color = rarityColor, fade-out on right side
           z:14 (below icon z:15)
-      ════════════════════════════════════════════════════════════════════════ */}
+      ═══════════════════════════════════════════════════════════════════════ */}
       <div style={{
         position: 'absolute',
         left: '0%', top: '10%',
@@ -553,15 +597,15 @@ export function HeroDetailView({
         );
       })()}
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          A4–D4 │ Thin dark-orange bottom rule — align-down, fade right
-          left:0%, top:calc(20% - 1.5px), width:20%
+      {/* ═════════════════════════════════════════════════════════════════════
+          A5–D5 │ Thin dark-orange bottom rule — shifted down 1 grid (was A4)
+          left:0%, top:calc(25% - 1.5px), width:20%
           z:15
       ═════════════════════════════════════════════════════════════════════= */}
       <div style={{
         position: 'absolute',
         left: '0%',
-        top: 'calc(20% - 1.5px)',
+        top: 'calc(25% - 1.5px)',
         width: '20%',
         height: '1.5px',
         zIndex: 15,
@@ -573,7 +617,7 @@ export function HeroDetailView({
           B3–C3 │ Hero Name  — col B→C, row 3, h=1 grid, z:15
           SVG text fills full 1-grid height, white fill + black frame stroke
           col B starts at 5%,  width 2 cols = 10%
-      ════════════════════════════════════════════════════════════════════════ */}
+      ═══════════════════════════════════════════════════════════════════════ */}
       <div style={{
         position: 'absolute',
         left: '5%', top: '10%',
@@ -643,6 +687,9 @@ export function HeroDetailView({
             </div>
           </div>
 
+          {/* ── 1-grid spacer: dorong divider + stats turun 1 row ── */}
+          <div style={{ height: '5vh' }}/>
+
           {/* Divider */}
           <div style={{ height: '1px', background: `linear-gradient(90deg, ${rarityColor}55, transparent)`, marginBottom: '12px' }}/>
 
@@ -669,15 +716,17 @@ export function HeroDetailView({
         </div>
       </div>
 
-      {/* ── Center Illustration — top:0 (no top bar) ────────────────────────── */}
+      {/* ── Center Illustration — hidden in portrait mode (visibility keeps RAF alive) ── */}
       <div style={{
         position: 'absolute', top: 0, bottom: 0,
         left: '20%', right: '80px',
         zIndex: 5,
         display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
         overflow: 'hidden',
+        visibility: isPortrait ? 'hidden' : 'visible',
+        pointerEvents: isPortrait ? 'none' : 'auto',
       }}>
-        <LucasSpritePlayer rarityColor={rarityColor} />
+        {spritePlayer ?? <LucasSpritePlayer rarityColor={rarityColor} />}
         <div style={{
           position: 'absolute', bottom: 0, left: '10%', right: '10%', height: '60px',
           background: `radial-gradient(ellipse 80% 100% at 50% 100%, ${rarityColor}44 0%, transparent 70%)`,
@@ -796,68 +845,40 @@ export function HeroDetailView({
       </CurrencyBox>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          H18–M18 │ Power Bar
-          H = col 7 → left 35%   |  M right edge = col 13 → right at 65%
-          width = 6 cols = 30%   |  row 18 top = 85%, height = 5%
-          Background: solid black 40% transparent, fade left + right sides
-          H18 (1 col = 5%) = power icon
-          I18–M18 (5 cols = 25%) = power number, same SVG text size as hero name
-          z:15
-      ════════════════════════════════════════════════════════════════════= */}
-
-      {/* Background bar — H18 to M18 */}
+          A7–D7 │ Power Indicator — 4 grid cols (0–20%), row 7 (top:30%–35%)
+          Dipindah dari H18–M18 ke sini (bekas tempat garis orange)
+          Icon kiri + angka kanan dalam satu baris, z:16
+      ═══════════════════════════════════════════════════════════════════= */}
       <div style={{
         position: 'absolute',
-        left: '35%', top: '85%',
-        width: '30%', height: '5%',
-        zIndex: 15,
-        background: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.4) 10%, rgba(0,0,0,0.4) 90%, transparent 100%)',
-        pointerEvents: 'none',
-      }}/>
-
-      {/* Power icon — H18 (col 7, 1 col = 5%) */}
-      <div style={{
-        position: 'absolute',
-        left: '35%', top: '85%',
-        width: '5%', height: '5%',
+        left: '0%', top: '30%',
+        width: '20%', height: '5%',
         zIndex: 16,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3%',
+        paddingLeft: '3%',
         pointerEvents: 'none',
+        background: 'linear-gradient(90deg, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.15) 75%, transparent 100%)',
+        overflow: 'hidden',
       }}>
-        {/* Raised fist / power icon — solid white */}
-        <svg viewBox="0 0 24 28" style={{ height: '60%', width: 'auto' }} fill="none">
-          {/* Fist fingers top */}
+        {/* Power fist icon */}
+        <svg viewBox="0 0 24 28" style={{ height: '60%', width: 'auto', flexShrink: 0 }} fill="none">
           <rect x="5"  y="5"  width="4" height="7" rx="2" fill="white"/>
           <rect x="10" y="4"  width="4" height="8" rx="2" fill="white"/>
           <rect x="15" y="5"  width="4" height="7" rx="2" fill="white"/>
-          {/* Palm */}
           <rect x="4"  y="11" width="16" height="9" rx="2.5" fill="white"/>
-          {/* Thumb */}
           <rect x="1"  y="12" width="5"  height="4" rx="2" fill="white"/>
-          {/* Wrist / cuff band */}
           <rect x="5"  y="19" width="14" height="3" rx="1" fill="white" fillOpacity="0.5"/>
-          {/* Power bolt overlay */}
           <path d="M13 8 L10 14 L13 14 L11 20 L16 12 L13 12 Z" fill="rgba(0,0,0,0.35)"/>
         </svg>
-      </div>
-
-      {/* Power number — I18 to M18 (col 8 → 40%, width 5 cols = 25%) */}
-      <div style={{
-        position: 'absolute',
-        left: '40%', top: '85%',
-        width: '25%', height: '5%',
-        zIndex: 16,
-        display: 'flex', alignItems: 'center',
-        overflow: 'hidden',
-        pointerEvents: 'none',
-      }}>
-        {/* SVG text — same size as hero name (fontSize=36 in viewBox 0 0 200 40) */}
+        {/* Power number — SVG text sama style dengan hero name */}
         <svg
           width="100%" height="100%"
-          viewBox="0 0 400 40"
+          viewBox="0 0 260 40"
           preserveAspectRatio="xMinYMid meet"
           xmlns="http://www.w3.org/2000/svg"
-          style={{ overflow: 'visible' }}
+          style={{ display: 'block', overflow: 'hidden', flex: 1 }}
         >
           <text
             x="0" y="34"
@@ -884,6 +905,92 @@ export function HeroDetailView({
           zIndex: 60, pointerEvents: 'none', display: 'block',
         }}
       />
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          F2–H2 │ Portrait / Animated mode toggle
+          Grid: col F (idx 5) = left 25%, row 2 (idx 1) = top 5%
+          Width: 3 cols = 15%, Height: 1 row = 5%
+          Black 40% bg | dark-orange top+bottom borders fading on sides
+          3 s cooldown between switches
+      ═════════════════════════════════════════════════════════════════════= */}
+      <div style={{
+        position: 'absolute',
+        left: '25%', top: '5%',
+        width: '15%', height: '5%',
+        zIndex: 30,
+        background: 'rgba(0, 0, 0, 0.40)',
+        overflow: 'hidden',
+      }}>
+        {/* Top border */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, height: '1px',
+          background: 'linear-gradient(90deg, transparent 0%, #92400e 18%, #b45309 50%, #92400e 82%, transparent 100%)',
+          pointerEvents: 'none',
+        }}/>
+        {/* Bottom border */}
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0, height: '1px',
+          background: 'linear-gradient(90deg, transparent 0%, #92400e 18%, #b45309 50%, #92400e 82%, transparent 100%)',
+          pointerEvents: 'none',
+        }}/>
+        {/* Left side fade */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, bottom: 0, width: '16%',
+          background: 'linear-gradient(90deg, rgba(0,0,0,0.55) 0%, transparent 100%)',
+          pointerEvents: 'none', zIndex: 1,
+        }}/>
+        {/* Right side fade */}
+        <div style={{
+          position: 'absolute', top: 0, right: 0, bottom: 0, width: '16%',
+          background: 'linear-gradient(270deg, rgba(0,0,0,0.55) 0%, transparent 100%)',
+          pointerEvents: 'none', zIndex: 1,
+        }}/>
+        {/* Button */}
+        <button
+          onClick={handleModeToggle}
+          style={{
+            position: 'absolute', inset: 0,
+            background: 'transparent',
+            border: 'none',
+            cursor: cooldown ? 'not-allowed' : 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
+            opacity: cooldown ? 0.55 : 1,
+            transition: 'opacity 0.25s',
+            zIndex: 2,
+          }}
+        >
+          {/* Icon */}
+          {isPortrait ? (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="5,3 19,12 5,21"/>
+            </svg>
+          ) : (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="5" width="14" height="14" rx="2"/>
+              <circle cx="10" cy="12" r="2.5"/>
+            </svg>
+          )}
+          <span style={{
+            color: '#d97706',
+            fontFamily: "'Cinzel', serif",
+            fontSize: '10px',
+            fontWeight: 700,
+            letterSpacing: '0.15em',
+            textShadow: '0 1px 6px rgba(0,0,0,0.95)',
+            userSelect: 'none',
+          }}>
+            {isPortrait ? 'ANIMATED' : 'POTRAIT'}
+          </span>
+          {/* Cooldown indicator dot */}
+          {cooldown && (
+            <span style={{
+              width: '5px', height: '5px', borderRadius: '50%',
+              background: '#b45309', boxShadow: '0 0 6px #b45309',
+              flexShrink: 0,
+            }}/>
+          )}
+        </button>
+      </div>
 
       {/* ── Grid toggle button ────────────────────────────────────────────────── */}
       <button className="font-normal"

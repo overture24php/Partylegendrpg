@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { getMaxXpForLevel } from '../utils/expSystem';
 import { getBgmEnabled, setBgmEnabled, getBgmVolume, setBgmVolume } from '../components/BgmController';
 
-const BG = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777055893/ef374537-5227-45d1-a733-55bceddc2549.png';
+const BG = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777381395/e0da204d-9767-44b3-99b8-adc3f63f2a40_n9k068.png';
 
 const COLS = 8;
 const ROWS = 12;
