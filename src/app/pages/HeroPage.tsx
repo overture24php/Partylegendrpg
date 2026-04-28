@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { GamePageLayout } from '../components/GamePageLayout';
 import { HeroDetailView } from '../components/HeroDetailView';
 import { EmmaDetailView } from '../components/EmmaDetailView';
+import { useLanguage } from '../context/LanguageContext';
 import { useChromaKeyDataUrl } from '../utils/chromaKey';
+import { HeroCardAnimated } from '../components/HeroCardAnimated';
 
 // ─── Cloudinary base ───────────────────────────────────────────────────────────
-const LUCAS_ILUST_SRC = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777378794/lcs1_vh9tjj.png';
+const LUCAS_ILUST_SRC = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777386997/LUCAS_tyqcnf.png';
 // Emma card illustration — frame 1, green-screen, chroma key applied client-side
-const EMMA_ILUST_SRC  = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777378782/em1_gpl2ri.png';
+const EMMA_ILUST_SRC  = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777387003/emma_aqsnsd.png';
 
 // ─── Rarity configs ───────────────────────────────────────────────────────────
 const HERO_RARITIES = [
@@ -57,7 +59,7 @@ const EMMA = {
 const CARD_W = 186;
 const CARD_H = Math.round(CARD_W * 400 / 250);
 
-// ─── Five-pointed star path helper ────────────────────────────────────────────
+// ─── Five-pointed star path helper ─────────────────────��──────────────────────
 function fiveStarPath(cx: number, cy: number, R: number, r: number): string {
   const pts: string[] = [];
   for (let k = 0; k < 5; k++) {
@@ -116,13 +118,22 @@ function HeroCard({ name, rarity, level, ilust, heroType }: { name: string; rari
       <rect x="3" y="3" width="244" height="394" rx="10" ry="10" fill={cfg.fill}/>
       <rect x="3" y="3" width="244" height="394" rx="10" ry="10" fill="none" stroke="rgba(0,0,0,0.35)" strokeWidth="2"/>
 
-      <image href={chromaUrl ?? ''} x="3" y="3" width="244" height="394" preserveAspectRatio="xMidYMax slice" clipPath={`url(#${clipId})`}/>
+      {/* Static clip <g> — locks to card frame coordinate space, never moves */}
+      <g clipPath={`url(#${clipId})`}>
+        {/* Parallax outer g — reads --hci-x/--hci-y CSS vars from HeroCardAnimated */}
+        <g style={{ transform: 'translateX(var(--hci-x, 0px)) translateY(var(--hci-y, 0px))' }}>
+          {/* Float + breath animation inner g */}
+          <g className="hca-ilust-anim">
+            <image href={chromaUrl ?? ''} x="3" y="3" width="244" height="394" preserveAspectRatio="xMidYMax slice"/>
+          </g>
+        </g>
+      </g>
 
       <rect x="3" y="280" width="244" height="77" fill={`url(#${botFade})`} clipPath={`url(#${clipId})`}/>
       <rect x="3" y="291" width="185" height="25" fill={`url(#${barFade})`}/>
 
       <text x="11" y="304" textAnchor="start" dominantBaseline="middle"
-        fill="#ffffff" fontFamily="'Cinzel',serif" fontSize="13" fontWeight="700" letterSpacing="2"
+        fill="#ffffff" fontFamily="'Playfair Display',serif" fontSize="13" fontWeight="700" letterSpacing="2"
         style={{ filter: 'drop-shadow(0 1px 4px rgba(0,0,0,1))' }}
       >{heroType}</text>
 
@@ -134,7 +145,7 @@ function HeroCard({ name, rarity, level, ilust, heroType }: { name: string; rari
       <path d={starPath} fill="rgba(0,0,0,0.6)"/>
       <text x={sx} y={sy} textAnchor="middle" dominantBaseline="middle"
         fill={`url(#${tgId})`} stroke="#000000" strokeWidth="1.5" paintOrder="stroke"
-        fontFamily="'Georgia',serif" fontSize="52" fontWeight="bold"
+        fontFamily="'Playfair Display',serif" fontSize="52" fontWeight="bold"
       >{cfg.text}</text>
 
       <rect x="3" y="357" width="244" height="40" fill="#000000" clipPath={`url(#${clipId})`}/>
@@ -145,7 +156,7 @@ function HeroCard({ name, rarity, level, ilust, heroType }: { name: string; rari
       />
 
       <text x="125" y="378" textAnchor="middle" dominantBaseline="middle"
-        fill="#ffffff" fontFamily="'Cinzel',serif" fontSize="18" fontWeight="700" letterSpacing="3"
+        fill="#ffffff" fontFamily="'Playfair Display',serif" fontSize="18" fontWeight="700" letterSpacing="3"
         clipPath={`url(#${clipId})`}
         style={{ filter: 'drop-shadow(0 1px 4px rgba(0,0,0,1))' }}
       >{name}</text>
@@ -157,7 +168,7 @@ function HeroCard({ name, rarity, level, ilust, heroType }: { name: string; rari
         textAnchor="middle" dominantBaseline="middle"
         transform={`rotate(-45, ${3 + S * 0.28}, ${3 + S * 0.28})`}
         fill="#ffffff" stroke="#000000" strokeWidth={lvStroke} paintOrder="stroke"
-        fontFamily="'Cinzel',serif" fontSize={lvFontSize} fontWeight="700" letterSpacing="1"
+        fontFamily="'Playfair Display',serif" fontSize={lvFontSize} fontWeight="700" letterSpacing="1"
         clipPath={`url(#${clipId})`}
       >Lv. {level}</text>
 
@@ -170,6 +181,7 @@ function HeroCard({ name, rarity, level, ilust, heroType }: { name: string; rari
 export default function HeroPage() {
   const [detailOpen, setDetailOpen]           = useState(false);
   const [emmaDetailOpen, setEmmaDetailOpen]   = useState(false);
+  const { t } = useLanguage();
 
   const cfg     = HERO_RARITIES.find(r => r.id === HERO.rarity)  ?? HERO_RARITIES[3];
   const emmaCfg = HERO_RARITIES.find(r => r.id === EMMA.rarity)  ?? HERO_RARITIES[3];
@@ -183,8 +195,8 @@ export default function HeroPage() {
 
       {/* ── Page title ── */}
       <div style={{ position:'absolute', top:'13%', left:'50%', transform:'translateX(-50%)', zIndex:10, textAlign:'center', pointerEvents:'none' }}>
-        <div style={{ color:'rgba(255,215,0,0.95)', fontFamily:"'Cinzel',serif", fontSize:'clamp(12px,2vw,20px)', fontWeight:800, letterSpacing:'0.28em', textShadow:'0 2px 16px rgba(200,100,255,0.5), 0 1px 4px rgba(0,0,0,0.9)' }}>HEROES</div>
-        <div style={{ marginTop:'3px', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', fontSize:'clamp(7px,0.85vw,9px)', letterSpacing:'0.14em' }}>2 HEROES COLLECTED</div>
+        <div style={{ color:'rgba(255,215,0,0.95)', fontFamily:"'Playfair Display',serif", fontSize:'clamp(12px,2vw,20px)', fontWeight:800, letterSpacing:'0.28em', textShadow:'0 2px 16px rgba(200,100,255,0.5), 0 1px 4px rgba(0,0,0,0.9)' }}>{t('hero.page_title')}</div>
+        <div style={{ marginTop:'3px', color:'rgba(255,255,255,0.3)', fontFamily:"'Playfair Display',serif", fontSize:'clamp(7px,0.85vw,9px)', letterSpacing:'0.14em' }}>2 {t('hero.collected')}</div>
       </div>
 
       {/* ── Gold separator ── */}
@@ -201,22 +213,22 @@ export default function HeroPage() {
       }}>
         {/* Lucas card */}
         <div
-          style={{ width: `${CARD_W}px`, height: `${CARD_H}px`, flexShrink: 0, cursor: 'pointer', transition: 'transform 0.15s' }}
+          style={{ width: `${CARD_W}px`, height: `${CARD_H}px`, flexShrink: 0, cursor: 'pointer' }}
           onClick={() => setDetailOpen(true)}
-          onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.06)')}
-          onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
         >
-          <HeroCard name={HERO.name} rarity={HERO.rarity} level={HERO.level} ilust={LUCAS_ILUST_SRC} heroType={HERO.heroType}/>
+          <HeroCardAnimated rarityColor={cfg.fill}>
+            <HeroCard name={HERO.name} rarity={HERO.rarity} level={HERO.level} ilust={LUCAS_ILUST_SRC} heroType={HERO.heroType}/>
+          </HeroCardAnimated>
         </div>
 
         {/* Emma card */}
         <div
-          style={{ width: `${CARD_W}px`, height: `${CARD_H}px`, flexShrink: 0, cursor: 'pointer', transition: 'transform 0.15s' }}
+          style={{ width: `${CARD_W}px`, height: `${CARD_H}px`, flexShrink: 0, cursor: 'pointer' }}
           onClick={() => setEmmaDetailOpen(true)}
-          onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.06)')}
-          onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
         >
-          <HeroCard name={EMMA.name} rarity={EMMA.rarity} level={EMMA.level} ilust={EMMA_ILUST_SRC} heroType={EMMA.heroType}/>
+          <HeroCardAnimated rarityColor={emmaCfg.fill}>
+            <HeroCard name={EMMA.name} rarity={EMMA.rarity} level={EMMA.level} ilust={EMMA_ILUST_SRC} heroType={EMMA.heroType}/>
+          </HeroCardAnimated>
         </div>
       </div>
 

@@ -57,7 +57,7 @@ export function DatabaseSetupNotice() {
         background: 'rgba(0,0,0,0.92)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '16px',
-        fontFamily: 'monospace',
+        fontFamily: "'Playfair Display', serif",
       }}
     >
       <div
@@ -80,7 +80,7 @@ export function DatabaseSetupNotice() {
               style={{
                 margin: 0, marginBottom: 6,
                 fontSize: 18, color: '#fbbf24',
-                fontFamily: 'Cinzel, serif',
+                fontFamily: "'Playfair Display', serif",
                 letterSpacing: 1,
               }}
             >

@@ -5,7 +5,7 @@ import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { useLanguage } from '../context/LanguageContext';
 import { startBgm } from '../components/BgmController';
 
-const BG = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1776873949/Gemini_Generated_Image_gx2lk8gx2lk8gx2l_uezsg9.png';
+const BG = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777395784/ChatGPT_Image_Apr_29_2026_12_02_36_AM_p3z4gf.png';
 
 export default function IntroPage() {
   const { t } = useLanguage();
@@ -58,7 +58,7 @@ export default function IntroPage() {
         <motion.span
           animate={{ opacity: [1, 0.15, 1] }}
           transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-          className="text-white tracking-widest uppercase"
+          className="text-white tracking-widest"
           style={{ fontSize: '12px', letterSpacing: '0.25em' }}
         >
           {t('intro.tap_to_start')}

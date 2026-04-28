@@ -18,7 +18,6 @@ import EventPage from './pages/EventPage';
 import SvgLibraryPage from './pages/SvgLibraryPage';
 import SqlHelperPage from './pages/SqlHelperPage';
 import HeroPage from './pages/HeroPage';
-import SkeletalAnimationMaker from './pages/SkeletalAnimationMaker';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -159,10 +158,6 @@ export const router = createBrowserRouter([
       {
         path: '/svg-library',
         element: <SvgLibraryPage />,
-      },
-      {
-        path: '/tools/skeletal',
-        element: <SkeletalAnimationMaker />,
       },
       {
         path: '*',

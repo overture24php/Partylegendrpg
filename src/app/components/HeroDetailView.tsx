@@ -1,24 +1,14 @@
 /**
  * HeroDetailView — full-screen overlay showing hero detail stats + action tabs.
- *
- * ── SPRITE ANIMATION (no-glitch, no-flicker) ─────────────────────────────────
- * 1. Global lucasImgCache populated by LoadingPage → SAME HTMLImageElement objects,
- *    zero re-decode → instant first frame.
- * 2. isCacheReady() checked synchronously in useState() initializer → if warm,
- *    loaded=true from the very first render (no shimmer, no delay).
- * 3. Canvas size set imperatively via ResizeObserver — no setState() round-trip.
- * 4. Single persistent <canvas> + RAF loop — no DOM swap per frame.
- * ─────────────────────────────────────────────────────────────────────────────
+ * Center area shows a static floating hero card (no sprite animation).
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { LUCAS_FRAMES, lucasImgCache, isCacheReady, LUCAS_FRAME_MS, LUCAS_PINGPONG, lucasChromaCache, isChromaCacheReady } from '../utils/lucasCache';
-import { applyChromaKey } from '../utils/chromaKey';
+import { useState, useEffect, useRef } from 'react';
+import { useChromaKeyDataUrl } from '../utils/chromaKey';
 import { useAuth } from '../context/AuthContext';
+import { HeroCardAnimated } from './HeroCardAnimated';
 
-// ANIM_FPS removed — interval driven by LUCAS_FRAME_MS (500ms per frame)
-
-// ─── Number formatter K / M / B ───���────────────────────────────────────────
+// ─── Number formatter K / M / B ───
 function fmtNum(n: number): string {
   if (n >= 1_000_000_000) return `${+(n / 1_000_000_000).toFixed(1)}B`;
   if (n >= 1_000_000)     return `${+(n / 1_000_000).toFixed(1)}M`;
@@ -39,159 +29,121 @@ function CurrencyBox({ left, children }: { left: string; children: React.ReactNo
   return (
     <div style={{ position:'absolute', left, top:0, width:`${(1/8)*100}%`, height:`${(1/12)*100}%`, zIndex:25, pointerEvents:'none' }}>
       <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%' }} viewBox="0 0 100 100" preserveAspectRatio="none">
-        <rect x="20" y="20" width="60" height="60" fill="rgba(0,0,0,0.4)"/>
-        <path d="M 20,20 Q 0,20 0,50 Q 0,80 20,80 Z" fill="rgba(0,0,0,0.4)"/>
-        <path d="M 80,20 Q 100,20 100,50 Q 100,80 80,80 Z" fill="rgba(0,0,0,0.4)"/>
+        <rect x="20" y="20" width="60" height="60" fill="rgba(0,0,0,0.6)"/>
+        <path d="M 20,20 Q 0,20 0,50 Q 0,80 20,80 Z" fill="rgba(0,0,0,0.6)"/>
+        <path d="M 80,20 Q 100,20 100,50 Q 100,80 80,80 Z" fill="rgba(0,0,0,0.6)"/>
       </svg>
       {children}
     </div>
   );
 }
 
-// ─── Sprite Player ────────────────────────────────────────────────────────────
-function LucasSpritePlayer({ rarityColor }: { rarityColor: string }) {
-  const canvasRef    = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const cacheRef     = useRef<HTMLImageElement[]>([]);
-  const seqRef       = useRef(0);
-  const rafRef       = useRef<number | null>(null);
-  const lastTimeRef  = useRef<number>(-Infinity);
-
-  // Synchronous warm-cache check — chroma cache preferred (zero per-frame pixel work)
-  const [loaded, setLoaded] = useState<boolean>(() => {
-    if (isChromaCacheReady() || isCacheReady()) {
-      cacheRef.current = lucasImgCache.slice();
-      return true;
+// ─── Floating Hero Card (replaces sprite player) ──────────────────────────────
+function FloatingHeroCard({
+  name, rarity, rarityColor, rarityShine, level, ilust,
+}: { name: string; rarity: string; rarityColor: string; rarityShine: string; level: number; ilust: string }) {
+  const RARITIES: Record<string, { border: string; fill: string; shine: string; text: string; stars: number }> = {
+    mythic:    { border:'#450A0A', fill:'#E00000', shine:'#FCA5A5', text:'SS', stars:5 },
+    legendary: { border:'#78350F', fill:'#FB923C', shine:'#FED7AA', text:'S',  stars:4 },
+    epic:      { border:'#3B0764', fill:'#A855F7', shine:'#D8B4FE', text:'A',  stars:3 },
+    rare:      { border:'#1E3A5F', fill:'#1877F2', shine:'#93C5FD', text:'B',  stars:2 },
+    common:    { border:'#14532D', fill:'#22C55E', shine:'#86EFAC', text:'C',  stars:1 },
+  };
+  const cfg       = RARITIES[rarity] ?? RARITIES.rare;
+  const chromaUrl = useChromaKeyDataUrl(ilust);
+  const clipId    = `fhc-clip-${name}`;
+  const tgId      = `fhc-tg-${name}`;
+  const barId     = `fhc-bar-${name}`;
+  const botId     = `fhc-bot-${name}`;
+  const RS_R = 14, RS_r = 5.3, RS_CY = 338, RS_X0 = 24, RS_STEP = 32;
+  const sx = cfg.text === 'SS' ? 210 : 218;
+  const sy = 321;
+  const starPath = `M ${sx},${sy-28} Q ${sx+5},${sy-5} ${sx+28},${sy} Q ${sx+5},${sy+5} ${sx},${sy+28} Q ${sx-5},${sy+5} ${sx-28},${sy} Q ${sx-5},${sy-5} ${sx},${sy-28} Z`;
+  const S          = 66;
+  const lvFontSize = level >= 100 ? 11 : level >= 10 ? 14 : 18;
+  const lvStroke   = level >= 100 ? 3   : level >= 10 ? 3.5 : 4;
+  const fiveStarP  = (cx: number, cy: number, R: number, r: number) => {
+    const pts: string[] = [];
+    for (let k = 0; k < 5; k++) {
+      const oa = (-90 + k * 72) * (Math.PI / 180);
+      const ia = (-54 + k * 72) * (Math.PI / 180);
+      pts.push(`${(cx + R * Math.cos(oa)).toFixed(1)},${(cy + R * Math.sin(oa)).toFixed(1)}`);
+      pts.push(`${(cx + r * Math.cos(ia)).toFixed(1)},${(cy + r * Math.sin(ia)).toFixed(1)}`);
     }
-    return false;
-  });
-
-  // ── Draw one frame by ping-pong index — MUST be declared before any effect that uses it ──
-  const drawFrame = useCallback((frameIdx: number) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const cW = canvas.width;
-    const cH = canvas.height;
-
-    const chromaCanvas = lucasChromaCache[frameIdx];
-    const rawImg       = cacheRef.current[frameIdx];
-    if (!chromaCanvas && (!rawImg || rawImg.naturalWidth === 0)) return;
-
-    const srcW = chromaCanvas ? chromaCanvas.width  : rawImg.naturalWidth;
-    const srcH = chromaCanvas ? chromaCanvas.height : rawImg.naturalHeight;
-    const scale = Math.min(cW / srcW, (17 * cH) / (20 * srcH));
-    const drawW = srcW * scale;
-    const drawH = srcH * scale;
-    const colW  = (cW + 336) / 20;
-    const dx    = (cW - drawW) / 2 - colW;
-    const dy    = 17 * cH / 20 - drawH;
-
-    ctx.clearRect(0, 0, cW, cH);
-    if (chromaCanvas) {
-      ctx.drawImage(chromaCanvas, dx, dy, drawW, drawH);
-    } else {
-      const off = document.createElement('canvas');
-      off.width  = Math.ceil(drawW);
-      off.height = Math.ceil(drawH);
-      const offCtx = off.getContext('2d', { willReadFrequently: true });
-      if (!offCtx) return;
-      offCtx.drawImage(rawImg, 0, 0, off.width, off.height);
-      const id = offCtx.getImageData(0, 0, off.width, off.height);
-      applyChromaKey(id.data);
-      offCtx.putImageData(id, 0, 0);
-      ctx.drawImage(off, dx, dy, drawW, drawH);
-    }
-  }, []);
-
-  // ── Fallback preload (only if LoadingPage was skipped) ─────────────────────
-  useEffect(() => {
-    if (loaded) return;
-    let settled = 0;
-    const total = LUCAS_FRAMES.length;
-    LUCAS_FRAMES.forEach((src, i) => {
-      const existing = lucasImgCache[i];
-      if (existing?.naturalWidth > 0) {
-        settled++;
-        if (settled >= total) { cacheRef.current = lucasImgCache.slice(); setLoaded(true); }
-        return;
-      }
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = img.onerror = () => {
-        lucasImgCache[i] = img;
-        settled++;
-        if (settled >= total) { cacheRef.current = lucasImgCache.slice(); setLoaded(true); }
-      };
-      img.src = src;
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ── Canvas size — setting canvas.width/height clears the canvas (DOM spec).
-  // Redraw immediately after every resize so there is zero blank time.
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const el     = containerRef.current;
-    if (!canvas || !el) return;
-    const sync = () => {
-      canvas.width  = el.clientWidth  || 300;
-      canvas.height = el.clientHeight || 500;
-      drawFrame(LUCAS_PINGPONG[seqRef.current]);
-      lastTimeRef.current = performance.now();
-    };
-    sync();
-    const ro = new ResizeObserver(sync);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [drawFrame]);
-
-  // ── RAF animation loop — ping-pong sequence ────────────────────────────────
-  useEffect(() => {
-    if (!loaded) return;
-    seqRef.current = 0;
-    lastTimeRef.current = -Infinity;
-    drawFrame(LUCAS_PINGPONG[0]);
-    lastTimeRef.current = performance.now();
-
-    const loop = (ts: number) => {
-      rafRef.current = requestAnimationFrame(loop);
-      if (ts - lastTimeRef.current < LUCAS_FRAME_MS) return;
-      lastTimeRef.current = ts;
-      seqRef.current = (seqRef.current + 1) % LUCAS_PINGPONG.length;
-      drawFrame(LUCAS_PINGPONG[seqRef.current]);
-    };
-    rafRef.current = requestAnimationFrame(loop);
-    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-  }, [loaded, drawFrame]);
-
-  const filterStyle = `drop-shadow(0 0 40px ${rarityColor}55) drop-shadow(0 8px 24px rgba(0,0,0,0.9))`;
-
+    return `M ${pts.join(' L ')} Z`;
+  };
   return (
-    <div
-      ref={containerRef}
-      style={{ position: 'relative', height: '92%', width: '100%' }}
-    >
-      {!loaded && (
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: 'linear-gradient(90deg,rgba(255,255,255,0.04) 0%,rgba(255,255,255,0.10) 50%,rgba(255,255,255,0.04) 100%)',
-          borderRadius: '8px', animation: 'pulse 1.5s infinite',
-        }}/>
-      )}
-      <canvas
-        ref={canvasRef}
-        style={{
-          display: 'block',
-          width: '100%', height: '100%',
-          filter: filterStyle,
-          pointerEvents: 'none', userSelect: 'none',
-        }}
-      />
+    <div style={{
+      position: 'absolute', top: '50%', left: '50%',
+      transform: 'translate(calc(-50% - 5vw), -50%)',
+      width: 'min(220px, 38vw)', aspectRatio: '250 / 400',
+      filter: `drop-shadow(0 0 48px ${rarityColor}80) drop-shadow(0 12px 40px rgba(0,0,0,0.9))`,
+      zIndex: 6, pointerEvents: 'auto',
+    }}>
+      <HeroCardAnimated rarityColor={rarityColor}>
+      <svg viewBox="0 0 250 400" xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink"
+        style={{ display:'block', width:'100%', height:'100%' }}>
+        <defs>
+          <clipPath id={clipId}><rect x="3" y="3" width="244" height="394" rx="10" ry="10"/></clipPath>
+          <linearGradient id={tgId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor={cfg.shine} stopOpacity="1"/>
+            <stop offset="48%"  stopColor={cfg.shine} stopOpacity="1"/>
+            <stop offset="100%" stopColor={cfg.fill}  stopOpacity="1"/>
+          </linearGradient>
+          <linearGradient id={barId} x1="0" y1="0" x2="1" y2="0">
+            <stop offset="55%"  stopColor="#000000" stopOpacity="0.55"/>
+            <stop offset="100%" stopColor="#000000" stopOpacity="0"/>
+          </linearGradient>
+          <linearGradient id={botId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor="#000000" stopOpacity="0"/>
+            <stop offset="100%" stopColor="#000000" stopOpacity="1"/>
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="250" height="400" rx="12" ry="12" fill={cfg.border}/>
+        <rect x="3" y="3" width="244" height="394" rx="10" ry="10" fill={cfg.fill}/>
+        <rect x="3" y="3" width="244" height="394" rx="10" ry="10" fill="none" stroke="rgba(0,0,0,0.35)" strokeWidth="2"/>
+
+        {/* Static clip <g> — locks to card frame coordinate space, never moves */}
+        <g clipPath={`url(#${clipId})`}>
+          {/* Parallax outer g — reads --hci-x/--hci-y CSS vars set by HeroCardAnimated */}
+          <g style={{ transform: 'translateX(var(--hci-x, 0px)) translateY(var(--hci-y, 0px))' }}>
+            {/* Float + breath animation inner g */}
+            <g className="hca-ilust-anim">
+              <image href={chromaUrl ?? ''} x="3" y="3" width="244" height="394" preserveAspectRatio="xMidYMax slice"/>
+            </g>
+          </g>
+        </g>
+
+        <rect x="3" y="280" width="244" height="77" fill={`url(#${botId})`} clipPath={`url(#${clipId})`}/>
+        <rect x="3" y="291" width="185" height="25" fill={`url(#${barId})`}/>
+        {Array.from({ length: cfg.stars }).map((_, i) => (
+          <path key={i} d={fiveStarP(RS_X0 + i * RS_STEP, RS_CY, RS_R, RS_r)} fill="#FFD700" stroke="#000000" strokeWidth="1.2" strokeLinejoin="round"/>
+        ))}
+        <path d={starPath} fill="rgba(0,0,0,0.6)"/>
+        <text x={sx} y={sy} textAnchor="middle" dominantBaseline="middle"
+          fill={`url(#${tgId})`} stroke="#000000" strokeWidth="1.5" paintOrder="stroke"
+          fontFamily="'Playfair Display',serif" fontSize="52" fontWeight="bold">{cfg.text}</text>
+        <rect x="3" y="357" width="244" height="40" fill="#000000" clipPath={`url(#${clipId})`}/>
+        <polyline
+          points="3,367 15,387 27,367 39,387 51,367 63,387 75,367 87,387 99,367 111,387 123,367 135,387 147,367 159,387 171,367 183,387 195,367 207,387 219,367 231,387 243,367"
+          fill="none" stroke="rgba(100,60,10,0.35)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" clipPath={`url(#${clipId})`}/>
+        <text x="125" y="378" textAnchor="middle" dominantBaseline="middle"
+          fill="#ffffff" fontFamily="'Playfair Display',serif" fontSize="18" fontWeight="700" letterSpacing="3"
+          clipPath={`url(#${clipId})`}>{name}</text>
+        <path d={`M 3,3 L ${3+S},3 L 3,${3+S} Z`} fill="rgba(0,0,0,0.78)" clipPath={`url(#${clipId})`}/>
+        <text x={3+S*0.28} y={3+S*0.28} textAnchor="middle" dominantBaseline="middle"
+          transform={`rotate(-45, ${3+S*0.28}, ${3+S*0.28})`}
+          fill="#ffffff" stroke="#000000" strokeWidth={lvStroke} paintOrder="stroke"
+          fontFamily="'Playfair Display',serif" fontSize={lvFontSize} fontWeight="700" letterSpacing="1"
+          clipPath={`url(#${clipId})`}>Lv. {level}</text>
+        <rect x="1" y="1" width="248" height="398" rx="11" ry="11" fill="none" stroke={cfg.shine} strokeWidth="1" strokeOpacity="0.4"/>
+      </svg>
+      </HeroCardAnimated>
     </div>
   );
 }
+
+
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface HeroStats {
@@ -203,10 +155,6 @@ interface HeroDetailViewProps {
   name: string; rarity: string; rarityLabel: string;
   rarityColor: string; rarityShine: string;
   level: number; ilust: string; stats: HeroStats; onClose: () => void;
-  /** Optional: custom sprite player node (default: LucasSpritePlayer) */
-  spritePlayer?: React.ReactNode;
-  /** Optional: portrait-mode background URL (default: Lucas portrait) */
-  portraitBg?: string;
 }
 
 const BADGE_COLORS: Record<string, string> = {
@@ -354,19 +302,15 @@ function fiveStarPath(cx: number, cy: number, R: number, r: number): string {
 
 // ─── Background ───────────────────────────────────────────────────────────────
 const HERO_DETAIL_BG = 'https://res.cloudinary.com/dhkethrmc/image/upload/v1777381178/ChatGPT_Image_Apr_28_2026_07_59_00_PM_ud1ln3.png';
-const PORTRAIT_BG    = 'https://res.cloudinary.com/dhkethrmc/image/upload/v1777379718/ChatGPT_Image_Apr_28_2026_07_34_14_PM_uxwirc.png';
 
 // ── Main Component ───────────────────────────────────────────────────────────
 export function HeroDetailView({
   name, rarity, rarityLabel, rarityColor, rarityShine,
   level, ilust, stats, onClose,
-  spritePlayer,
-  portraitBg,
 }: HeroDetailViewProps) {
   const [activeTab, setActiveTab] = useState<string>('levelup');
   const { user } = useAuth();
   const expPct     = Math.round((stats.expCurrent / stats.expMax) * 100);
-  const badgeColor = BADGE_COLORS[rarity] ?? '#1877F2';
   const rarityText = RARITY_TEXT[rarity] ?? 'C';
 
   // ── Derived power score ───────────────────────────────────────────────────────
@@ -383,22 +327,6 @@ export function HeroDetailView({
   const [showGrid,  setShowGrid]  = useState(false);
   const gridCanvasRef             = useRef<HTMLCanvasElement>(null);
   const rootRef                   = useRef<HTMLDivElement>(null);
-
-  // ── Portrait / Animated mode toggle (F2–H2 button) ───────────────────────────
-  // isPortrait=false → animated mode (default): animated BG + sprite visible
-  // isPortrait=true  → portrait mode: static portrait BG + sprite hidden
-  const [isPortrait, setIsPortrait] = useState(false);
-  const [cooldown,   setCooldown]   = useState(false);
-  const cooldownRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleModeToggle = () => {
-    if (cooldown) return;
-    setIsPortrait(prev => !prev);
-    setCooldown(true);
-    cooldownRef.current = setTimeout(() => setCooldown(false), 3000);
-  };
-
-  useEffect(() => () => { if (cooldownRef.current) clearTimeout(cooldownRef.current); }, []);
 
   useEffect(() => {
     const drawGrid = () => {
@@ -425,7 +353,7 @@ export function HeroDetailView({
       ctx.shadowColor   = 'rgba(0,0,0,0.95)';
       ctx.shadowBlur    = 4;
       ctx.fillStyle     = 'rgba(255,220,80,1)';
-      ctx.font          = `bold ${labelSize}px monospace`;
+      ctx.font          = `bold ${labelSize}px 'Playfair Display'`;
       ctx.textAlign     = 'center';
       ctx.textBaseline  = 'top';
       for (let i = 0; i < GRID_COLS; i++) ctx.fillText(COL_LETTERS[i] ?? `${i}`, (i + 0.5) * cW, 4);
@@ -444,25 +372,23 @@ export function HeroDetailView({
   return (
     <div ref={rootRef} style={{ position: 'fixed', inset: 0, zIndex: 200, background: '#000', overflow: 'hidden' }}>
 
-      {/* ── Layer 0: background — switches between animated BG and portrait BG ── */}
-      <img src={isPortrait ? (portraitBg ?? PORTRAIT_BG) : HERO_DETAIL_BG} alt="" style={{
+      {/* ── Layer 0: background ── */}
+      <img src={HERO_DETAIL_BG} alt="" style={{
         position: 'absolute', inset: 0,
         width: '100%', height: '100%',
         objectFit: 'cover', objectPosition: 'center center',
         zIndex: 0, pointerEvents: 'none', userSelect: 'none', display: 'block',
       }}/>
 
-      {/* ── Layer 1: vignette — hidden in portrait mode to preserve original brightness ── */}
-      {!isPortrait && (
-        <div style={{ position:'absolute', inset:0, zIndex:1, background:'rgba(0,0,0,0.32)', pointerEvents:'none' }}/>
-      )}
+      {/* ── Layer 1: vignette ── */}
+      <div style={{ position:'absolute', inset:0, zIndex:1, background:'rgba(0,0,0,0.32)', pointerEvents:'none' }}/>
 
-      {/* ── Layer 2: rarity glows — hidden in portrait mode ── */}
-      {!isPortrait && (<>
+      {/* ── Layer 2: rarity glows ── */}
+      <>
         <div style={{ position:'absolute', inset:0, zIndex:2, background:'radial-gradient(ellipse 90% 55% at 50% 0%, rgba(130,40,220,0.28) 0%, transparent 65%)', pointerEvents:'none' }}/>
         <div style={{ position:'absolute', inset:0, zIndex:2, background:'radial-gradient(ellipse 60% 45% at 50% 105%, rgba(60,0,120,0.35) 0%, transparent 70%)', pointerEvents:'none' }}/>
         <div style={{ position:'absolute', left:'50%', top:'50%', transform:'translate(-50%,-50%)', width:'320px', height:'480px', zIndex:2, background:`radial-gradient(ellipse 80% 90% at 50% 60%, ${rarityColor}20 0%, transparent 70%)`, pointerEvents:'none' }}/>
-      </>)}
+      </>
 
       {/* ── Floating BACK button — top-left ────────────────────────────────── */}
       <button onClick={onClose} style={{
@@ -470,7 +396,7 @@ export function HeroDetailView({
         display: 'flex', alignItems: 'center', gap: '6px',
         background: 'rgba(0,0,0,0.50)', border: `1px solid ${rarityColor}55`,
         borderRadius: '6px', padding: '6px 12px', cursor: 'pointer',
-        color: '#FFD700', fontFamily: "'Cinzel',serif", fontSize: '11px',
+        color: '#FFD700', fontFamily: "'Playfair Display',serif", fontSize: '11px',
         fontWeight: 700, letterSpacing: '0.12em',
         backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
       }}>
@@ -480,7 +406,7 @@ export function HeroDetailView({
         BACK
       </button>
 
-      {/* ═══════════════════════════════════════════════════════════════════════
+      {/* ══════════════════════════════════════════════════════════════════════
           A3–D3 │ Rarity color bar — full-width bg strip behind icon + name
           Color = rarityColor, fade-out on right side
           z:14 (below icon z:15)
@@ -540,7 +466,7 @@ export function HeroDetailView({
             x="218" y="321"
             textAnchor="middle"
             dominantBaseline="middle"
-            fontFamily="'Georgia', serif"
+            fontFamily="'Playfair Display', serif"
             fontSize="56"
             fontWeight="bold"
             fill="url(#rarity-icon-g)"
@@ -641,7 +567,7 @@ export function HeroDetailView({
         >
           <text
             x="0" y="34"
-            fontFamily="'Cinzel', serif"
+            fontFamily="'Playfair Display', serif"
             fontWeight="900"
             fontSize="36"
             fill="white"
@@ -650,7 +576,7 @@ export function HeroDetailView({
             paintOrder="stroke"
             letterSpacing="3"
           >
-            {name.toUpperCase()}
+            {name}
           </text>
         </svg>
       </div>
@@ -670,8 +596,8 @@ export function HeroDetailView({
           {/* Level */}
           <div style={{ marginBottom: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '7px' }}>
-              <span style={{ color: 'rgba(255,255,255,0.5)', fontFamily: "'Cinzel',serif", fontSize: '10px', fontWeight: 600, letterSpacing: '0.12em' }}>LEVEL</span>
-              <span style={{ color: '#FFD700', fontFamily: "'Cinzel',serif", fontSize: '20px', fontWeight: 800, textShadow: '0 0 12px rgba(255,215,0,0.6)' }}>{level}</span>
+              <span style={{ color: 'rgba(255,255,255,0.5)', fontFamily: "'Playfair Display',serif", fontSize: '10px', fontWeight: 600, letterSpacing: '0.12em' }}>Level</span>
+              <span style={{ color: '#FFD700', fontFamily: "'Playfair Display',serif", fontSize: '20px', fontWeight: 800, textShadow: '0 0 12px rgba(255,215,0,0.6)' }}>{level}</span>
             </div>
             {/* EXP bar */}
             <div style={{ position: 'relative', paddingRight: '30px' }}>
@@ -679,10 +605,10 @@ export function HeroDetailView({
                 <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${expPct}%`, background: 'linear-gradient(90deg, #4ade80 0%, #86efac 80%, #d9f99d 100%)', borderRadius: '5px', boxShadow: '0 0 6px rgba(74,222,128,0.6)' }}/>
                 <div style={{ position: 'absolute', left: 0, top: 0, width: `${expPct}%`, height: '40%', background: 'rgba(255,255,255,0.2)', borderRadius: '5px', pointerEvents: 'none' }}/>
               </div>
-              <span style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', color: '#86efac', fontFamily: 'monospace', fontSize: '9px', fontWeight: 700 }}>{expPct}%</span>
+              <span style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', color: '#86efac', fontFamily: "'Playfair Display',serif", fontSize: '9px', fontWeight: 700 }}>{expPct}%</span>
             </div>
             {/* EXP text — K/M/B format */}
-            <div style={{ marginTop: '3px', color: 'rgba(255,255,255,0.28)', fontFamily: 'monospace', fontSize: '8px', letterSpacing: '0.06em' }}>
+            <div style={{ marginTop: '3px', color: 'rgba(255,255,255,0.28)', fontFamily: "'Playfair Display',serif", fontSize: '8px', letterSpacing: '0.06em' }}>
               {fmtNum(stats.expCurrent)} / {fmtNum(stats.expMax)} EXP
             </div>
           </div>
@@ -709,24 +635,23 @@ export function HeroDetailView({
               border: '1px solid rgba(255,255,255,0.08)',
             }}>
               <Icon />
-              <span style={{ color: 'rgba(255,255,255,0.62)', fontFamily: "'Cinzel',serif", fontSize: '9px', fontWeight: 600, letterSpacing: '0.1em', flex: 1 }}>{label}</span>
-              <span style={{ color: 'rgba(255,255,255,0.95)', fontFamily: "'Cinzel',serif", fontSize: '12px', fontWeight: 800, letterSpacing: '0.06em' }}>{fmtNum(value)}</span>
+              <span style={{ color: 'rgba(255,255,255,0.62)', fontFamily: "'Playfair Display',serif", fontSize: '9px', fontWeight: 600, letterSpacing: '0.1em', flex: 1 }}>{label}</span>
+              <span style={{ color: 'rgba(255,255,255,0.95)', fontFamily: "'Playfair Display',serif", fontSize: '12px', fontWeight: 800, letterSpacing: '0.06em' }}>{fmtNum(value)}</span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* ── Center Illustration — hidden in portrait mode (visibility keeps RAF alive) ── */}
+      {/* ── Center: Floating Hero Card ── */}
       <div style={{
         position: 'absolute', top: 0, bottom: 0,
         left: '20%', right: '80px',
-        zIndex: 5,
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-        overflow: 'hidden',
-        visibility: isPortrait ? 'hidden' : 'visible',
-        pointerEvents: isPortrait ? 'none' : 'auto',
+        zIndex: 5, pointerEvents: 'none',
       }}>
-        {spritePlayer ?? <LucasSpritePlayer rarityColor={rarityColor} />}
+        <FloatingHeroCard
+          name={name} rarity={rarity} rarityColor={rarityColor}
+          rarityShine={rarityShine} level={level} ilust={ilust}
+        />
         <div style={{
           position: 'absolute', bottom: 0, left: '10%', right: '10%', height: '60px',
           background: `radial-gradient(ellipse 80% 100% at 50% 100%, ${rarityColor}44 0%, transparent 70%)`,
@@ -766,7 +691,7 @@ export function HeroDetailView({
               <TabIcon active={isActive} />
               <span style={{
                 color: isActive ? '#FFD700' : 'rgba(255,255,255,0.55)',
-                fontFamily: "'Cinzel',serif",
+                fontFamily: "'Playfair Display',serif",
                 fontSize: '8px',
                 fontWeight: isActive ? 700 : 600,
                 letterSpacing: '0.08em',
@@ -808,7 +733,7 @@ export function HeroDetailView({
               <ellipse cx="8" cy="3" rx="2.5" ry="1.2" fill="#8B4513"/>
               <ellipse cx="8" cy="2.2" rx="2.5" ry="1" fill="#A0522D"/>
             </svg>
-            <span style={{ color:'#88ccff', fontFamily:"'Cinzel',serif", fontSize:'14px', fontWeight:600, letterSpacing:'0.06em', textShadow:'0 1px 4px rgba(0,0,0,0.9)', whiteSpace:'nowrap' }}>{fmtCurrency(user?.hero_exp ?? 0)}</span>
+            <span style={{ color:'#88ccff', fontFamily:"'Playfair Display',serif", fontSize:'14px', fontWeight:600, letterSpacing:'0.06em', textShadow:'0 1px 4px rgba(0,0,0,0.9)', whiteSpace:'nowrap' }}>{fmtCurrency(user?.hero_exp ?? 0)}</span>
           </div>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </div>
@@ -821,9 +746,9 @@ export function HeroDetailView({
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="12" r="10" fill="#D4A017"/>
               <circle cx="12" cy="12" r="8"  fill="#F5C842"/>
-              <text x="12" y="16" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#8B6000" fontFamily="serif">G</text>
+              <text x="12" y="16" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#8B6000" fontFamily="'Playfair Display',serif">G</text>
             </svg>
-            <span style={{ color:'#F5C842', fontFamily:"'Cinzel',serif", fontSize:'14px', fontWeight:600, letterSpacing:'0.06em', textShadow:'0 1px 4px rgba(0,0,0,0.9)', whiteSpace:'nowrap' }}>{fmtCurrency(user?.gold ?? 0)}</span>
+            <span style={{ color:'#F5C842', fontFamily:"'Playfair Display',serif", fontSize:'14px', fontWeight:600, letterSpacing:'0.06em', textShadow:'0 1px 4px rgba(0,0,0,0.9)', whiteSpace:'nowrap' }}>{fmtCurrency(user?.gold ?? 0)}</span>
           </div>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </div>
@@ -838,7 +763,7 @@ export function HeroDetailView({
               <polygon points="7,0 14,5 7,7 0,5"  fill="#5BCFFF"/>
               <polygon points="7,0 10,5 7,7 4,5"  fill="#A8EEFF"/>
             </svg>
-            <span style={{ color:'#5BCFFF', fontFamily:"'Cinzel',serif", fontSize:'14px', fontWeight:600, letterSpacing:'0.06em', textShadow:'0 1px 4px rgba(0,0,0,0.9)', whiteSpace:'nowrap' }}>{fmtCurrency(user?.gems ?? 0)}</span>
+            <span style={{ color:'#5BCFFF', fontFamily:"'Playfair Display',serif", fontSize:'14px', fontWeight:600, letterSpacing:'0.06em', textShadow:'0 1px 4px rgba(0,0,0,0.9)', whiteSpace:'nowrap' }}>{fmtCurrency(user?.gems ?? 0)}</span>
           </div>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </div>
@@ -882,7 +807,7 @@ export function HeroDetailView({
         >
           <text
             x="0" y="34"
-            fontFamily="'Cinzel', serif"
+            fontFamily="'Playfair Display', serif"
             fontWeight="900"
             fontSize="36"
             fill="white"
@@ -906,92 +831,6 @@ export function HeroDetailView({
         }}
       />
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          F2–H2 │ Portrait / Animated mode toggle
-          Grid: col F (idx 5) = left 25%, row 2 (idx 1) = top 5%
-          Width: 3 cols = 15%, Height: 1 row = 5%
-          Black 40% bg | dark-orange top+bottom borders fading on sides
-          3 s cooldown between switches
-      ═════════════════════════════════════════════════════════════════════= */}
-      <div style={{
-        position: 'absolute',
-        left: '25%', top: '5%',
-        width: '15%', height: '5%',
-        zIndex: 30,
-        background: 'rgba(0, 0, 0, 0.40)',
-        overflow: 'hidden',
-      }}>
-        {/* Top border */}
-        <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0, height: '1px',
-          background: 'linear-gradient(90deg, transparent 0%, #92400e 18%, #b45309 50%, #92400e 82%, transparent 100%)',
-          pointerEvents: 'none',
-        }}/>
-        {/* Bottom border */}
-        <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0, height: '1px',
-          background: 'linear-gradient(90deg, transparent 0%, #92400e 18%, #b45309 50%, #92400e 82%, transparent 100%)',
-          pointerEvents: 'none',
-        }}/>
-        {/* Left side fade */}
-        <div style={{
-          position: 'absolute', top: 0, left: 0, bottom: 0, width: '16%',
-          background: 'linear-gradient(90deg, rgba(0,0,0,0.55) 0%, transparent 100%)',
-          pointerEvents: 'none', zIndex: 1,
-        }}/>
-        {/* Right side fade */}
-        <div style={{
-          position: 'absolute', top: 0, right: 0, bottom: 0, width: '16%',
-          background: 'linear-gradient(270deg, rgba(0,0,0,0.55) 0%, transparent 100%)',
-          pointerEvents: 'none', zIndex: 1,
-        }}/>
-        {/* Button */}
-        <button
-          onClick={handleModeToggle}
-          style={{
-            position: 'absolute', inset: 0,
-            background: 'transparent',
-            border: 'none',
-            cursor: cooldown ? 'not-allowed' : 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
-            opacity: cooldown ? 0.55 : 1,
-            transition: 'opacity 0.25s',
-            zIndex: 2,
-          }}
-        >
-          {/* Icon */}
-          {isPortrait ? (
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="5,3 19,12 5,21"/>
-            </svg>
-          ) : (
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="5" width="14" height="14" rx="2"/>
-              <circle cx="10" cy="12" r="2.5"/>
-            </svg>
-          )}
-          <span style={{
-            color: '#d97706',
-            fontFamily: "'Cinzel', serif",
-            fontSize: '10px',
-            fontWeight: 700,
-            letterSpacing: '0.15em',
-            textShadow: '0 1px 6px rgba(0,0,0,0.95)',
-            userSelect: 'none',
-          }}>
-            {isPortrait ? 'ANIMATED' : 'POTRAIT'}
-          </span>
-          {/* Cooldown indicator dot */}
-          {cooldown && (
-            <span style={{
-              width: '5px', height: '5px', borderRadius: '50%',
-              background: '#b45309', boxShadow: '0 0 6px #b45309',
-              flexShrink: 0,
-            }}/>
-          )}
-        </button>
-      </div>
-
       {/* ── Grid toggle button ────────────────────────────────────────────────── */}
       <button className="font-normal"
         onClick={() => setShowGrid(v => !v)}
@@ -1001,7 +840,7 @@ export function HeroDetailView({
           background:     showGrid ? 'rgba(255,220,80,0.18)' : 'rgba(0,0,0,0.5)',
           border:         showGrid ? '1px solid rgba(255,220,80,0.6)' : '1px solid rgba(255,255,255,0.25)',
           color:          showGrid ? 'rgba(255,220,80,1)' : '#fff',
-          fontSize: '10px', fontFamily: 'monospace', letterSpacing: '0.12em',
+          fontSize: '10px', fontFamily: "'Playfair Display',serif", letterSpacing: '0.12em',
           padding: '6px 14px', borderRadius: '6px', cursor: 'pointer',
           backdropFilter: 'blur(6px)',
           boxShadow: showGrid ? '0 0 10px rgba(255,220,80,0.25)' : 'none',

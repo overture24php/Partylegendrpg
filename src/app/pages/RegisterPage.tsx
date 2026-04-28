@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
-import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { motion } from 'motion/react';
@@ -44,15 +43,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="size-full flex items-center justify-center relative overflow-hidden">
-      <ImageWithFallback
-        src="https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1776870641/afcdfbf9-c32b-47d9-b062-7f93ea8573ce.png"
-        alt="Background"
-        className="absolute inset-0 w-full h-full object-cover"
-      />
-      <div className="absolute inset-0 bg-black/60" />
-      <div className="absolute inset-0"
-        style={{ background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.75) 100%)' }} />
+    <div className="size-full flex items-center justify-center relative overflow-hidden" style={{ background: '#000000' }}>
 
       <motion.div
         initial={{ opacity: 0, y: 40 }}
@@ -77,7 +68,7 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Hero Name */}
             <div>
-              <label className="block text-xs font-medium text-blue-300/70 mb-2 tracking-widest uppercase">
+              <label className="block text-xs font-medium text-blue-300/70 mb-2 tracking-widest">
                 {t('register.hero_name')}
               </label>
               <div className="relative">
@@ -95,7 +86,7 @@ export default function RegisterPage() {
 
             {/* Email */}
             <div>
-              <label className="block text-xs font-medium text-blue-300/70 mb-2 tracking-widest uppercase">
+              <label className="block text-xs font-medium text-blue-300/70 mb-2 tracking-widest">
                 {t('register.email')}
               </label>
               <div className="relative">
@@ -115,7 +106,7 @@ export default function RegisterPage() {
 
             {/* Password */}
             <div>
-              <label className="block text-xs font-medium text-blue-300/70 mb-2 tracking-widest uppercase">
+              <label className="block text-xs font-medium text-blue-300/70 mb-2 tracking-widest">
                 {t('register.password')}
               </label>
               <div className="relative">
@@ -137,7 +128,7 @@ export default function RegisterPage() {
 
             {/* Confirm Password */}
             <div>
-              <label className="block text-xs font-medium text-blue-300/70 mb-2 tracking-widest uppercase">
+              <label className="block text-xs font-medium text-blue-300/70 mb-2 tracking-widest">
                 {t('register.confirm_password')}
               </label>
               <div className="relative">
@@ -157,7 +148,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3.5 rounded-xl text-sm font-medium tracking-widest uppercase transition-all duration-200 disabled:opacity-50 mt-2"
+              className="w-full py-3.5 rounded-xl text-sm font-medium tracking-widest transition-all duration-200 disabled:opacity-50 mt-2"
               style={{
                 background: isLoading
                   ? 'rgba(30,58,138,0.4)'

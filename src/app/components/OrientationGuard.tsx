@@ -157,7 +157,7 @@ export function OrientationGuard({ children }: { children: React.ReactNode }) {
           {/* Heading */}
           <p style={{
             color:         'rgba(255,255,255,0.95)',
-            fontFamily:    "'Cinzel', serif",
+            fontFamily:    "'Playfair Display', serif",
             fontSize:      'clamp(18px, 5vw, 26px)',
             fontWeight:    800,
             letterSpacing: '0.12em',
@@ -171,7 +171,7 @@ export function OrientationGuard({ children }: { children: React.ReactNode }) {
           {/* Sub-text */}
           <p style={{
             color:         'rgba(255,255,255,0.60)',
-            fontFamily:    "'Cinzel', serif",
+            fontFamily:    "'Playfair Display', serif",
             fontSize:      'clamp(11px, 3vw, 15px)',
             fontWeight:    500,
             letterSpacing: '0.08em',

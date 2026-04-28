@@ -143,7 +143,7 @@ function HeroCardSVG(c: HeroCardCfg): React.ReactNode {
         stroke="#000000"
         strokeWidth="1.5"
         paintOrder="stroke"
-        fontFamily="'Georgia', serif"
+        fontFamily="'Playfair Display', serif"
         fontSize="56"
         fontWeight="bold"
       >
@@ -430,7 +430,7 @@ export default function SvgLibraryPage() {
       minHeight:  '100dvh',
       background: '#0a0a10',
       color:      '#e8e0cc',
-      fontFamily: "'Cinzel', serif",
+      fontFamily: "'Playfair Display', serif",
       padding:    '28px 20px',
     }}>
 
@@ -452,7 +452,7 @@ export default function SvgLibraryPage() {
           fontSize:      'clamp(8px, 1vw, 11px)',
           color:         'rgba(255,255,255,0.3)',
           letterSpacing: '0.12em',
-          fontFamily:    'monospace',
+          fontFamily:    "'Playfair Display', serif",
         }}>
           {SVG_ASSETS.length} ASSET{SVG_ASSETS.length !== 1 ? 'S' : ''} REGISTERED
         </p>
@@ -471,7 +471,7 @@ export default function SvgLibraryPage() {
             borderRadius: '7px',
             padding:      '7px 13px',
             color:        '#fff',
-            fontFamily:   'monospace',
+            fontFamily:   "'Playfair Display', serif",
             fontSize:     '11px',
             outline:      'none',
             boxSizing:    'border-box',
@@ -542,7 +542,7 @@ export default function SvgLibraryPage() {
                     marginTop:    '2px',
                     fontSize:     'clamp(7px, 0.85vw, 9px)',
                     color:        'rgba(255,255,255,0.3)',
-                    fontFamily:   'monospace',
+                    fontFamily:   "'Playfair Display', serif",
                     whiteSpace:   'nowrap',
                     overflow:     'hidden',
                     textOverflow: 'ellipsis',
@@ -560,7 +560,7 @@ export default function SvgLibraryPage() {
                   border:        `1px solid ${copiedId === asset.id ? 'rgba(80,200,80,0.5)' : 'rgba(255,215,0,0.28)'}`,
                   color:         copiedId === asset.id ? '#88ff88' : 'rgba(255,215,0,0.65)',
                   fontSize:      '8px',
-                  fontFamily:    'monospace',
+                  fontFamily:    "'Playfair Display', serif",
                   letterSpacing: '0.08em',
                   padding:       '4px 8px',
                   borderRadius:  '5px',
@@ -602,7 +602,7 @@ export default function SvgLibraryPage() {
             marginTop:  '8px',
             fontSize:   'clamp(8px, 0.9vw, 10px)',
             color:      'rgba(255,255,255,0.18)',
-            fontFamily: 'monospace',
+            fontFamily: "'Playfair Display', serif",
           }}>
             Tambahkan entry ke SVG_ASSETS[] di SvgLibraryPage.tsx
           </div>
@@ -616,7 +616,7 @@ export default function SvgLibraryPage() {
           textAlign:     'center',
           color:         'rgba(255,255,255,0.18)',
           fontSize:      '11px',
-          fontFamily:    'monospace',
+          fontFamily:    "'Playfair Display', serif",
           letterSpacing: '0.1em',
         }}>
           TIDAK ADA HASIL UNTUK &quot;{search}&quot;
@@ -652,7 +652,7 @@ export default function SvgLibraryPage() {
               textAlign:     'center',
               color:         'rgba(255,215,0,0.8)',
               fontSize:      '11px',
-              fontFamily:    'monospace',
+              fontFamily:    "'Playfair Display', serif",
               letterSpacing: '0.12em',
             }}>
               {zoomed.name}
@@ -662,7 +662,7 @@ export default function SvgLibraryPage() {
               textAlign:     'center',
               color:         'rgba(255,255,255,0.3)',
               fontSize:      '9px',
-              fontFamily:    'monospace',
+              fontFamily:    "'Playfair Display', serif",
             }}>
               {zoomed.id}
             </div>

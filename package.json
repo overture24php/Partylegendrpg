@@ -2,9 +2,6 @@
   "name": "@figma/my-make-file",
   "private": true,
   "version": "0.0.1",
-   "engines": {
-    "node": ">=20.0.0"
-  },
   "type": "module",
   "scripts": {
     "build": "vite build",

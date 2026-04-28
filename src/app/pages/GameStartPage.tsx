@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { CurrencyDebug } from '../components/CurrencyDebug';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { getMaxXpForLevel } from '../utils/expSystem';
+import type { TranslationKey } from '../i18n/translations';
 import { getBgmEnabled, setBgmEnabled, getBgmVolume, setBgmVolume } from '../components/BgmController';
 
-const BG = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777381395/e0da204d-9767-44b3-99b8-adc3f63f2a40_n9k068.png';
+const BG = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777396811/ChatGPT_Image_Apr_29_2026_12_19_32_AM_squmiv.png';
 
 const COLS = 8;
 const ROWS = 12;
@@ -50,13 +52,13 @@ const CW = (1 / COLS) * 100;
 const CH = (1 / ROWS) * 100;
 
 const ASSETS = [
-  { id: 'btn-B8',  left: cellCenter('B',  8).left, top: cellCenter('B',  8).top, label: 'ARENA',   route: '/game/arena',   interactive: true, widthCells: 1, heightCells: 0.5 },
-  { id: 'btn-GH5', left: 70,                         top: 45,                       label: 'CASTLE',  route: '/game/castle',  interactive: true, widthCells: 1, heightCells: 0.5 },
-  { id: 'btn-D10', left: cellCenter('D', 10).left,  top: cellCenter('D', 10).top, label: 'GUILD',   route: '/game/guild',   interactive: true, widthCells: 1, heightCells: 0.5 },
-  { id: 'btn-C11', left: 25,                         top: cellCenter('C', 11).top, label: 'TAVERN',  route: '/game/tavern',  interactive: true, widthCells: 1, heightCells: 0.5 },
-  { id: 'btn-F10', left: cellCenter('F', 10).left,  top: cellCenter('F', 10).top, label: 'MARKET',  route: '/game/market',  interactive: true, widthCells: 1, heightCells: 0.5 },
-  { id: 'btn-D5',  left: 40.0,                       top: cellCenter('D',  5).top, label: 'TOWER',   route: '/game/tower',   interactive: true, widthCells: 1, heightCells: 0.5 },
-  { id: 'btn-C4',  left: 25,                          top: 35,                       label: 'EXPLORATION', route: '/game/event', interactive: true, widthCells: 1, heightCells: 0.5 },
+  { id: 'btn-B8',  left: cellCenter('B',  8).left, top: cellCenter('B',  8).top, labelKey: 'city.arena'       as TranslationKey, route: '/game/arena',   interactive: true, widthCells: 1, heightCells: 0.5 },
+  { id: 'btn-GH5', left: 70,                         top: 45,                       labelKey: 'city.castle'      as TranslationKey, route: '/game/castle',  interactive: true, widthCells: 1, heightCells: 0.5 },
+  { id: 'btn-D10', left: cellCenter('D', 10).left,  top: cellCenter('D', 10).top, labelKey: 'city.guild'       as TranslationKey, route: '/game/guild',   interactive: true, widthCells: 1, heightCells: 0.5 },
+  { id: 'btn-C11', left: 25,                         top: cellCenter('C', 11).top, labelKey: 'city.tavern'      as TranslationKey, route: '/game/tavern',  interactive: true, widthCells: 1, heightCells: 0.5 },
+  { id: 'btn-F10', left: cellCenter('F', 10).left,  top: cellCenter('F', 10).top, labelKey: 'city.market'      as TranslationKey, route: '/game/market',  interactive: true, widthCells: 1, heightCells: 0.5 },
+  { id: 'btn-D5',  left: 45.0,                       top: cellCenter('D',  5).top, labelKey: 'city.tower'       as TranslationKey, route: '/game/tower',   interactive: true, widthCells: 1, heightCells: 0.5 },
+  { id: 'btn-A7',  left: 5.0,                         top: 32.5,                     labelKey: 'city.exploration' as TranslationKey, route: '/game/event',   interactive: true, widthCells: 1, heightCells: 0.5 },
 ];
 
 function getPixelAlpha(imgEl: HTMLImageElement, clientX: number, clientY: number): number {
@@ -122,7 +124,7 @@ export default function GameStartPage() {
     const now = new Date();
     const sgt = { timeZone: 'Asia/Singapore' } as const;
     const day   = new Intl.DateTimeFormat('en', { ...sgt, day:   '2-digit' }).format(now);
-    const month = new Intl.DateTimeFormat('en', { ...sgt, month: 'short'   }).format(now).toUpperCase();
+    const month = new Intl.DateTimeFormat('en', { ...sgt, month: 'short'   }).format(now);
     const year  = new Intl.DateTimeFormat('en', { ...sgt, year:  'numeric' }).format(now);
     const time  = new Intl.DateTimeFormat('en', { ...sgt, hour: '2-digit', minute: '2-digit', hour12: false }).format(now);
     return { date: `${day} ${month} ${year}`, time };
@@ -159,6 +161,7 @@ export default function GameStartPage() {
 
   const navigate = useNavigate();
   const { user, refreshProfile } = useAuth();
+  const { t } = useLanguage();
 
   // ── Fetch real currency on mount + poll every 30s as safety net ──────────
   useEffect(() => {
@@ -239,7 +242,7 @@ export default function GameStartPage() {
       ctx.shadowColor   = 'rgba(0,0,0,0.95)';
       ctx.shadowBlur    = 4;
       ctx.fillStyle     = 'rgba(255, 220, 80, 1)';
-      ctx.font          = `bold ${labelSize}px monospace`;
+      ctx.font          = `bold ${labelSize}px 'Playfair Display'`;
       ctx.textAlign    = 'center';
       ctx.textBaseline = 'top';
       for (let i = 0; i < GRID_COLS; i++) {
@@ -253,7 +256,7 @@ export default function GameStartPage() {
       ctx.shadowBlur = 0;
       if (gridSelectMode) {
         ctx.fillStyle    = 'rgba(255,200,80,0.7)';
-        ctx.font         = 'bold 9px monospace';
+        ctx.font         = "bold 9px 'Playfair Display'";
         ctx.textAlign    = 'center';
         ctx.textBaseline = 'bottom';
         ctx.fillText('CLICK TO SELECT CELLS', W / 2, H - 4);
@@ -852,7 +855,7 @@ export default function GameStartPage() {
       >
         {/* label */}
         <span style={{
-          fontFamily:    "'Cinzel', serif",
+          fontFamily:    "'Playfair Display', serif",
           fontSize:      'clamp(5px, 1vh, 8px)',
           fontWeight:    600,
           letterSpacing: '0.22em',
@@ -861,11 +864,11 @@ export default function GameStartPage() {
           whiteSpace:    'nowrap',
           lineHeight:    1,
         }}>
-          SERVER TIME
+          Server Time
         </span>
         {/* date */}
         <span style={{
-          fontFamily:    "'Cinzel', serif",
+          fontFamily:    "'Playfair Display', serif",
           fontSize:      'clamp(7px, 2.5vh, 15px)',
           fontWeight:    700,
           letterSpacing: '0.14em',
@@ -878,7 +881,7 @@ export default function GameStartPage() {
         </span>
         {/* time */}
         <span style={{
-          fontFamily:    "'Cinzel', serif",
+          fontFamily:    "'Playfair Display', serif",
           fontSize:      'clamp(7px, 2.5vh, 15px)',
           fontWeight:    700,
           letterSpacing: '0.14em',
@@ -927,7 +930,7 @@ export default function GameStartPage() {
             right: 0,
             textAlign: 'center',
             color: '#ffffff',
-            fontFamily: "'Cinzel', serif",
+            fontFamily: "'Playfair Display', serif",
             fontSize: 'clamp(5px, 1vw, 10px)',
             fontWeight: 700,
             letterSpacing: '0.04em',
@@ -947,7 +950,7 @@ export default function GameStartPage() {
             right: 0,
             textAlign: 'center',
             color: '#ffffff',
-            fontFamily: "'Cinzel', serif",
+            fontFamily: "'Playfair Display', serif",
             fontSize: 'clamp(6px, 1.3vw, 13px)',
             fontWeight: 800,
             pointerEvents: 'none',
@@ -1126,7 +1129,7 @@ export default function GameStartPage() {
           <div
             style={{
               color: '#ffffff',
-              fontFamily: "'Cinzel', serif",
+              fontFamily: "'Playfair Display', serif",
               fontSize: '11px',
               fontWeight: 600,
               letterSpacing: '0.05em',
@@ -1147,7 +1150,7 @@ export default function GameStartPage() {
             <span
               style={{
                 color: '#ffdd88',
-                fontFamily: "'Cinzel', serif",
+                fontFamily: "'Playfair Display', serif",
                 fontSize: '9px',
                 fontWeight: 600,
                 textShadow: '0 1px 3px rgba(0,0,0,0.8)',
@@ -1182,7 +1185,7 @@ export default function GameStartPage() {
                   <span
                     style={{
                       color: '#7dd3fc',
-                      fontFamily: 'monospace',
+                      fontFamily: "'Playfair Display', serif",
                       fontSize: '8px',
                       fontWeight: 600,
                       textShadow: '0 1px 3px rgba(0,0,0,0.8)',
@@ -1200,7 +1203,7 @@ export default function GameStartPage() {
           <div
             style={{
               color: '#ffaa44',
-              fontFamily: "'Cinzel', serif",
+              fontFamily: "'Playfair Display', serif",
               fontSize: '10px',
               fontWeight: 600,
               letterSpacing: '0.03em',
@@ -1273,7 +1276,7 @@ export default function GameStartPage() {
             </div>
             <span style={{
               color:         '#88ccff',
-              fontFamily:    "'Cinzel', serif",
+              fontFamily:    "'Playfair Display', serif",
               fontSize:      '14px',
               fontWeight:    600,
               letterSpacing: '0.06em',
@@ -1347,13 +1350,13 @@ export default function GameStartPage() {
                   fontSize="10"
                   fontWeight="bold"
                   fill="#8B6000"
-                  fontFamily="serif"
+                  fontFamily="'Playfair Display',serif"
                 >G</text>
               </svg>
             </div>
             <span style={{
               color:         '#F5C842',
-              fontFamily:    "'Cinzel', serif",
+              fontFamily:    "'Playfair Display', serif",
               fontSize:      '14px',
               fontWeight:    600,
               letterSpacing: '0.06em',
@@ -1426,7 +1429,7 @@ export default function GameStartPage() {
             </div>
             <span style={{
               color:         '#5BCFFF',
-              fontFamily:    "'Cinzel', serif",
+              fontFamily:    "'Playfair Display', serif",
               fontSize:      '14px',
               fontWeight:    600,
               letterSpacing: '0.06em',
@@ -1553,10 +1556,10 @@ export default function GameStartPage() {
                 <line x1="6" y1="17" x2="12" y2="17" stroke="rgba(0,0,0,0.22)" strokeWidth="1.5" />
               </svg>
               <span style={{
-                color: '#ffffff', fontFamily: "'Cinzel', serif", fontSize: '7px',
+                color: '#ffffff', fontFamily: "'Playfair Display', serif", fontSize: '7px',
                 fontWeight: 700, letterSpacing: '0.08em',
                 textShadow: '0 1px 3px rgba(0,0,0,0.95)', lineHeight: 1,
-              }}>QUEST</span>
+              }}>Quest</span>
             </div>
 
             {/* ── Bag (Backpack/Ransel) — row 2 (20–40%) ── */}
@@ -1584,10 +1587,10 @@ export default function GameStartPage() {
                 <line x1="6" y1="18" x2="16" y2="18" stroke="rgba(0,0,0,0.2)" strokeWidth="1.2" />
               </svg>
               <span style={{
-                color: '#ffffff', fontFamily: "'Cinzel', serif", fontSize: '7px',
+                color: '#ffffff', fontFamily: "'Playfair Display', serif", fontSize: '7px',
                 fontWeight: 700, letterSpacing: '0.08em',
                 textShadow: '0 1px 3px rgba(0,0,0,0.95)', lineHeight: 1,
-              }}>BAG</span>
+              }}>Bag</span>
             </div>
 
             {/* ── Friend — row 3 (40–60%) ── */}
@@ -1606,10 +1609,10 @@ export default function GameStartPage() {
                 <path d="M 11.5,15.5 Q 13,13 14.5,15.5 L 14.5,21 L 11.5,21 Z" fill="white" />
               </svg>
               <span style={{
-                color: '#ffffff', fontFamily: "'Cinzel', serif", fontSize: '7px',
+                color: '#ffffff', fontFamily: "'Playfair Display', serif", fontSize: '7px',
                 fontWeight: 700, letterSpacing: '0.08em',
                 textShadow: '0 1px 3px rgba(0,0,0,0.95)', lineHeight: 1,
-              }}>FRIEND</span>
+              }}>Friend</span>
             </div>
 
             {/* ── Mail — row 4 (60–80%) ── */}
@@ -1627,10 +1630,10 @@ export default function GameStartPage() {
                 <line x1="25" y1="19" x2="17" y2="12" stroke="rgba(0,0,0,0.12)" strokeWidth="1.2" />
               </svg>
               <span style={{
-                color: '#ffffff', fontFamily: "'Cinzel', serif", fontSize: '7px',
+                color: '#ffffff', fontFamily: "'Playfair Display', serif", fontSize: '7px',
                 fontWeight: 700, letterSpacing: '0.08em',
                 textShadow: '0 1px 3px rgba(0,0,0,0.95)', lineHeight: 1,
-              }}>MAIL</span>
+              }}>Mail</span>
             </div>
 
             {/* ── Settings — row 5 (80–91%, above cone) ── */}
@@ -1648,10 +1651,10 @@ export default function GameStartPage() {
                 <circle cx="12" cy="13" r="3.5" fill="rgba(0,0,0,0.6)" />
               </svg>
               <span style={{
-                color: '#ffffff', fontFamily: "'Cinzel', serif", fontSize: '7px',
+                color: '#ffffff', fontFamily: "'Playfair Display', serif", fontSize: '7px',
                 fontWeight: 700, letterSpacing: '0.08em',
                 textShadow: '0 1px 3px rgba(0,0,0,0.95)', lineHeight: 1,
-              }}>SET</span>
+              }}>Set</span>
             </div>
 
             {/* ── Cone click zone (close trigger) ── */}
@@ -1696,7 +1699,7 @@ export default function GameStartPage() {
       >
         <span style={{
           color: '#ffffff',
-          fontFamily: "'Cinzel', serif",
+          fontFamily: "'Playfair Display', serif",
           fontSize: 'clamp(7px, 1.6vw, 12px)',
           fontWeight: 800,
           letterSpacing: '0.18em',
@@ -1794,10 +1797,10 @@ export default function GameStartPage() {
             />
           </svg>
           <span style={{
-            color: '#ffffff', fontFamily: "'Cinzel', serif", fontSize: '11px', fontWeight: 600,
+            color: '#ffffff', fontFamily: "'Playfair Display', serif", fontSize: '11px', fontWeight: 600,
             letterSpacing: '0.15em', whiteSpace: 'nowrap', textShadow: '0 1px 6px rgba(0,0,0,0.8)',
             transform: `translateY(${(1 / ROWS) * 100 / 5}%)`,
-          }}>CITY</span>
+          }}>City</span>
         </div>
       </div>
 
@@ -1866,9 +1869,9 @@ export default function GameStartPage() {
             />
           </svg>
           <span style={{
-            color: '#ffffff', fontFamily: "'Cinzel', serif", fontSize: '11px', fontWeight: 600,
+            color: '#ffffff', fontFamily: "'Playfair Display', serif", fontSize: '11px', fontWeight: 600,
             letterSpacing: '0.15em', whiteSpace: 'nowrap', textShadow: '0 1px 6px rgba(0,0,0,0.8)',
-          }}>HERO</span>
+          }}>Hero</span>
         </div>
       </div>
 
@@ -1960,9 +1963,9 @@ export default function GameStartPage() {
             <path d="M 17,5 L 19,3 L 23,7 L 21,9 Z" />
           </svg>
           <span style={{
-            color: '#ffffff', fontFamily: "'Cinzel', serif", fontSize: '9px', fontWeight: 600,
+            color: '#ffffff', fontFamily: "'Playfair Display', serif", fontSize: '9px', fontWeight: 600,
             letterSpacing: '0.12em', whiteSpace: 'nowrap', textShadow: '0 1px 6px rgba(0,0,0,0.8)',
-          }}>EQUIPMENT</span>
+          }}>Equipment</span>
         </div>
       </div>
 
@@ -2037,9 +2040,9 @@ export default function GameStartPage() {
             <ellipse cx="19" cy="9" rx="2.8" ry="3.5" transform="rotate(15 19 9)" />
           </svg>
           <span style={{
-            color: '#ffffff', fontFamily: "'Cinzel', serif", fontSize: '11px', fontWeight: 600,
+            color: '#ffffff', fontFamily: "'Playfair Display', serif", fontSize: '11px', fontWeight: 600,
             letterSpacing: '0.15em', whiteSpace: 'nowrap', textShadow: '0 1px 6px rgba(0,0,0,0.8)',
-          }}>PET</span>
+          }}>Pet</span>
         </div>
       </div>
 
@@ -2123,9 +2126,9 @@ export default function GameStartPage() {
             <path d="M 6,24 L 16,24 L 17,27 L 5,27 Z" />
           </svg>
           <span style={{
-            color: '#ffffff', fontFamily: "'Cinzel', serif", fontSize: '10px', fontWeight: 600,
+            color: '#ffffff', fontFamily: "'Playfair Display', serif", fontSize: '10px', fontWeight: 600,
             letterSpacing: '0.12em', whiteSpace: 'nowrap', textShadow: '0 1px 6px rgba(0,0,0,0.8)',
-          }}>ARTIFACT</span>
+          }}>Artifact</span>
         </div>
       </div>
 
@@ -2196,8 +2199,8 @@ export default function GameStartPage() {
           onMouseDown={e => e.stopPropagation()}
           onTouchStart={e => e.stopPropagation()}
         >
-          <div style={{ color: 'rgba(255,220,80,0.9)', fontSize: '9px', fontFamily: 'monospace', fontWeight: 700, letterSpacing: '0.1em' }}>
-            SELECTED: {selectedCells.size} CELLS
+          <div style={{ color: 'rgba(255,220,80,0.9)', fontSize: '9px', fontFamily: "'Playfair Display', serif", fontWeight: 700, letterSpacing: '0.1em' }}>
+            Selected: {selectedCells.size} cells
           </div>
           <div style={{ display: 'flex', gap: '6px' }}>
             <button
@@ -2206,7 +2209,7 @@ export default function GameStartPage() {
                 flex: 1, background: gridCopied ? 'rgba(80,200,80,0.2)' : 'rgba(255,220,80,0.15)',
                 border: `1px solid ${gridCopied ? 'rgba(80,200,80,0.5)' : 'rgba(255,220,80,0.4)'}`,
                 color: gridCopied ? '#88ff88' : 'rgba(255,220,80,0.9)', fontSize: '8px',
-                fontFamily: 'monospace', letterSpacing: '0.1em', padding: '3px 8px',
+                fontFamily: "'Playfair Display', serif", letterSpacing: '0.1em', padding: '3px 8px',
                 borderRadius: '4px', cursor: 'pointer', transition: 'all 0.2s',
               }}
             >{gridCopied ? 'COPIED ✓' : 'COPY'}</button>
@@ -2214,7 +2217,7 @@ export default function GameStartPage() {
               onClick={() => setSelectedCells(new Set())}
               style={{
                 flex: 1, background: 'transparent', border: '1px solid rgba(255,80,80,0.35)',
-                color: 'rgba(255,100,100,0.8)', fontSize: '8px', fontFamily: 'monospace',
+                color: 'rgba(255,100,100,0.8)', fontSize: '8px', fontFamily: "'Playfair Display', serif",
                 letterSpacing: '0.1em', padding: '3px 8px', borderRadius: '4px', cursor: 'pointer',
               }}
             >CLEAR</button>
@@ -2223,7 +2226,8 @@ export default function GameStartPage() {
       )}
 
       {/* ─ UI Assets ── */}
-      {ASSETS.map(({ id, left, top, label, img, interactive, widthCells, heightCells, labelCenter }) => {
+      {ASSETS.map(({ id, left, top, labelKey, img, interactive, widthCells, heightCells, labelCenter } : any) => {
+        const label = labelKey ? t(labelKey) : undefined;
         return (
           <div
             key={id}
@@ -2290,8 +2294,8 @@ export default function GameStartPage() {
                   <defs>
                     <linearGradient id={`fade-${id}`} x1="100%" y1="0%" x2="0%" y2="0%">
                       <stop offset="0%" stopColor="rgba(0, 0, 0, 0)" />
-                      <stop offset="15%" stopColor="rgba(0, 0, 0, 0.4)" />
-                      <stop offset="85%" stopColor="rgba(0, 0, 0, 0.4)" />
+                      <stop offset="15%" stopColor="rgba(0, 0, 0, 0.6)" />
+                      <stop offset="85%" stopColor="rgba(0, 0, 0, 0.6)" />
                       <stop offset="100%" stopColor="rgba(0, 0, 0, 0)" />
                     </linearGradient>
                     <linearGradient id={`border-fade-${id}`} x1="0%" y1="0%" x2="100%" y2="0%">
@@ -2334,7 +2338,7 @@ export default function GameStartPage() {
                     transform:     'translate(-50%, -50%)',
                     color:         '#ffffff',
                     fontSize:      '11px',
-                    fontFamily:    "'Cinzel', serif",
+                    fontFamily:    "'Playfair Display', serif",
                     fontWeight:    600,
                     letterSpacing: '0.15em',
                     whiteSpace:    'nowrap',
@@ -2355,7 +2359,7 @@ export default function GameStartPage() {
                     transform:     'translate(-50%, -50%)',
                     color:         '#ffffff',
                     fontSize:      '10px',
-                    fontFamily:    "'Cinzel', serif",
+                    fontFamily:    "'Playfair Display', serif",
                     fontWeight:    600,
                     letterSpacing: '0.18em',
                     whiteSpace:    'nowrap',
@@ -2397,7 +2401,7 @@ export default function GameStartPage() {
           {/* Bounding box */}
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             {(['x','y','w','h'] as const).map(k => (
-              <span key={k} style={{ color: '#aaa', fontSize: '10px', fontFamily: 'monospace' }}>
+              <span key={k} style={{ color: '#aaa', fontSize: '10px', fontFamily: "'Playfair Display', serif" }}>
                 <span style={{ color: '#ffcc44' }}>{k}</span>
                 {': '}
                 <span style={{ color: '#fff' }}>{coordInfo.bbox[k === 'w' ? 'w' : k === 'h' ? 'h' : k]}%</span>
@@ -2408,7 +2412,7 @@ export default function GameStartPage() {
           {/* Polygon string (truncated) */}
           <div
             style={{
-              fontFamily:   'monospace',
+              fontFamily:   "'Playfair Display', serif",
               fontSize:     '9px',
               color:        '#88ddff',
               maxWidth:     '320px',
@@ -2445,7 +2449,7 @@ export default function GameStartPage() {
                 border:        `1px solid ${copied ? 'rgba(80,200,80,0.5)' : 'rgba(255,255,255,0.25)'}`,
                 color:         copied ? '#88ff88' : '#fff',
                 fontSize:      '9px',
-                fontFamily:    'monospace',
+                fontFamily:    "'Playfair Display', serif",
                 letterSpacing: '0.1em',
                 padding:       '3px 10px',
                 borderRadius:  '4px',
@@ -2462,7 +2466,7 @@ export default function GameStartPage() {
                 border:        '1px solid rgba(255,80,80,0.35)',
                 color:         'rgba(255,100,100,0.8)',
                 fontSize:      '9px',
-                fontFamily:    'monospace',
+                fontFamily:    "'Playfair Display', serif",
                 letterSpacing: '0.1em',
                 padding:       '3px 10px',
                 borderRadius:  '4px',
@@ -2572,7 +2576,7 @@ export default function GameStartPage() {
               border:        '1px solid rgba(255,80,80,0.5)',
               color:         'rgba(255,100,100,0.9)',
               fontSize:      '10px',
-              fontFamily:    'monospace',
+              fontFamily:    "'Playfair Display', serif",
               letterSpacing: '0.1em',
               padding:       '4px 10px',
               borderRadius:  '5px',
@@ -2602,7 +2606,7 @@ export default function GameStartPage() {
             : '1px solid rgba(255,255,255,0.25)',
           color:          '#fff',
           fontSize:       '10px',
-          fontFamily:     'monospace',
+          fontFamily:     "'Playfair Display', serif",
           letterSpacing:  '0.12em',
           padding:        '6px 14px',
           borderRadius:   '6px',
@@ -2636,7 +2640,7 @@ export default function GameStartPage() {
             : '1px solid rgba(255,255,255,0.25)',
           color:          showGrid ? 'rgba(255,220,80,1)' : '#fff',
           fontSize:       '10px',
-          fontFamily:     'monospace',
+          fontFamily:     "'Playfair Display', serif",
           letterSpacing:  '0.12em',
           padding:        '6px 14px',
           borderRadius:   '6px',
@@ -2681,7 +2685,7 @@ export default function GameStartPage() {
             border:         gridSelectMode ? '1px solid rgba(255,120,0,0.7)' : '1px solid rgba(255,255,255,0.25)',
             color:          gridSelectMode ? 'rgba(255,180,80,1)' : '#fff',
             fontSize:       '10px',
-            fontFamily:     'monospace',
+            fontFamily:     "'Playfair Display', serif",
             letterSpacing:  '0.12em',
             padding:        '6px 14px',
             borderRadius:   '6px',
@@ -2714,7 +2718,7 @@ export default function GameStartPage() {
             border:         bucketMode ? '1px solid rgba(80,180,255,0.7)' : '1px solid rgba(255,255,255,0.25)',
             color:          bucketMode ? 'rgba(140,210,255,1)' : '#fff',
             fontSize:       '10px',
-            fontFamily:     'monospace',
+            fontFamily:     "'Playfair Display', serif",
             letterSpacing:  '0.12em',
             padding:        '6px 14px',
             borderRadius:   '6px',
@@ -2763,7 +2767,7 @@ export default function GameStartPage() {
             style={{ background: 'none', border: 'none', color: '#fff', fontSize: '14px', cursor: 'pointer', lineHeight: 1, padding: '0 2px' }}
           >−</button>
           {/* Zoom level display */}
-          <span style={{ color: gridViewRef.current.zoom > 1 ? 'rgba(140,210,255,1)' : 'rgba(255,255,255,0.6)', fontSize: '9px', fontFamily: 'monospace', minWidth: '30px', textAlign: 'center', letterSpacing: '0.08em' }}>
+          <span style={{ color: gridViewRef.current.zoom > 1 ? 'rgba(140,210,255,1)' : 'rgba(255,255,255,0.6)', fontSize: '9px', fontFamily: "'Playfair Display', serif", minWidth: '30px', textAlign: 'center', letterSpacing: '0.08em' }}>
             {gridViewRef.current.zoom.toFixed(1)}×
           </span>
           {/* Zoom in */}
@@ -2780,7 +2784,7 @@ export default function GameStartPage() {
           {gridViewRef.current.zoom > 1 && (
             <button
               onClick={resetGridView}
-              style={{ background: 'none', border: 'none', color: 'rgba(255,160,80,0.9)', fontSize: '8px', fontFamily: 'monospace', cursor: 'pointer', padding: '0 2px', letterSpacing: '0.08em' }}
+              style={{ background: 'none', border: 'none', color: 'rgba(255,160,80,0.9)', fontSize: '8px', fontFamily: "'Playfair Display', serif", cursor: 'pointer', padding: '0 2px', letterSpacing: '0.08em' }}
             >RESET</button>
           )}
         </div>
@@ -2796,7 +2800,7 @@ export default function GameStartPage() {
             zIndex:     40,
             color:      'rgba(255,255,255,0.45)',
             fontSize:   '8px',
-            fontFamily: 'monospace',
+            fontFamily: "'Playfair Display', serif",
             letterSpacing: '0.08em',
             pointerEvents: 'none',
             whiteSpace: 'nowrap',
@@ -2904,7 +2908,7 @@ export default function GameStartPage() {
             left:       '50%',
             transform:  'translateX(-50%)',
             color:      'rgba(255,215,0,0.92)',
-            fontFamily: "'Cinzel', serif",
+            fontFamily: "'Playfair Display', serif",
             fontSize:   'clamp(7px, 1.4vw, 13px)',
             fontWeight: 700,
             letterSpacing: '0.22em',
@@ -2959,7 +2963,7 @@ export default function GameStartPage() {
             </svg>
             <span style={{
               color:         '#ffffff',
-              fontFamily:    "'Cinzel', serif",
+              fontFamily:    "'Playfair Display', serif",
               fontSize:      'clamp(6px, 1.1vw, 10px)',
               fontWeight:    600,
               letterSpacing: '0.12em',
@@ -3008,7 +3012,7 @@ export default function GameStartPage() {
                 right:      bgmEnabled ? 'auto' : '3px',
                 transform:  'translateY(-50%)',
                 fontSize:   'clamp(4px, 0.7vw, 7px)',
-                fontFamily: 'monospace',
+                fontFamily: "'Playfair Display', serif",
                 fontWeight: 700,
                 color:      bgmEnabled ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)',
                 letterSpacing: '0.05em',
@@ -3116,7 +3120,7 @@ export default function GameStartPage() {
             {/* % label */}
             <span style={{
               color:         bgmEnabled ? 'rgba(255,215,0,1)' : 'rgba(255,255,255,0.4)',
-              fontFamily:    'monospace',
+              fontFamily:    "'Playfair Display', serif",
               fontSize:      'clamp(6px, 1vw, 9px)',
               fontWeight:    700,
               whiteSpace:    'nowrap',
@@ -3144,7 +3148,7 @@ export default function GameStartPage() {
             </svg>
             <span style={{
               color:         'rgba(255,255,255,0.5)',
-              fontFamily:    "'Cinzel', serif",
+              fontFamily:    "'Playfair Display', serif",
               fontSize:      'clamp(6px, 1.1vw, 10px)',
               fontWeight:    600,
               letterSpacing: '0.12em',
@@ -3154,7 +3158,7 @@ export default function GameStartPage() {
             }}>SFX</span>
             <span style={{
               color:         'rgba(255,255,255,0.3)',
-              fontFamily:    'monospace',
+              fontFamily:    "'Playfair Display', serif",
               fontSize:      'clamp(5px, 0.85vw, 8px)',
               fontStyle:     'italic',
               letterSpacing: '0.08em',

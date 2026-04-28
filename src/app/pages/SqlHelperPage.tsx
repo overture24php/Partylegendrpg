@@ -97,7 +97,7 @@ export default function SqlHelperPage() {
         alignItems: 'center',
         justifyContent: 'center',
         padding: '24px',
-        fontFamily: 'monospace',
+        fontFamily: "'Playfair Display', serif",
       }}
     >
       {/* Header */}
