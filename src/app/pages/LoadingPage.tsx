@@ -4,12 +4,15 @@ import { preloadBgm } from '../components/BgmController';
 import { LUCAS_FRAMES, lucasImgCache, lucasChromaCache } from '../utils/lucasCache';
 import { EMMA_FRAMES, emmaImgCache, emmaChromaCache } from '../utils/emmaCache';
 import { applyChromaKey, keepChromaUrl } from '../utils/chromaKey';
+import { useAuth } from '../context/AuthContext';
 
 // ── Static images to preload (no green-screen) ────────────────────────────────
-const SPLASH_IMG     = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1776874245/Splash_screen_aygb5n.png';
-const INTRO_BG       = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777395784/ChatGPT_Image_Apr_29_2026_12_02_36_AM_p3z4gf.png';
-const GAME_BG        = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777396811/ChatGPT_Image_Apr_29_2026_12_19_32_AM_squmiv.png';
-const HERO_DETAIL_BG = 'https://res.cloudinary.com/dhkethrmc/image/upload/v1777381178/ChatGPT_Image_Apr_28_2026_07_59_00_PM_ud1ln3.png';
+const SPLASH_IMG        = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1776874245/Splash_screen_aygb5n.png';
+const INTRO_BG          = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777395784/ChatGPT_Image_Apr_29_2026_12_02_36_AM_p3z4gf.png';
+const GAME_BG           = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777396811/ChatGPT_Image_Apr_29_2026_12_19_32_AM_squmiv.png';
+const HERO_DETAIL_BG    = 'https://res.cloudinary.com/dhkethrmc/image/upload/v1777381178/ChatGPT_Image_Apr_28_2026_07_59_00_PM_ud1ln3.png';
+// Login / Register / HeroPage / Hero-Obtained shared background
+const LOGIN_BG          = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777419184/ChatGPT_Image_Apr_29_2026_06_32_08_AM_hch81k.png';
 // ── Character card illustrations (green-screen → chroma key) ─────────────────
 const LUCAS_CARD_ILUST = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777386997/LUCAS_tyqcnf.png';
 const EMMA_CARD_ILUST  = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777387003/emma_aqsnsd.png';
@@ -20,7 +23,11 @@ const LUCAS_SK2 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_au
 const LUCAS_SK3 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777420393/sk3_lucas_5f4d58.png';
 const LUCAS_ULT = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777420297/ult_lucas_4cf45e.png';
 
-const STATIC_IMGS: string[] = [SPLASH_IMG, INTRO_BG, GAME_BG, HERO_DETAIL_BG, LUCAS_SK1, LUCAS_SK2, LUCAS_SK3, LUCAS_ULT];
+const STATIC_IMGS: string[] = [
+  SPLASH_IMG, INTRO_BG, GAME_BG, HERO_DETAIL_BG,
+  LOGIN_BG,
+  LUCAS_SK1, LUCAS_SK2, LUCAS_SK3, LUCAS_ULT,
+];
 
 const TOTAL = STATIC_IMGS.length
   + 1 /*lucas card*/ + LUCAS_FRAMES.length + 1 /*lucas chroma*/
@@ -28,7 +35,7 @@ const TOTAL = STATIC_IMGS.length
 
 const MAX_WAIT_MS = 30_000;
 
-// ── Build chroma-keyed canvas cache for Lucas ─────────────────────────────────
+// ── Build chroma-keyed canvas cache for Lucas ───────���─────────────────────────
 function buildLucasChromaCache(onDone: () => void): void {
   let done = 0;
   LUCAS_FRAMES.forEach((_, i) => {
@@ -79,21 +86,40 @@ function buildEmmaChromaCache(onDone: () => void): void {
 }
 
 export default function LoadingPage() {
-  const navigate     = useNavigate();
-  const [progress, setProgress] = useState(0);
-  const loadedRef    = useRef(0);
-  const navigatedRef = useRef(false);
+  const navigate              = useNavigate();
+  const { user, isLoading: authLoading } = useAuth();
+  const [progress, setProgress]          = useState(0);
+  const loadedRef             = useRef(0);
+  const navigatedRef          = useRef(false);
+  const assetsReadyRef        = useRef(false);
+
+  // ── Navigate once assets AND auth are both settled ──────────────────────────
+  const tryNavigate = (authDone: boolean, authedUser: typeof user) => {
+    if (!assetsReadyRef.current) return;
+    if (!authDone) return;
+    if (navigatedRef.current) return;
+    navigatedRef.current = true;
+    const dest = authedUser ? '/splash' : '/login';
+    setTimeout(() => navigate(dest, { replace: true }), 300);
+  };
 
   const onSettled = () => {
     loadedRef.current += 1;
     const pct = Math.round((loadedRef.current / TOTAL) * 100);
     setProgress(pct);
     if (loadedRef.current >= TOTAL) {
-      if (navigatedRef.current) return;
-      navigatedRef.current = true;
-      setTimeout(() => navigate('/splash', { replace: true }), 300);
+      assetsReadyRef.current = true;
+      tryNavigate(!authLoading, user);
     }
   };
+
+  // Watch for auth to finish loading after assets are done
+  useEffect(() => {
+    if (!authLoading) {
+      tryNavigate(true, user);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, user]);
 
   useEffect(() => {
     loadedRef.current = 0;
@@ -193,8 +219,9 @@ export default function LoadingPage() {
 
     const safetyTimer = setTimeout(() => {
       if (navigatedRef.current) return;
+      assetsReadyRef.current = true;
       navigatedRef.current = true;
-      navigate('/splash', { replace: true });
+      navigate(user ? '/splash' : '/login', { replace: true });
     }, MAX_WAIT_MS);
     return () => clearTimeout(safetyTimer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -259,7 +286,6 @@ export default function LoadingPage() {
               outlineOffset: '2px',
               boxSizing: 'border-box',
               animation: `ldDot ${DOT_DUR}ms ease-in-out infinite`,
-              // odd index (1,3) → up-phase (delay 0); even index (0,2) → down-phase (delay -half)
               animationDelay: i % 2 === 0 ? `-${DOT_DUR / 2}ms` : '0ms',
             }}/>
           ))}

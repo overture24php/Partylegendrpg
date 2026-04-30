@@ -38,7 +38,7 @@ export default function RegisterPage() {
     if (result.error) {
       setError(result.error);
     } else {
-      navigate('/loading');
+      navigate('/splash');
     }
   };
 

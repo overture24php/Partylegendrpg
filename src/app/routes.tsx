@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate, Outlet } from 'react-router';
 import { useAuth } from './context/AuthContext';
 import { BgmController } from './components/BgmController';
+import { OfflineOverlay } from './components/OfflineOverlay';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import LoadingPage from './pages/LoadingPage';
@@ -45,7 +46,7 @@ function GuestRoute({ children }: { children: React.ReactNode }) {
       </div>
     </div>
   );
-  if (user) return <Navigate to="/loading" replace />;
+  if (user) return <Navigate to="/splash" replace />;
   return <>{children}</>;
 }
 
@@ -77,6 +78,7 @@ function RootLayout() {
     <>
       <BgmController />
       <PersistentBgKeeper />
+      <OfflineOverlay />
       <Outlet />
     </>
   );
@@ -88,7 +90,11 @@ export const router = createBrowserRouter([
     children: [
       {
         path: '/',
-        element: <Navigate to="/login" replace />,
+        element: <Navigate to="/loading" replace />,
+      },
+      {
+        path: '/loading',
+        element: <LoadingPage />,
       },
       {
         path: '/login',
@@ -104,14 +110,6 @@ export const router = createBrowserRouter([
           <GuestRoute>
             <RegisterPage />
           </GuestRoute>
-        ),
-      },
-      {
-        path: '/loading',
-        element: (
-          <ProtectedRoute>
-            <LoadingPage />
-          </ProtectedRoute>
         ),
       },
       {
