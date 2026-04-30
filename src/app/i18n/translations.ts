@@ -96,8 +96,17 @@ export const translations = {
   'city.exploration': { id: 'Eksplorasi',  en: 'Exploration' },
 
   // ─── Hero Page ───────────────────────────────────────────────────────────────
-  'hero.page_title':  { id: 'Hero',              en: 'Heroes'    },
-  'hero.collected':   { id: 'Hero Terkumpul',    en: 'Heroes Collected' },
+  'hero.page_title':     { id: 'Hero',              en: 'Heroes'            },
+  'hero.collected':      { id: 'Hero Terkumpul',    en: 'Heroes Collected'  },
+  'hero.obtained_title': { id: 'Hero Dimiliki',     en: 'Hero Obtained'     },
+  'hero.gallery_title':  { id: 'Gallery Hero',      en: 'Hero Gallery'      },
+  'hero.tab_obtained':   { id: 'Obtained Hero',     en: 'Obtained Hero'     },
+  'hero.tab_gallery':    { id: 'Gallery Hero',      en: 'Gallery Hero'      },
+
+  // ─── Language Select Page ───────────────────────────────────────────────────
+  'lang.title_id':   { id: 'Pilih Bahasa',    en: 'Pilih Bahasa'   },
+  'lang.title_en':   { id: 'Select Language', en: 'Select Language' },
+  'lang.confirm':    { id: 'Konfirmasi',       en: 'Confirm'        },
 } as const;
 
 export type TranslationKey = keyof typeof translations;

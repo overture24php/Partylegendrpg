@@ -5,6 +5,7 @@ import { EmmaDetailView } from '../components/EmmaDetailView';
 import { useLanguage } from '../context/LanguageContext';
 import { useChromaKeyDataUrl } from '../utils/chromaKey';
 import { HeroCardAnimated } from '../components/HeroCardAnimated';
+import { LockedHeroCard } from '../components/LockedHeroCard';
 
 // ─── Cloudinary base ───────────────────────────────────────────────────────────
 const LUCAS_ILUST_SRC = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777386997/LUCAS_tyqcnf.png';
@@ -59,7 +60,35 @@ const EMMA = {
 const CARD_W = 186;
 const CARD_H = Math.round(CARD_W * 400 / 250);
 
-// ─── Five-pointed star path helper ─────────────────────��──────────────────────
+// ─── Gallery roster (all heroes, obtained + locked) ───────────────────────────
+const GALLERY_ROSTER: { name: string; rarity: string; heroType: string; ilust?: string; level?: number }[] = [
+  // ── SS Mythic ──
+  { name: 'Seraphiel',  rarity: 'mythic',    heroType: 'Celestial'  },
+  { name: 'Malphas',    rarity: 'mythic',    heroType: 'Demon Lord' },
+  // ── S Legendary ──
+  { name: 'Theron',     rarity: 'legendary', heroType: 'Paladin'    },
+  { name: 'Valeria',    rarity: 'legendary', heroType: 'Sorceress'  },
+  { name: 'Kael',       rarity: 'legendary', heroType: 'Warlord'    },
+  // ── A Epic ──
+  { name: 'Zephyr',     rarity: 'epic',      heroType: 'Ranger'     },
+  { name: 'Lyra',       rarity: 'epic',      heroType: 'Bard'       },
+  { name: 'Dunmore',    rarity: 'epic',      heroType: 'Berserker'  },
+  { name: 'Riven',      rarity: 'epic',      heroType: 'Rogue'      },
+  // ── B Rare (Lucas & Emma obtained) ──
+  { name: 'Lucas',      rarity: 'rare',      heroType: 'Fighter'    },
+  { name: 'Emma',       rarity: 'rare',      heroType: 'Support'    },
+  { name: 'Brennan',    rarity: 'rare',      heroType: 'Guardian'   },
+  { name: 'Sylvia',     rarity: 'rare',      heroType: 'Archer'     },
+  // ── C Common — illustrated ──
+  { name: 'Rock Slime',  rarity: 'common', heroType: 'Tank',    level: 1,
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777545681/ChatGPT_Image_Apr_30_2026_05_38_28_PM_wzt4ox.png' },
+  { name: 'Acid Slime',  rarity: 'common', heroType: 'Ranged',  level: 1,
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777545738/ChatGPT_Image_Apr_30_2026_05_39_48_PM_oq2njh.png' },
+  { name: 'Water Slime', rarity: 'common', heroType: 'Support', level: 1,
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777545810/ChatGPT_Image_Apr_30_2026_05_40_35_PM_w370l3.png' },
+];
+
+// ─── Five-pointed star path helper ───────────────────────────────────────────
 function fiveStarPath(cx: number, cy: number, R: number, r: number): string {
   const pts: string[] = [];
   for (let k = 0; k < 5; k++) {
@@ -73,10 +102,11 @@ function fiveStarPath(cx: number, cy: number, R: number, r: number): string {
 
 function HeroCard({ name, rarity, level, ilust, heroType }: { name: string; rarity: string; level: number; ilust: string; heroType: string }) {
   const cfg     = HERO_RARITIES.find(r => r.id === rarity) ?? HERO_RARITIES[3];
-  const clipId  = `hc-clip-${name}`;
-  const tgId    = `hc-tg-${name}`;
-  const barFade = `hc-bar-${name}`;
-  const botFade = `hc-botfade-${name}`;
+  const safeId  = name.replace(/\s+/g, '-');
+  const clipId  = `hc-clip-${safeId}`;
+  const tgId    = `hc-tg-${safeId}`;
+  const barFade = `hc-bar-${safeId}`;
+  const botFade = `hc-botfade-${safeId}`;
 
   // ── Chroma key: load raw green-screen image, process pixels, get data URL ──
   const chromaUrl = useChromaKeyDataUrl(ilust);
@@ -187,10 +217,13 @@ function HeroCard({ name, rarity, level, ilust, heroType }: { name: string; rari
 export default function HeroPage() {
   const [detailOpen, setDetailOpen]           = useState(false);
   const [emmaDetailOpen, setEmmaDetailOpen]   = useState(false);
+  const [tab, setTab]                         = useState<'obtained' | 'gallery'>('obtained');
   const { t } = useLanguage();
 
   const cfg     = HERO_RARITIES.find(r => r.id === HERO.rarity)  ?? HERO_RARITIES[3];
   const emmaCfg = HERO_RARITIES.find(r => r.id === EMMA.rarity)  ?? HERO_RARITIES[3];
+
+  const pageTitle = tab === 'obtained' ? t('hero.obtained_title') : t('hero.gallery_title');
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100dvh', background: '#1a0535', overflow: 'hidden' }}>
@@ -198,21 +231,70 @@ export default function HeroPage() {
       {/* ── Background Image ── */}
       <div style={{ position:'absolute', inset:0, backgroundImage:'url(https://res.cloudinary.com/dhkethrmc/image/upload/v1777419184/ChatGPT_Image_Apr_29_2026_06_32_08_AM_hch81k.png)', backgroundSize:'cover', backgroundPosition:'center', opacity:0.4 }}/>
 
-      {/* ── Dark overlay for better readability ── */}
+      {/* ── Dark overlay ── */}
       <div style={{ position:'absolute', inset:0, background:'linear-gradient(180deg, rgba(26,5,53,0.7) 0%, rgba(26,5,53,0.85) 100%)', pointerEvents:'none' }}/>
 
       {/* ── Purple ambient glows ── */}
       <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse 80% 60% at 50% 20%, rgba(120,40,200,0.2) 0%, transparent 70%)', pointerEvents:'none' }}/>
       <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse 60% 40% at 50% 90%, rgba(60,0,120,0.25) 0%, transparent 70%)', pointerEvents:'none' }}/>
 
-      {/* ── Page title ── */}
-      <div style={{ position:'absolute', top:'13%', left:'50%', transform:'translateX(-50%)', zIndex:10, textAlign:'center', pointerEvents:'none' }}>
-        <div style={{ color:'rgba(255,215,0,0.95)', fontFamily:"'Playfair Display',serif", fontSize:'clamp(12px,2vw,20px)', fontWeight:800, letterSpacing:'0.28em', textShadow:'0 2px 16px rgba(200,100,255,0.5), 0 1px 4px rgba(0,0,0,0.9)' }}>{t('hero.page_title')}</div>
-        <div style={{ marginTop:'3px', color:'rgba(255,255,255,0.3)', fontFamily:"'Playfair Display',serif", fontSize:'clamp(7px,0.85vw,9px)', letterSpacing:'0.14em' }}>2 {t('hero.collected')}</div>
+      {/* ── Left tab buttons — horizontal row, aligned with title ── */}
+      <div style={{
+        position: 'absolute',
+        top: '13%',
+        left: '8px',
+        zIndex: 20,
+        display: 'flex',
+        flexDirection: 'row',
+        gap: '6px',
+        alignItems: 'center',
+        transform: 'translateY(-50%)',
+      }}>
+        {([
+          { id: 'obtained', label: t('hero.tab_obtained') },
+          { id: 'gallery',  label: t('hero.tab_gallery')  },
+        ] as const).map(({ id, label }) => {
+          const isActive = tab === id;
+          return (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: isActive
+                  ? 'linear-gradient(90deg, rgba(255,215,0,0.22) 0%, rgba(255,215,0,0.10) 100%)'
+                  : 'rgba(0,0,0,0.48)',
+                border: isActive
+                  ? '1px solid rgba(255,215,0,0.60)'
+                  : '1px solid rgba(255,255,255,0.14)',
+                borderRadius: '999px',
+                padding: '6px 14px',
+                cursor: 'pointer',
+                transition: 'all 0.18s',
+                boxShadow: isActive ? '0 0 12px rgba(255,215,0,0.18)' : 'none',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <span style={{
+                color: isActive ? '#FFD700' : 'rgba(255,255,255,0.72)',
+                fontFamily: "'Roboto Condensed', sans-serif",
+                fontSize: '11px',
+                fontWeight: isActive ? 700 : 600,
+                letterSpacing: '0.07em',
+                textShadow: isActive ? '0 0 8px rgba(255,215,0,0.55)' : 'none',
+              }}>{label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* ── Gold separator ── */}
-      <div style={{ position:'absolute', top:'19.5%', left:'10%', right:'10%', height:'2px', zIndex:10, background:'linear-gradient(90deg, transparent 0%, rgba(255,215,0,0.6) 20%, rgba(255,215,0,0.9) 50%, rgba(255,215,0,0.6) 80%, transparent 100%)', pointerEvents:'none' }}/>
+      {/* ── Page title — centered ── */}
+      <div style={{ position:'absolute', top:'13%', left:'50%', transform:'translateX(-50%)', zIndex:10, textAlign:'center', pointerEvents:'none', whiteSpace:'nowrap' }}>
+        <div style={{ color:'rgba(255,215,0,0.95)', fontFamily:"'Playfair Display',serif", fontSize:'clamp(12px,2vw,20px)', fontWeight:800, letterSpacing:'0.28em', textShadow:'0 2px 16px rgba(200,100,255,0.5), 0 1px 4px rgba(0,0,0,0.9)' }}>{pageTitle}</div>
+      </div>
+
+      {/* ── Orange separator — full width, no fade ── */}
+      <div style={{ position:'absolute', top:'19.5%', left:0, right:0, height:'2px', zIndex:10, background:'rgba(255,140,0,0.85)', pointerEvents:'none' }}/>
 
       {/* ── Hero grid ── */}
       <div style={{
@@ -223,25 +305,54 @@ export default function HeroPage() {
         alignContent: 'flex-start', alignItems: 'flex-start', justifyContent: 'flex-start',
         gap: '8px',
       }}>
-        {/* Lucas card */}
-        <div
-          style={{ width: `${CARD_W}px`, height: `${CARD_H}px`, flexShrink: 0, cursor: 'pointer' }}
-          onClick={() => setDetailOpen(true)}
-        >
-          <HeroCardAnimated rarityColor={cfg.fill}>
-            <HeroCard name={HERO.name} rarity={HERO.rarity} level={HERO.level} ilust={LUCAS_ILUST_SRC} heroType={HERO.heroType}/>
-          </HeroCardAnimated>
-        </div>
-
-        {/* Emma card */}
-        <div
-          style={{ width: `${CARD_W}px`, height: `${CARD_H}px`, flexShrink: 0, cursor: 'pointer' }}
-          onClick={() => setEmmaDetailOpen(true)}
-        >
-          <HeroCardAnimated rarityColor={emmaCfg.fill}>
-            <HeroCard name={EMMA.name} rarity={EMMA.rarity} level={EMMA.level} ilust={EMMA_ILUST_SRC} heroType={EMMA.heroType}/>
-          </HeroCardAnimated>
-        </div>
+        {tab === 'obtained' ? (
+          <>
+            {/* Lucas card */}
+            <div style={{ width: `${CARD_W}px`, height: `${CARD_H}px`, flexShrink: 0, cursor: 'pointer' }} onClick={() => setDetailOpen(true)}>
+              <HeroCardAnimated rarityColor={cfg.fill}>
+                <HeroCard name={HERO.name} rarity={HERO.rarity} level={HERO.level} ilust={LUCAS_ILUST_SRC} heroType={HERO.heroType}/>
+              </HeroCardAnimated>
+            </div>
+            {/* Emma card */}
+            <div style={{ width: `${CARD_W}px`, height: `${CARD_H}px`, flexShrink: 0, cursor: 'pointer' }} onClick={() => setEmmaDetailOpen(true)}>
+              <HeroCardAnimated rarityColor={emmaCfg.fill}>
+                <HeroCard name={EMMA.name} rarity={EMMA.rarity} level={EMMA.level} ilust={EMMA_ILUST_SRC} heroType={EMMA.heroType}/>
+              </HeroCardAnimated>
+            </div>
+          </>
+        ) : (
+          <>
+            {GALLERY_ROSTER.map(hero => {
+              const heroCfg = HERO_RARITIES.find(r => r.id === hero.rarity) ?? HERO_RARITIES[4];
+              if (hero.name === 'Lucas') return (
+                <div key={hero.name} style={{ width: `${CARD_W}px`, height: `${CARD_H}px`, flexShrink: 0, cursor: 'pointer' }} onClick={() => setDetailOpen(true)}>
+                  <HeroCardAnimated rarityColor={cfg.fill}>
+                    <HeroCard name={HERO.name} rarity={HERO.rarity} level={HERO.level} ilust={LUCAS_ILUST_SRC} heroType={HERO.heroType}/>
+                  </HeroCardAnimated>
+                </div>
+              );
+              if (hero.name === 'Emma') return (
+                <div key={hero.name} style={{ width: `${CARD_W}px`, height: `${CARD_H}px`, flexShrink: 0, cursor: 'pointer' }} onClick={() => setEmmaDetailOpen(true)}>
+                  <HeroCardAnimated rarityColor={emmaCfg.fill}>
+                    <HeroCard name={EMMA.name} rarity={EMMA.rarity} level={EMMA.level} ilust={EMMA_ILUST_SRC} heroType={EMMA.heroType}/>
+                  </HeroCardAnimated>
+                </div>
+              );
+              if (hero.ilust) return (
+                <div key={hero.name} style={{ width: `${CARD_W}px`, height: `${CARD_H}px`, flexShrink: 0 }}>
+                  <HeroCardAnimated rarityColor={heroCfg.fill}>
+                    <HeroCard name={hero.name} rarity={hero.rarity} level={hero.level ?? 1} ilust={hero.ilust} heroType={hero.heroType}/>
+                  </HeroCardAnimated>
+                </div>
+              );
+              return (
+                <div key={hero.name} style={{ width: `${CARD_W}px`, height: `${CARD_H}px`, flexShrink: 0 }}>
+                  <LockedHeroCard name={hero.name} rarity={hero.rarity} heroType={hero.heroType}/>
+                </div>
+              );
+            })}
+          </>
+        )}
       </div>
 
       {/* ── Shared game overlay UI ── */}

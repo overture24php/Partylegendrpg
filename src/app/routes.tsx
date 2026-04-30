@@ -18,6 +18,7 @@ import AdventurePage from './pages/AdventurePage';
 import EventPage from './pages/EventPage';
 import SvgLibraryPage from './pages/SvgLibraryPage';
 import HeroPage from './pages/HeroPage';
+import LanguageSelectPage from './pages/LanguageSelectPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -109,6 +110,14 @@ export const router = createBrowserRouter([
         element: (
           <GuestRoute>
             <RegisterPage />
+          </GuestRoute>
+        ),
+      },
+      {
+        path: '/language',
+        element: (
+          <GuestRoute>
+            <LanguageSelectPage />
           </GuestRoute>
         ),
       },

@@ -148,13 +148,14 @@ const BADGE_COLORS: Record<string, string> = {
 };
 
 // ─── Skill Slot Box ───────────────────────────────────────────────────────────
-function SkillSlot({ children, left, top, width, height }: {
+function SkillSlot({ children, left, top, width }: {
   children: React.ReactNode;
-  left: string; top: string; width: string; height: string;
+  left: string; top: string; width: string;
 }) {
   return (
     <div style={{
-      position: 'absolute', left, top, width, height,
+      position: 'absolute', left, top, width,
+      aspectRatio: '1 / 1',
       background: 'rgba(0,0,0,0.40)',
       border: '1.5px solid #dc2626',
       zIndex: 15, boxSizing: 'border-box', overflow: 'hidden',
@@ -609,7 +610,7 @@ export function HeroDetailView({
         pointerEvents: 'none',
       }}/>
 
-      {/* ══════════════════════════════════════════════════════════════════════
+      {/* ══════════════════════════════════════════════════���═══════════════════
           B3–C3 │ Hero Name — 1 grid row, h=5% (row 3 only), z:15
       ═══════════════════════════════════════════════════════════════════════ */}
       <div style={{
@@ -844,39 +845,39 @@ export function HeroDetailView({
       {name === 'Lucas' && (
         <>
           {/* Skill 1 — F6-G8 */}
-          <SkillSlot left="25%" top="25%" width="10%" height="15%">
-            <img src={LUCAS_SKILL_URLS.sk1} style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} draggable={false}/>
+          <SkillSlot left="25%" top="25%" width="10%">
+            <img src={LUCAS_SKILL_URLS.sk1} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} draggable={false}/>
           </SkillSlot>
           {/* Skill 2 — F13-G15 */}
-          <SkillSlot left="25%" top="60%" width="10%" height="15%">
-            <img src={LUCAS_SKILL_URLS.sk2} style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} draggable={false}/>
+          <SkillSlot left="25%" top="60%" width="10%">
+            <img src={LUCAS_SKILL_URLS.sk2} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} draggable={false}/>
           </SkillSlot>
           {/* Skill 3 — 65% (+0.5 grid right from 62%) */}
-          <SkillSlot left="65%" top="25%" width="10%" height="15%">
-            <img src={LUCAS_SKILL_URLS.sk3} style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} draggable={false}/>
+          <SkillSlot left="65%" top="25%" width="10%">
+            <img src={LUCAS_SKILL_URLS.sk3} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} draggable={false}/>
           </SkillSlot>
           {/* Ultimate — 65% */}
-          <SkillSlot left="65%" top="60%" width="10%" height="15%">
-            <img src={LUCAS_SKILL_URLS.ult} style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} draggable={false}/>
+          <SkillSlot left="65%" top="60%" width="10%">
+            <img src={LUCAS_SKILL_URLS.ult} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} draggable={false}/>
           </SkillSlot>
         </>
       )}
       {name === 'Emma' && (
         <>
           {/* Skill 1 — F6-G8 */}
-          <SkillSlot left="25%" top="25%" width="10%" height="15%">
+          <SkillSlot left="25%" top="25%" width="10%">
             <EmmaHealPlus label="Act."/>
           </SkillSlot>
           {/* Skill 2 — F13-G15 */}
-          <SkillSlot left="25%" top="60%" width="10%" height="15%">
+          <SkillSlot left="25%" top="60%" width="10%">
             <EmmaCirclePyramid/>
           </SkillSlot>
           {/* Passive — 65% */}
-          <SkillSlot left="65%" top="25%" width="10%" height="15%">
+          <SkillSlot left="65%" top="25%" width="10%">
             <EmmaPassiveSkill/>
           </SkillSlot>
           {/* Ultimate — 65% */}
-          <SkillSlot left="65%" top="60%" width="10%" height="15%">
+          <SkillSlot left="65%" top="60%" width="10%">
             <EmmaHealPlus label="Ult."/>
           </SkillSlot>
         </>

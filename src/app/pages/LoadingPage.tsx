@@ -35,7 +35,7 @@ const TOTAL = STATIC_IMGS.length
 
 const MAX_WAIT_MS = 30_000;
 
-// ── Build chroma-keyed canvas cache for Lucas ───────���─────────────────────────
+// ── Build chroma-keyed canvas cache for Lucas ────────────────────────────────
 function buildLucasChromaCache(onDone: () => void): void {
   let done = 0;
   LUCAS_FRAMES.forEach((_, i) => {
@@ -99,7 +99,7 @@ export default function LoadingPage() {
     if (!authDone) return;
     if (navigatedRef.current) return;
     navigatedRef.current = true;
-    const dest = authedUser ? '/splash' : '/login';
+    const dest = authedUser ? '/splash' : '/language';
     setTimeout(() => navigate(dest, { replace: true }), 300);
   };
 
@@ -221,7 +221,7 @@ export default function LoadingPage() {
       if (navigatedRef.current) return;
       assetsReadyRef.current = true;
       navigatedRef.current = true;
-      navigate(user ? '/splash' : '/login', { replace: true });
+      navigate(user ? '/splash' : '/language', { replace: true });
     }, MAX_WAIT_MS);
     return () => clearTimeout(safetyTimer);
   // eslint-disable-next-line react-hooks/exhaustive-deps

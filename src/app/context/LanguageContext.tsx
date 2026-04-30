@@ -11,6 +11,17 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | null>(null);
 
+// ─── Safe fallback used when hook is called outside the provider ──────────────
+function makeFallback(): LanguageContextType {
+  const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
+  const lang: Lang = (stored === 'en' || stored === 'id') ? stored : 'id';
+  return {
+    lang,
+    setLang: () => {},
+    t: (key: TranslationKey) => translations[key]?.[lang] ?? key,
+  };
+}
+
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -35,6 +46,6 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
 export function useLanguage() {
   const ctx = useContext(LanguageContext);
-  if (!ctx) throw new Error('useLanguage must be used within LanguageProvider');
+  if (!ctx) return makeFallback();
   return ctx;
 }

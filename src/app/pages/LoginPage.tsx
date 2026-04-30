@@ -12,7 +12,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading]     = useState(false);
   const [error, setError]             = useState('');
   const { loginByUsername }           = useAuth();
-  const { lang, setLang, t }          = useLanguage();
+  const { t }                         = useLanguage();
   const navigate                      = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -158,33 +158,6 @@ export default function LoginPage() {
               {t('login.register_link')}
             </button>
           </p>
-        </div>
-
-        {/* ── Language Switcher ── */}
-        <div className="flex items-center justify-center gap-2 mt-5">
-          <button
-            onClick={() => setLang('id')}
-            className="px-4 py-1.5 rounded-lg text-xs tracking-widest uppercase transition-all duration-200"
-            style={{
-              background: lang === 'id' ? 'rgba(29,78,216,0.35)' : 'transparent',
-              border: lang === 'id' ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(255,255,255,0.1)',
-              color: lang === 'id' ? '#93c5fd' : 'rgba(255,255,255,0.3)',
-            }}
-          >
-            ID
-          </button>
-          <div className="w-px h-3 bg-white/15" />
-          <button
-            onClick={() => setLang('en')}
-            className="px-4 py-1.5 rounded-lg text-xs tracking-widest uppercase transition-all duration-200"
-            style={{
-              background: lang === 'en' ? 'rgba(29,78,216,0.35)' : 'transparent',
-              border: lang === 'en' ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(255,255,255,0.1)',
-              color: lang === 'en' ? '#93c5fd' : 'rgba(255,255,255,0.3)',
-            }}
-          >
-            EN
-          </button>
         </div>
       </motion.div>
     </div>
