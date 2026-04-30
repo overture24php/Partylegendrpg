@@ -1,0 +1,12 @@
+/* ── Global font override: Roboto Condensed replaces Playfair Display ── */
+*,
+*::before,
+*::after {
+  font-family: 'Roboto Condensed', sans-serif !important;
+}
+
+/* Covers SVG presentation attributes (lower specificity than CSS rules) */
+text,
+tspan {
+  font-family: 'Roboto Condensed', sans-serif !important;
+}

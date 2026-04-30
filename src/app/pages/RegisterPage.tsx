@@ -45,6 +45,15 @@ export default function RegisterPage() {
   return (
     <div className="size-full flex items-center justify-center relative overflow-hidden" style={{ background: '#000000' }}>
 
+      {/* Background image */}
+      <img
+        src="https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777419184/ChatGPT_Image_Apr_29_2026_06_32_08_AM_hch81k.png"
+        alt=""
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', zIndex: 0, pointerEvents: 'none', userSelect: 'none' }}
+      />
+      {/* Subtle dark vignette so form stays readable */}
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.25)', zIndex: 1, pointerEvents: 'none' }}/>
+
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}

@@ -5,8 +5,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useChromaKeyDataUrl } from '../utils/chromaKey';
-import { useAuth } from '../context/AuthContext';
 import { HeroCardAnimated } from './HeroCardAnimated';
+import { GamePageLayout } from './GamePageLayout';
 
 // ─── Number formatter K / M / B ───
 function fmtNum(n: number): string {
@@ -16,27 +16,7 @@ function fmtNum(n: number): string {
   return `${n}`;
 }
 
-// ─── Currency formatter (same as GamePageLayout) ──────────────────────────────
-function fmtCurrency(n: number): string {
-  if (n >= 1_000_000_000) return `${+(n / 1_000_000_000).toFixed(1)}B`;
-  if (n >= 1_000_000)     return `${+(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000)         return `${+(n / 1_000).toFixed(1)}K`;
-  return `${n}`;
-}
 
-// ─── Currency Resource Box (matches GamePageLayout ResourceBox shape) ─────────
-function CurrencyBox({ left, children }: { left: string; children: React.ReactNode }) {
-  return (
-    <div style={{ position:'absolute', left, top:0, width:`${(1/8)*100}%`, height:`${(1/12)*100}%`, zIndex:25, pointerEvents:'none' }}>
-      <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%' }} viewBox="0 0 100 100" preserveAspectRatio="none">
-        <rect x="20" y="20" width="60" height="60" fill="rgba(0,0,0,0.6)"/>
-        <path d="M 20,20 Q 0,20 0,50 Q 0,80 20,80 Z" fill="rgba(0,0,0,0.6)"/>
-        <path d="M 80,20 Q 100,20 100,50 Q 100,80 80,80 Z" fill="rgba(0,0,0,0.6)"/>
-      </svg>
-      {children}
-    </div>
-  );
-}
 
 // ─── Floating Hero Card (replaces sprite player) ──────────────────────────────
 function FloatingHeroCard({
@@ -75,7 +55,7 @@ function FloatingHeroCard({
   return (
     <div style={{
       position: 'absolute', top: '50%', left: '50%',
-      transform: 'translate(calc(-50% - 5vw), -50%)',
+      transform: 'translate(-50%, -50%)',
       width: 'min(220px, 38vw)', aspectRatio: '250 / 400',
       filter: `drop-shadow(0 0 48px ${rarityColor}80) drop-shadow(0 12px 40px rgba(0,0,0,0.9))`,
       zIndex: 6, pointerEvents: 'auto',
@@ -109,7 +89,13 @@ function FloatingHeroCard({
           <g style={{ transform: 'translateX(var(--hci-x, 0px)) translateY(var(--hci-y, 0px))' }}>
             {/* Float + breath animation inner g */}
             <g className="hca-ilust-anim">
-              <image href={chromaUrl ?? ''} x="3" y="3" width="244" height="394" preserveAspectRatio="xMidYMax slice"/>
+              {/* foreignObject + <img> shares decoded bitmap cache with chromaImgKeeper → instant render, zero delay */}
+              <foreignObject x="3" y="3" width="244" height="394">
+                <img
+                  src={chromaUrl ?? ''}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center bottom', display: 'block' }}
+                />
+              </foreignObject>
             </g>
           </g>
         </g>
@@ -160,6 +146,91 @@ interface HeroDetailViewProps {
 const BADGE_COLORS: Record<string, string> = {
   mythic: '#E00000', legendary: '#FB923C', epic: '#A855F7', rare: '#1877F2', common: '#22C55E',
 };
+
+// ─── Skill Slot Box ───────────────────────────────────────────────────────────
+function SkillSlot({ children, left, top, width, height }: {
+  children: React.ReactNode;
+  left: string; top: string; width: string; height: string;
+}) {
+  return (
+    <div style={{
+      position: 'absolute', left, top, width, height,
+      background: 'rgba(0,0,0,0.40)',
+      border: '1.5px solid #dc2626',
+      zIndex: 15, boxSizing: 'border-box', overflow: 'hidden',
+    }}>
+      {children}
+    </div>
+  );
+}
+
+// ─── Lucas Skill Image URLs ───────────────────────────────────────────────────
+const LUCAS_SKILL_URLS = {
+  sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777420534/sk1_lukas_65c48d.png',
+  sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777420599/sk2_luk_5f55c9.png',
+  sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777420393/sk3_lucas_5f4d58.png',
+  ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777420297/ult_lucas_4cf45e.png',
+};
+
+// ─── Emma Skill Icons ─────────────────────────────────────────────────────────
+function PlusSign({ cx, cy, s }: { cx: number; cy: number; s: number }) {
+  const t = s * 0.32;
+  return (
+    <>
+      <rect x={cx - t / 2} y={cy - s / 2} width={t} height={s} rx={t / 3} fill="white"/>
+      <rect x={cx - s / 2} y={cy - t / 2} width={s} height={t} rx={t / 3} fill="white"/>
+    </>
+  );
+}
+
+function CircleFramed({ cx, cy, r }: { cx: number; cy: number; r: number }) {
+  return (
+    <>
+      <circle cx={cx} cy={cy} r={r + 5} fill="none" stroke="white" strokeWidth="1"/>
+      <circle cx={cx} cy={cy} r={r + 2.5} fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5"/>
+      <circle cx={cx} cy={cy} r={r} fill="white"/>
+    </>
+  );
+}
+
+function EmmaHealPlus({ label }: { label: string }) {
+  return (
+    <svg width="100%" height="100%" viewBox="0 0 60 60" preserveAspectRatio="xMidYMid meet" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <PlusSign cx={30} cy={17} s={11}/>
+      <PlusSign cx={17} cy={38} s={11}/>
+      <PlusSign cx={43} cy={38} s={11}/>
+      <polyline points="7,30 4,22 1,30" fill="none" stroke="white" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"/>
+      <line x1="4" y1="22" x2="4" y2="53" stroke="white" strokeWidth="1.1" strokeLinecap="round"/>
+      <polyline points="53,30 56,22 59,30" fill="none" stroke="white" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"/>
+      <line x1="56" y1="22" x2="56" y2="53" stroke="white" strokeWidth="1.1" strokeLinecap="round"/>
+      <text x="2" y="58" fontSize="8" fill="white" fontFamily="'Playfair Display',serif" fontWeight="700">{label}</text>
+    </svg>
+  );
+}
+
+function EmmaCirclePyramid() {
+  return (
+    <svg width="100%" height="100%" viewBox="0 0 60 60" preserveAspectRatio="xMidYMid meet" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <CircleFramed cx={30} cy={17} r={6}/>
+      <CircleFramed cx={17} cy={38} r={6}/>
+      <CircleFramed cx={43} cy={38} r={6}/>
+      <polyline points="7,30 4,22 1,30" fill="none" stroke="white" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"/>
+      <line x1="4" y1="22" x2="4" y2="53" stroke="white" strokeWidth="1.1" strokeLinecap="round"/>
+      <polyline points="53,30 56,22 59,30" fill="none" stroke="white" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"/>
+      <line x1="56" y1="22" x2="56" y2="53" stroke="white" strokeWidth="1.1" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function EmmaPassiveSkill() {
+  return (
+    <svg width="100%" height="100%" viewBox="0 0 60 60" preserveAspectRatio="xMidYMid meet" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="26" y="10" width="8" height="38" rx="3" fill="white"/>
+      <rect x="10" y="26" width="38" height="8" rx="3" fill="white"/>
+      <text x="2" y="58" fontSize="8" fill="white" fontFamily="'Playfair Display',serif" fontWeight="700">PPsv.</text>
+    </svg>
+  );
+}
 
 const ACTION_TABS = [
   { id: 'levelup',   label: 'Level UP',  icon: LevelUpIcon   },
@@ -309,7 +380,6 @@ export function HeroDetailView({
   level, ilust, stats, onClose,
 }: HeroDetailViewProps) {
   const [activeTab, setActiveTab] = useState<string>('levelup');
-  const { user } = useAuth();
   const expPct     = Math.round((stats.expCurrent / stats.expMax) * 100);
   const rarityText = RARITY_TEXT[rarity] ?? 'C';
 
@@ -353,7 +423,7 @@ export function HeroDetailView({
       ctx.shadowColor   = 'rgba(0,0,0,0.95)';
       ctx.shadowBlur    = 4;
       ctx.fillStyle     = 'rgba(255,220,80,1)';
-      ctx.font          = `bold ${labelSize}px 'Playfair Display'`;
+      ctx.font          = `bold ${labelSize}px 'Roboto Condensed'`;
       ctx.textAlign     = 'center';
       ctx.textBaseline  = 'top';
       for (let i = 0; i < GRID_COLS; i++) ctx.fillText(COL_LETTERS[i] ?? `${i}`, (i + 0.5) * cW, 4);
@@ -506,7 +576,7 @@ export function HeroDetailView({
             <svg
               viewBox={`${vbX} ${vbY} ${vbW} ${vbH}`}
               preserveAspectRatio="xMinYMid meet"
-              style={{ height: '70%', width: 'auto', overflow: 'visible' }}
+              style={{ height: '105%', width: 'auto', overflow: 'visible' }}
             >
               {Array.from({ length: n }).map((_, i) => (
                 <path
@@ -531,7 +601,7 @@ export function HeroDetailView({
       <div style={{
         position: 'absolute',
         left: '0%',
-        top: 'calc(25% - 1.5px)',
+        top: 'calc(35% - 1.5px)',
         width: '20%',
         height: '1.5px',
         zIndex: 15,
@@ -540,41 +610,40 @@ export function HeroDetailView({
       }}/>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          B3–C3 │ Hero Name  — col B→C, row 3, h=1 grid, z:15
-          SVG text fills full 1-grid height, white fill + black frame stroke
-          col B starts at 5%,  width 2 cols = 10%
+          B3–C3 │ Hero Name — 1 grid row, h=5% (row 3 only), z:15
       ═══════════════════════════════════════════════════════════════════════ */}
       <div style={{
         position: 'absolute',
         left: '5%', top: '10%',
-        width: '10%',   /* 2 grid columns */
-        height: '5%',   /* 1 grid row     */
+        width: '10%',
+        height: '5%',   /* 1 grid row = 1/20 = 5% */
         zIndex: 15,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'flex-start',
-        overflow: 'hidden',
+        overflow: 'visible',
         pointerEvents: 'none',
       }}>
-        {/* SVG text: fill white, stroke black (paintOrder:stroke) — height = 1 grid */}
         <svg
           width="100%"
           height="100%"
-          viewBox="0 0 200 40"
+          viewBox="0 0 200 80"
           preserveAspectRatio="xMinYMid meet"
           xmlns="http://www.w3.org/2000/svg"
           style={{ display: 'block', overflow: 'hidden' }}
         >
           <text
-            x="0" y="34"
+            x="0" y="68"
             fontFamily="'Playfair Display', serif"
             fontWeight="900"
-            fontSize="36"
+            fontSize="72"
             fill="white"
             stroke="black"
-            strokeWidth="4"
+            strokeWidth="7"
             paintOrder="stroke"
             letterSpacing="3"
+            textLength="190"
+            lengthAdjust="spacingAndGlyphs"
           >
             {name}
           </text>
@@ -596,8 +665,8 @@ export function HeroDetailView({
           {/* Level */}
           <div style={{ marginBottom: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '7px' }}>
-              <span style={{ color: 'rgba(255,255,255,0.5)', fontFamily: "'Playfair Display',serif", fontSize: '10px', fontWeight: 600, letterSpacing: '0.12em' }}>Level</span>
-              <span style={{ color: '#FFD700', fontFamily: "'Playfair Display',serif", fontSize: '20px', fontWeight: 800, textShadow: '0 0 12px rgba(255,215,0,0.6)' }}>{level}</span>
+              <span style={{ color: 'rgba(255,255,255,0.5)', fontFamily: "'Roboto Condensed',sans-serif", fontSize: '15px', fontWeight: 600, letterSpacing: '0.12em' }}>Level</span>
+              <span style={{ color: '#FFD700', fontFamily: "'Roboto Condensed',sans-serif", fontSize: '30px', fontWeight: 800, textShadow: '0 0 12px rgba(255,215,0,0.6)' }}>{level}</span>
             </div>
             {/* EXP bar */}
             <div style={{ position: 'relative', paddingRight: '30px' }}>
@@ -607,13 +676,13 @@ export function HeroDetailView({
               </div>
               <span style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', color: '#86efac', fontFamily: "'Playfair Display',serif", fontSize: '9px', fontWeight: 700 }}>{expPct}%</span>
             </div>
-            {/* EXP text — K/M/B format */}
+            {/* EXP text */}
             <div style={{ marginTop: '3px', color: 'rgba(255,255,255,0.28)', fontFamily: "'Playfair Display',serif", fontSize: '8px', letterSpacing: '0.06em' }}>
               {fmtNum(stats.expCurrent)} / {fmtNum(stats.expMax)} EXP
             </div>
           </div>
 
-          {/* ── 1-grid spacer: dorong divider + stats turun 1 row ── */}
+          {/* ── 1-grid spacer ── */}
           <div style={{ height: '5vh' }}/>
 
           {/* Divider */}
@@ -645,7 +714,7 @@ export function HeroDetailView({
       {/* ── Center: Floating Hero Card ── */}
       <div style={{
         position: 'absolute', top: 0, bottom: 0,
-        left: '20%', right: '80px',
+        left: '20%', right: '20%',
         zIndex: 5, pointerEvents: 'none',
       }}>
         <FloatingHeroCard
@@ -659,16 +728,13 @@ export function HeroDetailView({
         }}/>
       </div>
 
-      {/* ── Right Action Tabs — glass, top:0 ─────────────────────────────────── */}
+      {/* ── Right Action Pills — NO glass container, shifted down 2 grids (10%) ── */}
       <div style={{
-        position: 'absolute', top: 0, bottom: 0, right: 0, width: '80px',
+        position: 'absolute', top: '10%', right: 0, width: '20%',
         zIndex: 10,
-        background: 'rgba(0,0,0,0.40)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        borderLeft: '1px solid rgba(255,255,255,0.10)',
         display: 'flex', flexDirection: 'column', alignItems: 'stretch',
-        paddingTop: '8px', gap: '4px',
+        justifyContent: 'flex-start',
+        padding: '0 10px 0 10px', gap: '8px',
       }}>
         {ACTION_TABS.map(({ id, label, icon: TabIcon }) => {
           const isActive = activeTab === id;
@@ -677,115 +743,64 @@ export function HeroDetailView({
               key={id}
               onClick={() => setActiveTab(id)}
               style={{
-                position: 'relative',
-                background: isActive ? 'rgba(255,215,0,0.12)' : 'transparent',
-                border: 'none',
-                borderLeft: isActive ? '3px solid #FFD700' : '3px solid transparent',
-                borderBottom: '1px solid rgba(255,255,255,0.05)',
+                display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px',
+                background: isActive
+                  ? 'linear-gradient(90deg, rgba(255,215,0,0.18) 0%, rgba(255,215,0,0.08) 100%)'
+                  : 'rgba(0,0,0,0.42)',
+                border: isActive
+                  ? '1px solid rgba(255,215,0,0.55)'
+                  : '1px solid rgba(255,255,255,0.12)',
+                borderRadius: '999px',
                 cursor: 'pointer',
-                padding: '10px 4px 8px',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px',
-                transition: 'background 0.18s',
+                padding: '7px 14px 7px 10px',
+                transition: 'all 0.18s',
+                boxShadow: isActive ? '0 0 10px rgba(255,215,0,0.15)' : 'none',
               }}
             >
               <TabIcon active={isActive} />
               <span style={{
-                color: isActive ? '#FFD700' : 'rgba(255,255,255,0.55)',
-                fontFamily: "'Playfair Display',serif",
-                fontSize: '8px',
+                color: isActive ? '#FFD700' : 'rgba(255,255,255,0.75)',
+                fontFamily: "'Roboto Condensed',sans-serif",
+                fontSize: '11px',
                 fontWeight: isActive ? 700 : 600,
-                letterSpacing: '0.08em',
-                textAlign: 'center',
-                lineHeight: '1.3',
+                letterSpacing: '0.06em',
                 textShadow: isActive ? '0 0 8px rgba(255,215,0,0.6)' : 'none',
-                whiteSpace: 'pre-line',
-                wordBreak: 'break-word',
+                whiteSpace: 'nowrap',
               }}>
-                {label === 'Level UP' ? 'Level\nUP' : label === 'Star UP' ? 'Star\nUP' : label}
+                {label}
               </span>
-              {isActive && (
-                <div style={{
-                  position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)',
-                  width: '4px', height: '4px', borderRadius: '50%',
-                  background: '#FFD700', boxShadow: '0 0 6px #FFD700',
-                }}/>
-              )}
             </button>
           );
         })}
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          Currency Bars — Hero EXP / Gold / Gems
-          Posisi IDENTIK dengan GamePageLayout ResourceBox:
-            4.5/8 = 56.25%  |  5.5/8 = 68.75%  |  6.5/8 = 81.25%
-          Width=1/8=12.5%, Height=1/12=8.33%, z:25
+          Resource UI delegated to GamePageLayout below
       ═════════════════════════════════════════════════════════════════════= */}
 
-      {/* Hero EXP — col 4.5/8 (= GamePageLayout) */}
-      <CurrencyBox left={`${(4.5/8)*100}%`}>
-        <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'space-between', paddingLeft:'8%', paddingRight:'8%' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
-            <svg width="16" height="20" viewBox="0 0 16 20" fill="none">
-              <path d="M 5,6 L 5,14 Q 5,17 8,17 Q 11,17 11,14 L 11,6 Z" fill="#ffffff" stroke="#dddddd" strokeWidth="0.5"/>
-              <path d="M 5.5,10 L 5.5,13.5 Q 5.5,16 8,16 Q 10.5,16 10.5,13.5 L 10.5,10 Z" fill="#4488ff"/>
-              <rect x="6" y="3" width="4" height="3" fill="#ffffff" stroke="#dddddd" strokeWidth="0.5"/>
-              <ellipse cx="8" cy="3" rx="2.5" ry="1.2" fill="#8B4513"/>
-              <ellipse cx="8" cy="2.2" rx="2.5" ry="1" fill="#A0522D"/>
-            </svg>
-            <span style={{ color:'#88ccff', fontFamily:"'Playfair Display',serif", fontSize:'14px', fontWeight:600, letterSpacing:'0.06em', textShadow:'0 1px 4px rgba(0,0,0,0.9)', whiteSpace:'nowrap' }}>{fmtCurrency(user?.hero_exp ?? 0)}</span>
-          </div>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        </div>
-      </CurrencyBox>
-
-      {/* Gold — col 5.5/8 (= GamePageLayout) */}
-      <CurrencyBox left={`${(5.5/8)*100}%`}>
-        <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'space-between', paddingLeft:'8%', paddingRight:'8%' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="10" fill="#D4A017"/>
-              <circle cx="12" cy="12" r="8"  fill="#F5C842"/>
-              <text x="12" y="16" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#8B6000" fontFamily="'Playfair Display',serif">G</text>
-            </svg>
-            <span style={{ color:'#F5C842', fontFamily:"'Playfair Display',serif", fontSize:'14px', fontWeight:600, letterSpacing:'0.06em', textShadow:'0 1px 4px rgba(0,0,0,0.9)', whiteSpace:'nowrap' }}>{fmtCurrency(user?.gold ?? 0)}</span>
-          </div>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        </div>
-      </CurrencyBox>
-
-      {/* Gems — col 6.5/8 (= GamePageLayout) */}
-      <CurrencyBox left={`${(6.5/8)*100}%`}>
-        <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'space-between', paddingLeft:'8%', paddingRight:'8%' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
-            <svg width="18" height="20" viewBox="0 0 14 16" fill="none">
-              <polygon points="7,0 14,5 7,16 0,5" fill="#1AADEE"/>
-              <polygon points="7,0 14,5 7,7 0,5"  fill="#5BCFFF"/>
-              <polygon points="7,0 10,5 7,7 4,5"  fill="#A8EEFF"/>
-            </svg>
-            <span style={{ color:'#5BCFFF', fontFamily:"'Playfair Display',serif", fontSize:'14px', fontWeight:600, letterSpacing:'0.06em', textShadow:'0 1px 4px rgba(0,0,0,0.9)', whiteSpace:'nowrap' }}>{fmtCurrency(user?.gems ?? 0)}</span>
-          </div>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        </div>
-      </CurrencyBox>
+      {/* ── Resource UI — delegated to GamePageLayout (single source of truth) ── */}
+      <GamePageLayout activeTab="hero" hidePlayerInfo hideNav hideDropdown />
 
       {/* ══════════════════════════════════════════════════════════════════════
           A7–D7 │ Power Indicator — 4 grid cols (0–20%), row 7 (top:30%–35%)
           Dipindah dari H18–M18 ke sini (bekas tempat garis orange)
           Icon kiri + angka kanan dalam satu baris, z:16
       ═══════════════════════════════════════════════════════════════════= */}
+      {/* ─── A8 │ Power — left:0%, top:37.5% (center of row 8 in 20×20 grid) ── */}
       <div style={{
         position: 'absolute',
-        left: '0%', top: '30%',
+        left: '0%', top: '37.5%',
+        transform: 'translateY(-50%)',
         width: '20%', height: '5%',
         zIndex: 16,
         display: 'flex',
         alignItems: 'center',
         gap: '3%',
-        paddingLeft: '3%',
+        paddingLeft: '2%',
         pointerEvents: 'none',
-        background: 'linear-gradient(90deg, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.15) 75%, transparent 100%)',
+        background: 'linear-gradient(90deg, rgba(0,0,0,0.32) 0%, rgba(0,0,0,0.16) 75%, transparent 100%)',
         overflow: 'hidden',
+        borderRadius: '4px',
       }}>
         {/* Power fist icon */}
         <svg viewBox="0 0 24 28" style={{ height: '60%', width: 'auto', flexShrink: 0 }} fill="none">
@@ -821,6 +836,52 @@ export function HeroDetailView({
         </svg>
       </div>
 
+      {/* ══════════════════════════════════════════════════════════════════════
+          Skill Slots
+          Grid 20×20 — cols F-G = 25-35% (left:25%, w:10%) | cols O-P = 70-80% (left:70%, w:10%)
+          Rows 6-8  = top:25%, h:15%   |   Rows 13-15 = top:60%, h:15%
+      ═══════════════════════════════════════════════════════════════════════ */}
+      {name === 'Lucas' && (
+        <>
+          {/* Skill 1 — F6-G8 */}
+          <SkillSlot left="25%" top="25%" width="10%" height="15%">
+            <img src={LUCAS_SKILL_URLS.sk1} style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} draggable={false}/>
+          </SkillSlot>
+          {/* Skill 2 — F13-G15 */}
+          <SkillSlot left="25%" top="60%" width="10%" height="15%">
+            <img src={LUCAS_SKILL_URLS.sk2} style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} draggable={false}/>
+          </SkillSlot>
+          {/* Skill 3 — 65% (+0.5 grid right from 62%) */}
+          <SkillSlot left="65%" top="25%" width="10%" height="15%">
+            <img src={LUCAS_SKILL_URLS.sk3} style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} draggable={false}/>
+          </SkillSlot>
+          {/* Ultimate — 65% */}
+          <SkillSlot left="65%" top="60%" width="10%" height="15%">
+            <img src={LUCAS_SKILL_URLS.ult} style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} draggable={false}/>
+          </SkillSlot>
+        </>
+      )}
+      {name === 'Emma' && (
+        <>
+          {/* Skill 1 — F6-G8 */}
+          <SkillSlot left="25%" top="25%" width="10%" height="15%">
+            <EmmaHealPlus label="Act."/>
+          </SkillSlot>
+          {/* Skill 2 — F13-G15 */}
+          <SkillSlot left="25%" top="60%" width="10%" height="15%">
+            <EmmaCirclePyramid/>
+          </SkillSlot>
+          {/* Passive — 65% */}
+          <SkillSlot left="65%" top="25%" width="10%" height="15%">
+            <EmmaPassiveSkill/>
+          </SkillSlot>
+          {/* Ultimate — 65% */}
+          <SkillSlot left="65%" top="60%" width="10%" height="15%">
+            <EmmaHealPlus label="Ult."/>
+          </SkillSlot>
+        </>
+      )}
+
       {/* ── Grid canvas overlay ───────────────────────────────────────────────── */}
       <canvas
         ref={gridCanvasRef}
@@ -835,7 +896,7 @@ export function HeroDetailView({
       <button className="font-normal"
         onClick={() => setShowGrid(v => !v)}
         style={{
-          position: 'absolute', bottom: '16px', right: '96px', zIndex: 61,
+          position: 'absolute', bottom: '16px', right: 'calc(20% + 16px)', zIndex: 61,
           display: 'flex', alignItems: 'center', gap: '6px',
           background:     showGrid ? 'rgba(255,220,80,0.18)' : 'rgba(0,0,0,0.5)',
           border:         showGrid ? '1px solid rgba(255,220,80,0.6)' : '1px solid rgba(255,255,255,0.25)',

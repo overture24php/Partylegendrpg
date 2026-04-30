@@ -42,6 +42,24 @@ export function applyChromaKey(
 // so useChromaKeyDataUrl() can return synchronously on every subsequent mount.
 export const chromaDataUrlCache = new Map<string, string>();
 
+// ── Decoded-bitmap keeper ──────────────────────────────────────────────────────
+// Holds live Image() objects loaded with each chroma data URL.
+// As long as this Map keeps a reference, the browser cannot GC the decoded
+// bitmap — so any <img src={dataUrl}> or <image href={dataUrl}> that mounts
+// later gets an instant cache hit with zero flash.
+const chromaImgKeeper = new Map<string, HTMLImageElement>();
+
+// Use this instead of chromaDataUrlCache.set() everywhere so the keeper is
+// always populated together with the cache.
+export function keepChromaUrl(srcKey: string, dataUrl: string): void {
+  chromaDataUrlCache.set(srcKey, dataUrl);
+  if (!chromaImgKeeper.has(srcKey)) {
+    const keeper = new Image();
+    keeper.src = dataUrl; // triggers decode; browser caches decoded bitmap
+    chromaImgKeeper.set(srcKey, keeper);
+  }
+}
+
 // ── Hook: loads image with CORS, applies chroma key, returns data URL ─────────
 // Usage in any component:
 //   const dataUrl = useChromaKeyDataUrl('https://res.cloudinary.com/.../char.png');
@@ -80,7 +98,7 @@ export function useChromaKeyDataUrl(src: string): string | null {
       applyChromaKey(imageData.data);
       ctx.putImageData(imageData, 0, 0);
       const url = off.toDataURL('image/png');
-      chromaDataUrlCache.set(src, url); // warm cache for future mounts
+      keepChromaUrl(src, url); // warm cache for future mounts
       setDataUrl(url);
     };
     img.onerror = () => setDataUrl(src); // fallback: show original

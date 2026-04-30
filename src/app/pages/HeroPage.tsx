@@ -124,7 +124,13 @@ function HeroCard({ name, rarity, level, ilust, heroType }: { name: string; rari
         <g style={{ transform: 'translateX(var(--hci-x, 0px)) translateY(var(--hci-y, 0px))' }}>
           {/* Float + breath animation inner g */}
           <g className="hca-ilust-anim">
-            <image href={chromaUrl ?? ''} x="3" y="3" width="244" height="394" preserveAspectRatio="xMidYMax slice"/>
+            {/* foreignObject + <img> shares decoded bitmap cache with chromaImgKeeper → instant render */}
+            <foreignObject x="3" y="3" width="244" height="394">
+              <img
+                src={chromaUrl ?? ''}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center bottom', display: 'block' }}
+              />
+            </foreignObject>
           </g>
         </g>
       </g>
@@ -189,9 +195,15 @@ export default function HeroPage() {
   return (
     <div style={{ position: 'relative', width: '100%', height: '100dvh', background: '#1a0535', overflow: 'hidden' }}>
 
+      {/* ── Background Image ── */}
+      <div style={{ position:'absolute', inset:0, backgroundImage:'url(https://res.cloudinary.com/dhkethrmc/image/upload/v1777419184/ChatGPT_Image_Apr_29_2026_06_32_08_AM_hch81k.png)', backgroundSize:'cover', backgroundPosition:'center', opacity:0.4 }}/>
+
+      {/* ── Dark overlay for better readability ── */}
+      <div style={{ position:'absolute', inset:0, background:'linear-gradient(180deg, rgba(26,5,53,0.7) 0%, rgba(26,5,53,0.85) 100%)', pointerEvents:'none' }}/>
+
       {/* ── Purple ambient glows ── */}
-      <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse 80% 60% at 50% 20%, rgba(120,40,200,0.35) 0%, transparent 70%)', pointerEvents:'none' }}/>
-      <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse 60% 40% at 50% 90%, rgba(60,0,120,0.4) 0%, transparent 70%)', pointerEvents:'none' }}/>
+      <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse 80% 60% at 50% 20%, rgba(120,40,200,0.2) 0%, transparent 70%)', pointerEvents:'none' }}/>
+      <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse 60% 40% at 50% 90%, rgba(60,0,120,0.25) 0%, transparent 70%)', pointerEvents:'none' }}/>
 
       {/* ── Page title ── */}
       <div style={{ position:'absolute', top:'13%', left:'50%', transform:'translateX(-50%)', zIndex:10, textAlign:'center', pointerEvents:'none' }}>

@@ -15,8 +15,12 @@ import {
 } from './BgmController';
 
 // ─── Grid / layout constants (match GameStartPage) ────────────────────────────
-const COLS = 8;
-const ROWS = 12;
+const COLS  = 8;
+const ROWS  = 12;
+// Fine 20×20 design grid — same as GameStartPage GRID_COLS/GRID_ROWS
+// Use GCOLS/GROWS when the user references positions via the 20-col debug overlay.
+const GCOLS = 20;
+const GROWS = 20;
 const cellCenter = (col: string, row: number) => {
   const COL_LABELS = ['A','B','C','D','E','F','G','H'];
   const c = COL_LABELS.indexOf(col);
@@ -51,9 +55,11 @@ interface Props {
   children?: React.ReactNode;
   activeTab?: ActiveTab;
   hidePlayerInfo?: boolean;
+  hideNav?: boolean;
+  hideDropdown?: boolean;
 }
 
-export function GamePageLayout({ children, activeTab, hidePlayerInfo }: Props) {
+export function GamePageLayout({ children, activeTab, hidePlayerInfo, hideNav, hideDropdown }: Props) {
   const navigate  = useNavigate();
   const { user }  = useAuth();
   const { t }     = useLanguage();
@@ -168,18 +174,18 @@ export function GamePageLayout({ children, activeTab, hidePlayerInfo }: Props) {
             <stop offset="70%"  stopColor="rgba(255,215,0,0.7)" />
             <stop offset="100%" stopColor="rgba(255,215,0,0)" />
           </linearGradient>
+          <linearGradient id={`${pfx}-power-bg`} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%"   stopColor="rgba(0,0,0,0.4)" />
+            <stop offset="65%"  stopColor="rgba(0,0,0,0.25)" />
+            <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+          </linearGradient>
         </defs>
       </svg>
 
       {/* ── Page content slot ─────────────────────────────────────────────── */}
       {children}
 
-      {/* ── Server Time ───────────────────────────────────────────────────── */}
-      {!hidePlayerInfo && <div style={{ position:'absolute', left:'0.5%', top:'calc(10% + 3px)', zIndex:7, pointerEvents:'none', display:'flex', flexDirection:'column', alignItems:'flex-start', lineHeight:1 }}>
-        <span style={{ fontFamily:"'Playfair Display',serif", fontSize:'clamp(5px,1vh,8px)', fontWeight:600, letterSpacing:'0.22em', color:'rgba(255,255,255,0.45)', textShadow:'0 1px 4px rgba(0,0,0,0.9)', whiteSpace:'nowrap', lineHeight:1 }}>{t('ui.server_time')}</span>
-        <span style={{ fontFamily:"'Playfair Display',serif", fontSize:'clamp(7px,2.5vh,15px)', fontWeight:700, letterSpacing:'0.14em', color:'#ffffff', textShadow:'0 1px 6px rgba(0,0,0,0.95)', whiteSpace:'nowrap', lineHeight:1.1 }}>{serverTime.date}</span>
-        <span style={{ fontFamily:"'Playfair Display',serif", fontSize:'clamp(7px,2.5vh,15px)', fontWeight:700, letterSpacing:'0.14em', color:'#ffffff', textShadow:'0 1px 6px rgba(0,0,0,0.95)', whiteSpace:'nowrap', lineHeight:1.1 }}>{serverTime.time}</span>
-      </div>}
+
 
       {/* ── VIP Badge ─────────────────────────────────────────────────────── */}
       {!hidePlayerInfo && <div style={{ position:'absolute', left:`${(2.1/COLS)*100}%`, top:`${(0.25/ROWS)*100}%`, width:`${(0.25/COLS)*100}%`, height:`${(1/ROWS)*100}%`, zIndex:6, cursor:'pointer', pointerEvents:'auto' }}>
@@ -226,7 +232,7 @@ export function GamePageLayout({ children, activeTab, hidePlayerInfo }: Props) {
         </svg>
       </div>}
 
-      {/* ── Profile Box (top left) ────────────────────────────────────────── */}
+      {/* ── Profile Box (top left) — compact 1 grid row, 11px font ─────── */}
       {!hidePlayerInfo && <div style={{ position:'absolute', top:`${(0.25/ROWS)*100}%`, left:0, width:`${(2.5/COLS)*100}%`, height:`${(1/ROWS)*100}%`, zIndex:3, pointerEvents:'none' }}>
         <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%' }} viewBox="0 0 250 100" preserveAspectRatio="none">
           <path d="M 0,0 L 250,0 L 250,100 L 0,100 Z" fill={`url(#${pfx}-fade-right)`}/>
@@ -237,29 +243,62 @@ export function GamePageLayout({ children, activeTab, hidePlayerInfo }: Props) {
           <rect x="0" y="97.3" width="250" height="1.5" fill={`url(#${pfx}-profile-gold)`}/>
           <rect x="0" y="98"   width="250" height="2"   fill={`url(#${pfx}-profile-blk)`}/>
         </svg>
-        <div style={{ position:'absolute', inset:0, paddingLeft:`${(0.5/2.5)*100}%`, display:'flex', flexDirection:'column', justifyContent:'space-evenly', transform:`translateY(-${(0.5/ROWS)*100}%)` }}>
-          <div style={{ color:'#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'11px', fontWeight:600, letterSpacing:'0.05em', textShadow:'0 1px 3px rgba(0,0,0,0.8)' }}>{user?.nickname ?? 'New Player'}</div>
-          <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
-            <span style={{ color:'#ffdd88', fontFamily:"'Playfair Display',serif", fontSize:'9px', fontWeight:600, textShadow:'0 1px 3px rgba(0,0,0,0.8)', whiteSpace:'nowrap' }}>Lv. {user?.level ?? 0}</span>
+        <div style={{ position:'absolute', inset:0, paddingLeft:`${(0.5/2.5)*100}%`, display:'flex', flexDirection:'column', justifyContent:'center', gap:'3px' }}>
+          {/* Username — 11px */}
+          <div style={{ color:'#ffffff', fontFamily:"'Roboto Condensed',sans-serif", fontSize:'11px', fontWeight:600, letterSpacing:'0.05em', textShadow:'0 1px 3px rgba(0,0,0,0.8)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{user?.nickname ?? 'New Player'}</div>
+          {/* Lv + EXP bar + EXP % — 11px */}
+          <div style={{ display:'flex', alignItems:'center', gap:'4px' }}>
+            <span style={{ color:'#ffdd88', fontFamily:"'Roboto Condensed',sans-serif", fontSize:'11px', fontWeight:600, textShadow:'0 1px 3px rgba(0,0,0,0.8)', whiteSpace:'nowrap' }}>Lv. {user?.level ?? 0}</span>
             {(() => {
               const curXp = user?.xp ?? 0;
               const maxXp = (user?.maxXp && user.maxXp > 0) ? user.maxXp : getMaxXpForLevel(user?.level ?? 0);
               const fillW = Math.min(100, maxXp > 0 ? (curXp / maxXp) * 100 : 0);
               return (
                 <>
-                  <div style={{ position:'relative', flexGrow:1, maxWidth:'60%' }}>
+                  <div style={{ position:'relative', flexGrow:1, maxWidth:'55%' }}>
                     <svg width="100%" height="8" viewBox="0 0 100 8" preserveAspectRatio="none">
                       <rect x="0" y="0" width="100" height="8" fill="rgba(0,0,0,0.55)" rx="2"/>
                       {fillW > 0 && <rect x="0" y="0" width={fillW} height="8" fill="#56b4f5" rx="2"/>}
                       {fillW > 0 && <rect x="0" y="0" width={fillW} height="4" fill="rgba(255,255,255,0.18)" rx="2"/>}
                     </svg>
                   </div>
-                  <span style={{ color:'#7dd3fc', fontFamily:"'Playfair Display',serif", fontSize:'8px', fontWeight:600, textShadow:'0 1px 3px rgba(0,0,0,0.8)', whiteSpace:'nowrap' }}>{Math.round(fillW)}%</span>
+                  <span style={{ color:'#7dd3fc', fontFamily:"'Roboto Condensed',sans-serif", fontSize:'11px', fontWeight:600, textShadow:'0 1px 3px rgba(0,0,0,0.8)', whiteSpace:'nowrap' }}>{Math.round(fillW)}%</span>
                 </>
               );
             })()}
           </div>
-          <div style={{ color:'#ffaa44', fontFamily:"'Playfair Display',serif", fontSize:'10px', fontWeight:600, letterSpacing:'0.03em', textShadow:'0 1px 3px rgba(0,0,0,0.8)' }}>{(user?.power ?? 0).toLocaleString()}</div>
+        </div>
+      </div>}
+
+      {/* ── Power Indicator — B3→E3 in 20×20 grid (left:5%, top:10%, w:20%, h:5%) ── */}
+      {!hidePlayerInfo && <div style={{ position:'absolute', left:`${(1/GCOLS)*100}%`, top:`${(2/GROWS)*100}%`, width:`${(4/GCOLS)*100}%`, height:`${(1/GROWS)*100}%`, zIndex:3, pointerEvents:'none' }}>
+        <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%' }} viewBox="0 0 250 100" preserveAspectRatio="none">
+          {/* Background: solid black 40% on left, fade to transparent right */}
+          <path d="M 0,0 L 250,0 L 250,100 L 0,100 Z" fill={`url(#${pfx}-power-bg)`}/>
+          {/* Top border: dark + orange gold */}
+          <rect x="0" y="0"    width="250" height="2"   fill={`url(#${pfx}-profile-blk)`}/>
+          <rect x="0" y="1.2"  width="250" height="1.5" fill={`url(#${pfx}-profile-gold)`}/>
+          <rect x="0" y="2.7"  width="250" height="1"   fill={`url(#${pfx}-profile-blk)`}/>
+          {/* Bottom border: dark + orange gold */}
+          <rect x="0" y="96.3" width="250" height="1"   fill={`url(#${pfx}-profile-blk)`}/>
+          <rect x="0" y="97.3" width="250" height="1.5" fill={`url(#${pfx}-profile-gold)`}/>
+          <rect x="0" y="98"   width="250" height="2"   fill={`url(#${pfx}-profile-blk)`}/>
+        </svg>
+        <div style={{ position:'absolute', inset:0, paddingLeft:'1.5%', display:'flex', alignItems:'center', gap:'5px' }}>
+          {/* Power fist icon — same SVG as HeroDetailView */}
+          <svg viewBox="0 0 24 28" style={{ height:'55%', width:'auto', flexShrink:0 }} fill="none">
+            <rect x="5"  y="5"  width="4" height="7" rx="2" fill="white"/>
+            <rect x="10" y="4"  width="4" height="8" rx="2" fill="white"/>
+            <rect x="15" y="5"  width="4" height="7" rx="2" fill="white"/>
+            <rect x="4"  y="11" width="16" height="9" rx="2.5" fill="white"/>
+            <rect x="1"  y="12" width="5"  height="4" rx="2" fill="white"/>
+            <rect x="5"  y="19" width="14" height="3" rx="1" fill="white" fillOpacity="0.5"/>
+            <path d="M13 8 L10 14 L13 14 L11 20 L16 12 L13 12 Z" fill="rgba(0,0,0,0.35)"/>
+          </svg>
+          {/* Power number */}
+          <span style={{ color:'#ffffff', fontFamily:"'Roboto Condensed',sans-serif", fontSize:'11px', fontWeight:600, letterSpacing:'0.05em', textShadow:'0 1px 3px rgba(0,0,0,0.8)', whiteSpace:'nowrap' }}>
+            {fmtCurrency(user?.power ?? 0)}
+          </span>
         </div>
       </div>}
 
@@ -274,7 +313,7 @@ export function GamePageLayout({ children, activeTab, hidePlayerInfo }: Props) {
               <ellipse cx="8" cy="3" rx="2.5" ry="1.2" fill="#8B4513"/>
               <ellipse cx="8" cy="2.2" rx="2.5" ry="1" fill="#A0522D"/>
             </svg>
-            <span style={{ color:'#88ccff', fontFamily:"'Playfair Display',serif", fontSize:'14px', fontWeight:600, letterSpacing:'0.06em', textShadow:'0 1px 4px rgba(0,0,0,0.9)', whiteSpace:'nowrap' }}>{fmtCurrency(user?.hero_exp ?? 0)}</span>
+            <span style={{ color:'#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'14px', fontWeight:600, letterSpacing:'0.06em', textShadow:'-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000', whiteSpace:'nowrap' }}>{fmtCurrency(user?.hero_exp ?? 0)}</span>
           </div>
           <PlusIcon/>
         </div>
@@ -289,7 +328,7 @@ export function GamePageLayout({ children, activeTab, hidePlayerInfo }: Props) {
               <circle cx="12" cy="12" r="8"  fill="#F5C842"/>
               <text x="12" y="16" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#8B6000" fontFamily="'Playfair Display',serif">G</text>
             </svg>
-            <span style={{ color:'#F5C842', fontFamily:"'Playfair Display',serif", fontSize:'14px', fontWeight:600, letterSpacing:'0.06em', textShadow:'0 1px 4px rgba(0,0,0,0.9)', whiteSpace:'nowrap' }}>{fmtCurrency(user?.gold ?? 0)}</span>
+            <span style={{ color:'#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'14px', fontWeight:600, letterSpacing:'0.06em', textShadow:'-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000', whiteSpace:'nowrap' }}>{fmtCurrency(user?.gold ?? 0)}</span>
           </div>
           <PlusIcon/>
         </div>
@@ -304,14 +343,14 @@ export function GamePageLayout({ children, activeTab, hidePlayerInfo }: Props) {
               <polygon points="7,0 14,5 7,7 0,5"  fill="#5BCFFF"/>
               <polygon points="7,0 10,5 7,7 4,5"  fill="#A8EEFF"/>
             </svg>
-            <span style={{ color:'#5BCFFF', fontFamily:"'Playfair Display',serif", fontSize:'14px', fontWeight:600, letterSpacing:'0.06em', textShadow:'0 1px 4px rgba(0,0,0,0.9)', whiteSpace:'nowrap' }}>{fmtCurrency(user?.gems ?? 0)}</span>
+            <span style={{ color:'#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'14px', fontWeight:600, letterSpacing:'0.06em', textShadow:'-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000', whiteSpace:'nowrap' }}>{fmtCurrency(user?.gems ?? 0)}</span>
           </div>
           <PlusIcon/>
         </div>
       </ResourceBox>
 
       {/* ── Dropdown Menu ─────────────────────────────────────────────────── */}
-      <div style={{ position:'absolute', left:`${(7.5/COLS)*100}%`, top:0, width:`${(0.5/COLS)*100}%`, height: menuOpen ? `${(5/ROWS)*100}%` : `${(1/ROWS)*100}%`, zIndex:10, pointerEvents:'none' }}>
+      {!hideDropdown && <div style={{ position:'absolute', left:`${(7.5/COLS)*100}%`, top:0, width:`${(0.5/COLS)*100}%`, height: menuOpen ? `${(5/ROWS)*100}%` : `${(1/ROWS)*100}%`, zIndex:10, pointerEvents:'none' }}>
 
         {!menuOpen && (
           <div onClick={() => setMenuOpen(true)} style={{ position:'absolute', inset:0, cursor:'pointer', pointerEvents:'auto' }}>
@@ -335,8 +374,8 @@ export function GamePageLayout({ children, activeTab, hidePlayerInfo }: Props) {
               <polyline points="15,480 25,494 35,480" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             {/* QUEST */}
-            <div style={{ position:'absolute', top:'0%', height:'20%', left:0, right:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'3px', cursor:'pointer', pointerEvents:'auto', zIndex:1 }}>
-              <svg width="16" height="18" viewBox="0 0 22 26" fill="none">
+            <div style={{ position:'absolute', top:'0%', height:'20%', left:0, right:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'4px', cursor:'pointer', pointerEvents:'auto', zIndex:1 }}>
+              <svg width="24" height="27" viewBox="0 0 22 26" fill="none">
                 <path d="M 5,3 L 17,3 Q 19,3 19,5 L 19,23 Q 19,25 17,25 L 5,25 Q 3,25 3,23 L 3,5 Q 3,3 5,3 Z" fill="white"/>
                 <path d="M 3,5 Q 3,1 5,1 L 17,1 Q 19,1 19,3" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
                 <path d="M 3,23 Q 3,27 5,27 L 17,27 Q 19,27 19,25" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
@@ -344,51 +383,53 @@ export function GamePageLayout({ children, activeTab, hidePlayerInfo }: Props) {
                 <line x1="6" y1="13" x2="16" y2="13" stroke="rgba(0,0,0,0.22)" strokeWidth="1.5"/>
                 <line x1="6" y1="17" x2="12" y2="17" stroke="rgba(0,0,0,0.22)" strokeWidth="1.5"/>
               </svg>
-              <span style={{ color:'#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'7px', fontWeight:700, letterSpacing:'0.08em', textShadow:'0 1px 3px rgba(0,0,0,0.95)', lineHeight:1 }}>{t('ui.quest')}</span>
+              <span style={{ color:'#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'10.5px', fontWeight:700, letterSpacing:'0.08em', textShadow:'0 1px 3px rgba(0,0,0,0.95)', lineHeight:1 }}>{t('ui.quest')}</span>
             </div>
             {/* BAG */}
-            <div style={{ position:'absolute', top:'20%', height:'20%', left:0, right:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'3px', cursor:'pointer', pointerEvents:'auto', zIndex:1 }}>
-              <svg width="16" height="18" viewBox="0 0 22 26" fill="none">
+            <div style={{ position:'absolute', top:'20%', height:'20%', left:0, right:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'4px', cursor:'pointer', pointerEvents:'auto', zIndex:1 }}>
+              <svg width="24" height="27" viewBox="0 0 22 26" fill="none">
                 <path d="M 8,5 Q 8,1 11,1 Q 14,1 14,5" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round"/>
                 <path d="M 5,6 L 17,6 Q 19,6 19,8 L 19,22 Q 19,25 17,25 L 5,25 Q 3,25 3,22 L 3,8 Q 3,6 5,6 Z" fill="white"/>
                 <path d="M 9,6 Q 9,4 11,4 Q 13,4 13,6" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
                 <rect x="6" y="15" width="10" height="8" rx="1.5" fill="rgba(0,0,0,0.15)"/>
               </svg>
-              <span style={{ color:'#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'7px', fontWeight:700, letterSpacing:'0.08em', textShadow:'0 1px 3px rgba(0,0,0,0.95)', lineHeight:1 }}>{t('ui.bag')}</span>
+              <span style={{ color:'#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'10.5px', fontWeight:700, letterSpacing:'0.08em', textShadow:'0 1px 3px rgba(0,0,0,0.95)', lineHeight:1 }}>{t('ui.bag')}</span>
             </div>
             {/* FRIEND */}
-            <div style={{ position:'absolute', top:'40%', height:'20%', left:0, right:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'3px', cursor:'pointer', pointerEvents:'auto', zIndex:1 }}>
-              <svg width="18" height="16" viewBox="0 0 26 22" fill="none">
+            <div style={{ position:'absolute', top:'40%', height:'20%', left:0, right:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'4px', cursor:'pointer', pointerEvents:'auto', zIndex:1 }}>
+              <svg width="27" height="24" viewBox="0 0 26 22" fill="none">
                 <circle cx="7.5" cy="6" r="3.5" fill="white"/>
                 <path d="M 1,21 Q 1,14 7.5,14 Q 10,14 11.5,15.5 L 11.5,21 Z" fill="white"/>
                 <circle cx="18.5" cy="6" r="3.5" fill="white"/>
                 <path d="M 25,21 Q 25,14 18.5,14 Q 16,14 14.5,15.5 L 14.5,21 Z" fill="white"/>
                 <path d="M 11.5,15.5 Q 13,13 14.5,15.5 L 14.5,21 L 11.5,21 Z" fill="white"/>
               </svg>
-              <span style={{ color:'#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'7px', fontWeight:700, letterSpacing:'0.08em', textShadow:'0 1px 3px rgba(0,0,0,0.95)', lineHeight:1 }}>{t('ui.friend')}</span>
+              <span style={{ color:'#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'10.5px', fontWeight:700, letterSpacing:'0.08em', textShadow:'0 1px 3px rgba(0,0,0,0.95)', lineHeight:1 }}>{t('ui.friend')}</span>
             </div>
             {/* MAIL */}
-            <div style={{ position:'absolute', top:'60%', height:'20%', left:0, right:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'3px', cursor:'pointer', pointerEvents:'auto', zIndex:1 }}>
-              <svg width="18" height="14" viewBox="0 0 26 20" fill="none">
+            <div style={{ position:'absolute', top:'60%', height:'20%', left:0, right:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'4px', cursor:'pointer', pointerEvents:'auto', zIndex:1 }}>
+              <svg width="27" height="21" viewBox="0 0 26 20" fill="none">
                 <path d="M 2,3 L 24,3 Q 25,3 25,4 L 25,18 Q 25,19 24,19 L 2,19 Q 1,19 1,18 L 1,4 Q 1,3 2,3 Z" fill="white"/>
                 <path d="M 1,4 L 13,12 L 25,4" fill="none" stroke="rgba(0,0,0,0.18)" strokeWidth="1.8" strokeLinejoin="round"/>
               </svg>
-              <span style={{ color:'#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'7px', fontWeight:700, letterSpacing:'0.08em', textShadow:'0 1px 3px rgba(0,0,0,0.95)', lineHeight:1 }}>{t('ui.mail')}</span>
+              <span style={{ color:'#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'10.5px', fontWeight:700, letterSpacing:'0.08em', textShadow:'0 1px 3px rgba(0,0,0,0.95)', lineHeight:1 }}>{t('ui.mail')}</span>
             </div>
             {/* SETTINGS */}
-            <div onClick={() => { setSettingsOpen(true); setMenuOpen(false); }} style={{ position:'absolute', top:'80%', height:'15%', left:0, right:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'3px', cursor:'pointer', pointerEvents:'auto', zIndex:1 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <div onClick={() => { setSettingsOpen(true); setMenuOpen(false); }} style={{ position:'absolute', top:'80%', height:'15%', left:0, right:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'4px', cursor:'pointer', pointerEvents:'auto', zIndex:1 }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <path d="M 12,2 L 13.8,5.8 L 17.5,4.2 L 17.8,8.2 L 21.8,9.5 L 19.8,13 L 22,16 L 18.8,17.8 L 19.8,21.8 L 15.8,21.5 L 14,24.5 L 12,22 L 10,24.5 L 8.2,21.5 L 4.2,21.8 L 5.2,17.8 L 2,16 L 4.2,13 L 2.2,9.5 L 6.2,8.2 L 6.5,4.2 L 10.2,5.8 Z" fill="white"/>
                 <circle cx="12" cy="13" r="3.5" fill="rgba(0,0,0,0.6)"/>
               </svg>
-              <span style={{ color:'#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'7px', fontWeight:700, letterSpacing:'0.08em', textShadow:'0 1px 3px rgba(0,0,0,0.95)', lineHeight:1 }}>{t('ui.settings')}</span>
+              <span style={{ color:'#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'10.5px', fontWeight:700, letterSpacing:'0.08em', textShadow:'0 1px 3px rgba(0,0,0,0.95)', lineHeight:1 }}>{t('ui.settings')}</span>
             </div>
             <div onClick={() => setMenuOpen(false)} style={{ position:'absolute', bottom:0, left:0, right:0, height:'5%', cursor:'pointer', pointerEvents:'auto', zIndex:2 }}/>
           </>
         )}
-      </div>
+      </div>}
 
       {/* ── Bottom Navigation ─────────────────────────────────────────────── */}
+      {!hideNav && (
+      <>
       <NavTab
         left={`${(0.8/COLS)*100}%`}
         center={`${cellCenter('A',12).top}%`}
@@ -396,10 +437,10 @@ export function GamePageLayout({ children, activeTab, hidePlayerInfo }: Props) {
         pfx={pfx}
         onClick={() => navigate('/game')}
       >
-        <svg viewBox="0 0 32 24" width="28" height="22" fill="white" style={{ flexShrink:0, filter:'drop-shadow(0 1px 3px rgba(0,0,0,0.95))' }}>
+        <svg viewBox="0 0 32 24" width="42" height="33" fill="white" style={{ flexShrink:0, filter:'drop-shadow(0 1px 3px rgba(0,0,0,0.95))' }}>
           <path fillRule="evenodd" d="M 0,24 L 0,15 L 2,15 L 2,12 L 3,12 L 3,15 L 8,15 L 8,7 L 15,2 L 22,7 L 22,11 L 29,11 L 29,9 L 30,9 L 30,11 L 32,11 L 32,24 Z M 4,21 L 4,18 Q 5,16 6,18 L 6,21 Z M 11,11 L 13,11 L 13,15 L 11,15 Z M 17,11 L 19,11 L 19,15 L 17,15 Z M 13,24 L 13,20 Q 15,18 17,20 L 17,24 Z M 25,14 L 28,14 L 28,18 L 25,18 Z"/>
         </svg>
-        <span style={{ color: activeTab === 'city' ? '#FFD700' : '#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'11px', fontWeight:600, letterSpacing:'0.15em', whiteSpace:'nowrap', textShadow:'0 1px 6px rgba(0,0,0,0.8)', transform:`translateY(${(1/ROWS)*100/5}%)` }}>{t('ui.city')}</span>
+        <span style={{ color: activeTab === 'city' ? '#FFD700' : '#ffffff', fontFamily:"'Roboto Condensed',sans-serif", fontSize:'16.5px', fontWeight:600, letterSpacing:'0.15em', whiteSpace:'nowrap', textShadow:'0 1px 6px rgba(0,0,0,0.8)', transform:`translateY(${(1/ROWS)*100/5}%)` }}>{t('ui.city')}</span>
       </NavTab>
 
       {/* Divider CITY/HERO */}
@@ -412,10 +453,10 @@ export function GamePageLayout({ children, activeTab, hidePlayerInfo }: Props) {
         pfx={pfx}
         onClick={() => navigate('/game/hero')}
       >
-        <svg viewBox="0 0 24 26" width="20" height="22" fill="white" style={{ flexShrink:0, filter:'drop-shadow(0 1px 3px rgba(0,0,0,0.95))' }}>
+        <svg viewBox="0 0 24 26" width="30" height="33" fill="white" style={{ flexShrink:0, filter:'drop-shadow(0 1px 3px rgba(0,0,0,0.95))' }}>
           <path fillRule="evenodd" d="M 12,2 C 7,2 5,7 5,12 L 5,18 Q 5,20 7,21 L 7,24 L 10,24 L 10,21 L 14,21 L 14,24 L 17,24 L 17,21 Q 19,20 19,18 L 19,12 C 19,7 17,2 12,2 Z M 7,13 L 17,13 L 17,15 L 7,15 Z M 11,15 L 13,15 L 13,19 L 11,19 Z"/>
         </svg>
-        <span style={{ color: activeTab === 'hero' ? '#FFD700' : '#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'11px', fontWeight:600, letterSpacing:'0.15em', whiteSpace:'nowrap', textShadow:'0 1px 6px rgba(0,0,0,0.8)' }}>{t('ui.hero')}</span>
+        <span style={{ color: activeTab === 'hero' ? '#FFD700' : '#ffffff', fontFamily:"'Roboto Condensed',sans-serif", fontSize:'16.5px', fontWeight:600, letterSpacing:'0.15em', whiteSpace:'nowrap', textShadow:'0 1px 6px rgba(0,0,0,0.8)' }}>{t('ui.hero')}</span>
       </NavTab>
 
       {/* Divider HERO/EQUIPMENT */}
@@ -428,13 +469,13 @@ export function GamePageLayout({ children, activeTab, hidePlayerInfo }: Props) {
         pfx={pfx}
         onClick={() => navigate('/game/hero')}
       >
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="white" style={{ flexShrink:0, filter:'drop-shadow(0 1px 3px rgba(0,0,0,0.95))' }}>
+        <svg viewBox="0 0 24 24" width="27" height="27" fill="white" style={{ flexShrink:0, filter:'drop-shadow(0 1px 3px rgba(0,0,0,0.95))' }}>
           <path d="M 1,2 L 4,1 L 23,20 L 22,23 L 19,22 L 0,3 Z"/>
           <path d="M 20,1 L 23,2 L 4,23 L 1,22 L 2,19 L 21,0 Z"/>
           <path d="M 1,7 L 3,5 L 7,9 L 5,11 Z"/>
           <path d="M 17,5 L 19,3 L 23,7 L 21,9 Z"/>
         </svg>
-        <span style={{ color: activeTab === 'equipment' ? '#FFD700' : '#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'9px', fontWeight:600, letterSpacing:'0.12em', whiteSpace:'nowrap', textShadow:'0 1px 6px rgba(0,0,0,0.8)' }}>{t('ui.equipment')}</span>
+        <span style={{ color: activeTab === 'equipment' ? '#FFD700' : '#ffffff', fontFamily:"'Roboto Condensed',sans-serif", fontSize:'13.5px', fontWeight:600, letterSpacing:'0.12em', whiteSpace:'nowrap', textShadow:'0 1px 6px rgba(0,0,0,0.8)' }}>{t('ui.equipment')}</span>
       </NavTab>
 
       {/* Divider EQ/PET */}
@@ -447,14 +488,14 @@ export function GamePageLayout({ children, activeTab, hidePlayerInfo }: Props) {
         pfx={pfx}
         onClick={() => navigate('/game/hero')}
       >
-        <svg viewBox="0 0 24 26" width="20" height="22" fill="white" style={{ flexShrink:0, filter:'drop-shadow(0 1px 3px rgba(0,0,0,0.95))' }}>
+        <svg viewBox="0 0 24 26" width="30" height="33" fill="white" style={{ flexShrink:0, filter:'drop-shadow(0 1px 3px rgba(0,0,0,0.95))' }}>
           <ellipse cx="12" cy="19" rx="7" ry="6"/>
           <ellipse cx="5" cy="9" rx="2.8" ry="3.5" transform="rotate(-15 5 9)"/>
           <ellipse cx="9.5" cy="6" rx="2.8" ry="3.5" transform="rotate(-5 9.5 6)"/>
           <ellipse cx="14.5" cy="6" rx="2.8" ry="3.5" transform="rotate(5 14.5 6)"/>
           <ellipse cx="19" cy="9" rx="2.8" ry="3.5" transform="rotate(15 19 9)"/>
         </svg>
-        <span style={{ color: activeTab === 'pet' ? '#FFD700' : '#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'11px', fontWeight:600, letterSpacing:'0.15em', whiteSpace:'nowrap', textShadow:'0 1px 6px rgba(0,0,0,0.8)' }}>{t('ui.pet')}</span>
+        <span style={{ color: activeTab === 'pet' ? '#FFD700' : '#ffffff', fontFamily:"'Roboto Condensed',sans-serif", fontSize:'16.5px', fontWeight:600, letterSpacing:'0.15em', whiteSpace:'nowrap', textShadow:'0 1px 6px rgba(0,0,0,0.8)' }}>{t('ui.pet')}</span>
       </NavTab>
 
       {/* Divider PET/ARTIFACT */}
@@ -467,13 +508,15 @@ export function GamePageLayout({ children, activeTab, hidePlayerInfo }: Props) {
         pfx={pfx}
         onClick={() => navigate('/game/hero')}
       >
-        <svg viewBox="0 0 22 28" width="17" height="22" fill="white" style={{ flexShrink:0, filter:'drop-shadow(0 1px 3px rgba(0,0,0,0.95))' }}>
+        <svg viewBox="0 0 22 28" width="25" height="33" fill="white" style={{ flexShrink:0, filter:'drop-shadow(0 1px 3px rgba(0,0,0,0.95))' }}>
           <path fillRule="evenodd" d="M 11,1 C 5.5,1 1,5.5 1,11 C 1,16.5 5.5,21 11,21 C 16.5,21 21,16.5 21,11 C 21,5.5 16.5,1 11,1 Z M 10,5 L 12,5 L 12,17 L 10,17 Z M 4,10 L 18,10 L 18,12 L 4,12 Z"/>
           <path d="M 10,21 L 12,21 L 13.5,24 L 8.5,24 Z"/>
           <path d="M 6,24 L 16,24 L 17,27 L 5,27 Z"/>
         </svg>
-        <span style={{ color: activeTab === 'artifact' ? '#FFD700' : '#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'10px', fontWeight:600, letterSpacing:'0.12em', whiteSpace:'nowrap', textShadow:'0 1px 6px rgba(0,0,0,0.8)' }}>{t('ui.artifact')}</span>
+        <span style={{ color: activeTab === 'artifact' ? '#FFD700' : '#ffffff', fontFamily:"'Roboto Condensed',sans-serif", fontSize:'15px', fontWeight:600, letterSpacing:'0.12em', whiteSpace:'nowrap', textShadow:'0 1px 6px rgba(0,0,0,0.8)' }}>{t('ui.artifact')}</span>
       </NavTab>
+      </>
+      )}
 
       {/* ── Settings dim overlay ──────────────────────────────────────────── */}
       {settingsOpen && (

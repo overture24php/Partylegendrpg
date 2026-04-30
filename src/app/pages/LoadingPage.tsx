@@ -1,9 +1,9 @@
-import { useEffect, useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { preloadBgm } from '../components/BgmController';
 import { LUCAS_FRAMES, lucasImgCache, lucasChromaCache } from '../utils/lucasCache';
 import { EMMA_FRAMES, emmaImgCache, emmaChromaCache } from '../utils/emmaCache';
-import { applyChromaKey, chromaDataUrlCache } from '../utils/chromaKey';
+import { applyChromaKey, keepChromaUrl } from '../utils/chromaKey';
 
 // ── Static images to preload (no green-screen) ────────────────────────────────
 const SPLASH_IMG     = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1776874245/Splash_screen_aygb5n.png';
@@ -14,7 +14,13 @@ const HERO_DETAIL_BG = 'https://res.cloudinary.com/dhkethrmc/image/upload/v17773
 const LUCAS_CARD_ILUST = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777386997/LUCAS_tyqcnf.png';
 const EMMA_CARD_ILUST  = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777387003/emma_aqsnsd.png';
 
-const STATIC_IMGS: string[] = [SPLASH_IMG, INTRO_BG, GAME_BG, HERO_DETAIL_BG];
+// ── Lucas skill illustrations (no chroma key needed) ──────────────────────────
+const LUCAS_SK1 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777420534/sk1_lukas_65c48d.png';
+const LUCAS_SK2 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777420599/sk2_luk_5f55c9.png';
+const LUCAS_SK3 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777420393/sk3_lucas_5f4d58.png';
+const LUCAS_ULT = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777420297/ult_lucas_4cf45e.png';
+
+const STATIC_IMGS: string[] = [SPLASH_IMG, INTRO_BG, GAME_BG, HERO_DETAIL_BG, LUCAS_SK1, LUCAS_SK2, LUCAS_SK3, LUCAS_ULT];
 
 const TOTAL = STATIC_IMGS.length
   + 1 /*lucas card*/ + LUCAS_FRAMES.length + 1 /*lucas chroma*/
@@ -113,7 +119,7 @@ export default function LoadingPage() {
         const id = ctx.getImageData(0, 0, off.width, off.height);
         applyChromaKey(id.data);
         ctx.putImageData(id, 0, 0);
-        chromaDataUrlCache.set(LUCAS_CARD_ILUST, off.toDataURL('image/png'));
+        keepChromaUrl(LUCAS_CARD_ILUST, off.toDataURL('image/png'));
       }
       onSettled();
     };
@@ -133,7 +139,7 @@ export default function LoadingPage() {
         const id = ctx.getImageData(0, 0, off.width, off.height);
         applyChromaKey(id.data);
         ctx.putImageData(id, 0, 0);
-        chromaDataUrlCache.set(EMMA_CARD_ILUST, off.toDataURL('image/png'));
+        keepChromaUrl(EMMA_CARD_ILUST, off.toDataURL('image/png'));
       }
       onSettled();
     };

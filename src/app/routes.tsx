@@ -50,10 +50,34 @@ function GuestRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// ── Persistent hidden images — keep browser decode cache warm across navigations
+// These <img> elements NEVER unmount, so the browser cannot evict their decoded
+// bitmaps. Any page that mounts an <img> with the same src gets instant paint.
+const BG_KEEPER_SRCS = [
+  // City / GameStartPage background
+  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777396811/ChatGPT_Image_Apr_29_2026_12_19_32_AM_squmiv.png',
+  // Hero detail overlay background
+  'https://res.cloudinary.com/dhkethrmc/image/upload/v1777381178/ChatGPT_Image_Apr_28_2026_07_59_00_PM_ud1ln3.png',
+  // Intro background
+  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777395784/ChatGPT_Image_Apr_29_2026_12_02_36_AM_p3z4gf.png',
+];
+
+function PersistentBgKeeper() {
+  return (
+    <div style={{ position: 'fixed', top: 0, left: 0, width: '1px', height: '1px', overflow: 'hidden', opacity: 0, pointerEvents: 'none', zIndex: -9999 }}>
+      {BG_KEEPER_SRCS.map(src => (
+        <img key={src} src={src} alt="" decoding="async"
+          style={{ position: 'absolute', width: '1px', height: '1px' }} />
+      ))}
+    </div>
+  );
+}
+
 function RootLayout() {
   return (
     <>
       <BgmController />
+      <PersistentBgKeeper />
       <Outlet />
     </>
   );

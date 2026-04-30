@@ -59,7 +59,7 @@ export default function IntroPage() {
           animate={{ opacity: [1, 0.15, 1] }}
           transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
           className="text-white tracking-widest"
-          style={{ fontSize: '12px', letterSpacing: '0.25em' }}
+          style={{ fontSize: '24px', letterSpacing: '0.25em' }}
         >
           {t('intro.tap_to_start')}
         </motion.span>
