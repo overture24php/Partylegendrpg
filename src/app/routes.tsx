@@ -16,7 +16,6 @@ import CastlePage from './pages/CastlePage';
 import AdventurePage from './pages/AdventurePage';
 import EventPage from './pages/EventPage';
 import SvgLibraryPage from './pages/SvgLibraryPage';
-import SqlHelperPage from './pages/SqlHelperPage';
 import HeroPage from './pages/HeroPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -174,10 +173,6 @@ export const router = createBrowserRouter([
       {
         path: '/game/event',
         element: <ProtectedRoute><EventPage /></ProtectedRoute>,
-      },
-      {
-        path: '/db-setup',
-        element: <SqlHelperPage />,
       },
       {
         path: '/svg-library',
