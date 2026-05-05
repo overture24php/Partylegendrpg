@@ -10,28 +10,119 @@ import { useAuth } from '../context/AuthContext';
 const SPLASH_IMG        = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1776874245/Splash_screen_aygb5n.png';
 const INTRO_BG          = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777395784/ChatGPT_Image_Apr_29_2026_12_02_36_AM_p3z4gf.png';
 const GAME_BG           = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777396811/ChatGPT_Image_Apr_29_2026_12_19_32_AM_squmiv.png';
-const HERO_DETAIL_BG    = 'https://res.cloudinary.com/dhkethrmc/image/upload/v1777381178/ChatGPT_Image_Apr_28_2026_07_59_00_PM_ud1ln3.png';
+const HERO_DETAIL_BG    = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777381178/ChatGPT_Image_Apr_28_2026_07_59_00_PM_ud1ln3.png';
 // Login / Register / HeroPage / Hero-Obtained shared background
 const LOGIN_BG          = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777419184/ChatGPT_Image_Apr_29_2026_06_32_08_AM_hch81k.png';
+
 // ── Character card illustrations (green-screen → chroma key) ─────────────────
 const LUCAS_CARD_ILUST = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777386997/LUCAS_tyqcnf.png';
 const EMMA_CARD_ILUST  = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777387003/emma_aqsnsd.png';
 
-// ── Lucas skill illustrations (no chroma key needed) ──────────────────────────
-const LUCAS_SK1 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777420534/sk1_lukas_65c48d.png';
-const LUCAS_SK2 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777420599/sk2_luk_5f55c9.png';
-const LUCAS_SK3 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777420393/sk3_lucas_5f4d58.png';
-const LUCAS_ULT = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777420297/ult_lucas_4cf45e.png';
+// ── Tavern Normal Summon banner (green-screen → chroma key) ───────────────────
+const BANNER_TAVERN = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777895161/60d9c15d-f208-4d63-b2ac-9c93cde4e1a5.png';
+
+// ── Gorr card illustration & battle sprites (green-screen → chroma key) ──────
+const GORR_CARD_ILUST  = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777918499/ChatGPT_Image_May_5_2026_01_13_20_AM_eyckzn.png';
+const GORR_IDLE_BATTLE = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919607/ChatGPT_Image_May_5_2026_01_23_54_AM_nhkzmq.png';
+const GORR_ACTION      = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919615/ChatGPT_Image_May_5_2026_01_31_48_AM_m65s2g.png';
+
+// ── Craw card illustration & battle sprites (green-screen → chroma key) ──────
+const CRAW_CARD_ILUST  = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919641/ChatGPT_Image_May_5_2026_01_27_29_AM_axdemu.png';
+const CRAW_IDLE_BATTLE = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919783/ChatGPT_Image_May_5_2026_01_26_59_AM_zfdewm.png';
+const CRAW_ACTION      = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919799/ChatGPT_Image_May_5_2026_01_27_08_AM_p8yjub.png';
+
+// ── Lucas skill icons (CORRECT URLs — v1777550xxx series) ─────────────────────
+const LUCAS_SK1 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550813/s1lukas_wrrnuo.png';
+const LUCAS_SK2 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550848/ChatGPT_Image_Apr_30_2026_07_02_57_PM_kbtfs3.png';
+const LUCAS_SK3 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550841/psvluk_b0quhw.png';
+const LUCAS_ULT = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550833/ultlukas_jcehyx.png';
+
+// ── Emma skill icons ──────────────────────────────────────────────────────────
+const EMMA_SK1 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550127/s1emma_1d4245.png';
+const EMMA_SK2 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550505/ChatGPT_Image_Apr_30_2026_06_53_05_PM_s9ssbz.png';
+const EMMA_SK3 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550512/ChatGPT_Image_Apr_30_2026_ffPM_m405s1.png';
+const EMMA_ULT = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550533/ultema_vshlxt.png';
+
+// ── Rock Slime skill icons ────────────────────────────────────────────────────
+const RSLIME_SK1 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777565812/s1rlime_hfstrz.png';
+const RSLIME_SK2 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777565820/s2rslime_shjl5b.png';
+const RSLIME_SK3 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777565826/s3rslime_vip7sb.png';
+const RSLIME_ULT = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777565833/s4rslime_duuc2g.png';
+
+// ── Acid Slime skill icons ────────────────────────────────────────────────────
+const ASLIME_SK1 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777806549/sk1acd_nqz0x5.png';
+const ASLIME_SK2 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777806563/sk2acd_x4d8qu.png';
+const ASLIME_SK3 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777806571/sk3acd_gh45ki.png';
+const ASLIME_ULT = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777806578/sk4acd_mcmpzu.png';
+
+// ── Water Slime skill icons ───────────────────────────────────────────────────
+const WSLIME_SK1 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777807420/sk1wtr.pg_fbx8a0.png';
+const WSLIME_SK2 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777807428/sk2wtr_vmi777.png';
+const WSLIME_SK3 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777807444/sk3wtr_fedwpe.png';
+const WSLIME_ULT = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777807456/sk4wtr_fbixax.png';
+
+// ── Battle hero idle sprites (green-screen, used with chroma key in battle) ───
+const LUCAS_IDLE_BATTLE = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777630336/idle_luk_mobysy.png';
+const EMMA_IDLE_BATTLE  = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777630434/idle_em_p8uxjs.png';
+// Lucas action — server-side background removal (no chroma key needed)
+const LUCAS_ACTION      = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777631550/act_luc_mhmivj.png';
+// Emma action — green-screen, chroma key
+const EMMA_ACTION       = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777630357/act_em_fnrl1t.png';
+
+// ── Enemy idle sprites — server-side bgremove ─────────────────────────────────
+const RSLIME_IDLE = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777634810/Gemini_Generated_Image_c7qsl1c7qsl1c7qs_mekkjz.png';
+const ASLIME_IDLE = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777634782/ChatGPT_Image_May_1_2026_06_25_59_PM_dsoxsd.png';
+const WSLIME_IDLE = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777545810/ChatGPT_Image_Apr_30_2026_05_40_35_PM_w370l3.png';
+
+// ── Slime gallery card illustrations (f_auto version for HeroPage) ────────────
+const RSLIME_CARD = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777545681/ChatGPT_Image_Apr_30_2026_05_38_28_PM_wzt4ox.png';
+const ASLIME_CARD = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777545738/ChatGPT_Image_Apr_30_2026_05_39_48_PM_oq2njh.png';
+const WSLIME_CARD = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777545810/ChatGPT_Image_Apr_30_2026_05_40_35_PM_w370l3.png';
+
+// ── Audio SFX URLs ────────────────────────────────────────────────────────────
+const BTN_SFX_URL        = 'https://res.cloudinary.com/dhkethrmc/video/upload/f_auto,q_auto/v1777874441/emilianodleon-select-button-ui-395763_zildua.mp3';
+const CARD_SFX_URL       = 'https://res.cloudinary.com/dhkethrmc/video/upload/v1777817847/freesound_community-card-sounds-35956_xd0rrn.mp3';
+const BACK_SFX_URL       = 'https://res.cloudinary.com/dhkethrmc/video/upload/f_auto,q_auto/v1777817753/dragon-studio-button-press-382713_rd1cyr.mp3';
+const START_BATTLE_URL   = 'https://res.cloudinary.com/dhkethrmc/video/upload/v1777824497/dragon-studio-sword-slice-2-393845_xq3npe.mp3';
+const LUCAS_ATTACK_URL   = 'https://res.cloudinary.com/dhkethrmc/video/upload/v1777817667/freesound_community-hit-swing-sword-small-2-95566_ewoib0.mp3';
+const BULLET_SFX_URL     = 'https://res.cloudinary.com/dhkethrmc/video/upload/f_auto,q_auto/v1777825985/u_xpdo8dyg08-bullet-382829_kgh16n.mp3';
+const HEAL_SFX_URL       = 'https://res.cloudinary.com/dhkethrmc/video/upload/f_auto,q_auto/v1777826228/yodguard-healing-magic-3-378664_o03eoj.mp3';
+const WATER_SFX_URL      = 'https://res.cloudinary.com/dhkethrmc/video/upload/f_auto,q_auto/v1777826345/freesound_community-water-splash-46402_v24mak.mp3';
+const SHIELD_SFX_URL     = 'https://res.cloudinary.com/dhkethrmc/video/upload/f_auto,q_auto/v1777826444/freesound_community-shield-guard-6963_xywxza.mp3';
+const PUNCH_SFX_URL      = 'https://res.cloudinary.com/dhkethrmc/video/upload/f_auto,q_auto/v1777872406/soraatwod-punch-416719_al8u2e.mp3';
+const BATTLE_BGM_URL     = 'https://res.cloudinary.com/dhkethrmc/video/upload/f_auto,q_auto/v1777872315/backgroundmusicforvideos-epic-background-music-484342_qc73ue.mp3';
+const VICTORY_SFX_URL    = 'https://res.cloudinary.com/dhkethrmc/video/upload/f_auto,q_auto/v1777872713/universfield-open-new-level-143027_d9hese.mp3';
+const DEFEAT_SFX_URL     = 'https://res.cloudinary.com/dhkethrmc/video/upload/f_auto,q_auto/v1777872778/universfield-marimba-lose-250960_s2ocax.mp3';
 
 const STATIC_IMGS: string[] = [
-  SPLASH_IMG, INTRO_BG, GAME_BG, HERO_DETAIL_BG,
-  LOGIN_BG,
+  // ── Backgrounds ──
+  SPLASH_IMG, INTRO_BG, GAME_BG, HERO_DETAIL_BG, LOGIN_BG,
+  // ── Skill icons — Lucas (correct v1777550xxx URLs) ──
   LUCAS_SK1, LUCAS_SK2, LUCAS_SK3, LUCAS_ULT,
+  // ── Skill icons — Emma ──
+  EMMA_SK1, EMMA_SK2, EMMA_SK3, EMMA_ULT,
+  // ── Skill icons — Rock Slime ──
+  RSLIME_SK1, RSLIME_SK2, RSLIME_SK3, RSLIME_ULT,
+  // ── Skill icons — Acid Slime ──
+  ASLIME_SK1, ASLIME_SK2, ASLIME_SK3, ASLIME_ULT,
+  // ── Skill icons — Water Slime ──
+  WSLIME_SK1, WSLIME_SK2, WSLIME_SK3, WSLIME_ULT,
+  // ── Battle hero sprites ──
+  LUCAS_IDLE_BATTLE, EMMA_IDLE_BATTLE, LUCAS_ACTION, EMMA_ACTION,
+  GORR_IDLE_BATTLE, GORR_ACTION,
+  CRAW_IDLE_BATTLE, CRAW_ACTION,
+  // ── Enemy idle sprites ──
+  RSLIME_IDLE, ASLIME_IDLE, WSLIME_IDLE,
+  // ── Gallery card illustrations (slimes) ──
+  RSLIME_CARD, ASLIME_CARD, WSLIME_CARD,
 ];
 
 const TOTAL = STATIC_IMGS.length
   + 1 /*lucas card*/ + LUCAS_FRAMES.length + 1 /*lucas chroma*/
-  + 1 /*emma card*/  + EMMA_FRAMES.length  + 1 /*emma chroma*/;
+  + 1 /*emma card*/  + EMMA_FRAMES.length  + 1 /*emma chroma*/
+  + 1 /*tavern banner chroma*/
+  + 1 /*gorr card chroma*/
+  + 1 /*craw card chroma*/;
 
 const MAX_WAIT_MS = 30_000;
 
@@ -172,7 +263,67 @@ export default function LoadingPage() {
     emmaCardImg.onerror = onSettled;
     emmaCardImg.src     = EMMA_CARD_ILUST;
 
-    // ── 4. Lucas sprite frames ────────────────────────────────────────────────
+    // ── 4. Tavern banner — load + build chroma inline ─────────────────────────
+    const tavernBannerImg = new Image();
+    tavernBannerImg.crossOrigin = 'anonymous';
+    tavernBannerImg.onload = () => {
+      const off = document.createElement('canvas');
+      off.width  = tavernBannerImg.naturalWidth;
+      off.height = tavernBannerImg.naturalHeight;
+      const ctx  = off.getContext('2d', { willReadFrequently: true });
+      if (ctx) {
+        ctx.drawImage(tavernBannerImg, 0, 0);
+        const id = ctx.getImageData(0, 0, off.width, off.height);
+        applyChromaKey(id.data);
+        ctx.putImageData(id, 0, 0);
+        keepChromaUrl(BANNER_TAVERN, off.toDataURL('image/png'));
+      }
+      onSettled();
+    };
+    tavernBannerImg.onerror = onSettled;
+    tavernBannerImg.src     = BANNER_TAVERN;
+
+    // ── 5. Gorr card illustration — load + build chroma inline ───────────────
+    const gorrCardImg = new Image();
+    gorrCardImg.crossOrigin = 'anonymous';
+    gorrCardImg.onload = () => {
+      const off = document.createElement('canvas');
+      off.width  = gorrCardImg.naturalWidth;
+      off.height = gorrCardImg.naturalHeight;
+      const ctx  = off.getContext('2d', { willReadFrequently: true });
+      if (ctx) {
+        ctx.drawImage(gorrCardImg, 0, 0);
+        const id = ctx.getImageData(0, 0, off.width, off.height);
+        applyChromaKey(id.data);
+        ctx.putImageData(id, 0, 0);
+        keepChromaUrl(GORR_CARD_ILUST, off.toDataURL('image/png'));
+      }
+      onSettled();
+    };
+    gorrCardImg.onerror = onSettled;
+    gorrCardImg.src     = GORR_CARD_ILUST;
+
+    // ── 6. Craw card illustration — load + build chroma inline ───────────────
+    const crawCardImg = new Image();
+    crawCardImg.crossOrigin = 'anonymous';
+    crawCardImg.onload = () => {
+      const off = document.createElement('canvas');
+      off.width  = crawCardImg.naturalWidth;
+      off.height = crawCardImg.naturalHeight;
+      const ctx  = off.getContext('2d', { willReadFrequently: true });
+      if (ctx) {
+        ctx.drawImage(crawCardImg, 0, 0);
+        const id = ctx.getImageData(0, 0, off.width, off.height);
+        applyChromaKey(id.data);
+        ctx.putImageData(id, 0, 0);
+        keepChromaUrl(CRAW_CARD_ILUST, off.toDataURL('image/png'));
+      }
+      onSettled();
+    };
+    crawCardImg.onerror = onSettled;
+    crawCardImg.src     = CRAW_CARD_ILUST;
+
+    // ── 7. Lucas sprite frames ────────────────────────────────────────────────
     let lucasSpriteDone = 0;
     LUCAS_FRAMES.forEach((src, i) => {
       const existing = lucasImgCache[i];
@@ -193,7 +344,7 @@ export default function LoadingPage() {
       img.src = src;
     });
 
-    // ── 5. Emma sprite frames ─────────────────────────────────────────────────
+    // ── 8. Emma sprite frames ─────────────────────────────────────────────────
     let emmaSpriteDone = 0;
     EMMA_FRAMES.forEach((src, i) => {
       const existing = emmaImgCache[i];
@@ -214,8 +365,17 @@ export default function LoadingPage() {
       img.src = src;
     });
 
-    // ── 6. Preload BGM ────────────────────────────────────────────────────────
+    // ── 9. Preload BGM ────────────────────────────────────────────────────────
     preloadBgm();
+
+    // ── 10. Preload all SFX audio ──────────────────────────────────────────────
+    [BTN_SFX_URL, CARD_SFX_URL, BACK_SFX_URL, START_BATTLE_URL, LUCAS_ATTACK_URL,
+     BULLET_SFX_URL, HEAL_SFX_URL, WATER_SFX_URL, SHIELD_SFX_URL,
+     PUNCH_SFX_URL, BATTLE_BGM_URL, VICTORY_SFX_URL, DEFEAT_SFX_URL].forEach(url => {
+      const a = new Audio(url);
+      a.preload = 'auto';
+      a.load();
+    });
 
     const safetyTimer = setTimeout(() => {
       if (navigatedRef.current) return;
@@ -233,7 +393,7 @@ export default function LoadingPage() {
   return (
     <div style={{
       width: '100%', height: '100dvh',
-      background: '#ffffff',
+      background: '#0d0a0f',
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
       gap: 'clamp(14px, 3vh, 32px)',
@@ -249,7 +409,7 @@ export default function LoadingPage() {
         }
       `}</style>
 
-      {/* ── "Loading" + dots row ──────────────────────────────────────────── */}
+      {/* ── \"Loading\" + dots row ──────────────────────────────────────────── */}
       <div style={{
         display: 'flex', alignItems: 'center',
         gap: 'clamp(8px, 1.5vw, 20px)',
@@ -261,12 +421,13 @@ export default function LoadingPage() {
           fontSize: 'clamp(36px, min(10vw, 14vh), 14vh)',
           fontWeight: 900,
           color: '#ffffff',
-          WebkitTextStroke: '7px #000000',
+          WebkitTextStroke: '5px #F97316',
           paintOrder: 'stroke fill',
           letterSpacing: '0.03em',
           userSelect: 'none',
           display: 'block',
           lineHeight: 1,
+          textShadow: '0 0 48px rgba(249,115,22,0.55)',
         }}>Loading</span>
 
         {/* 4 bouncing dots */}
@@ -281,10 +442,11 @@ export default function LoadingPage() {
               width:  'clamp(8px, 1.4vw, 18px)',
               height: 'clamp(8px, 1.4vw, 18px)',
               borderRadius: '50%',
-              background: '#000000',
-              outline: '2.5px solid #000000',
+              background: '#F97316',
+              outline: '2.5px solid rgba(249,115,22,0.4)',
               outlineOffset: '2px',
               boxSizing: 'border-box',
+              boxShadow: '0 0 8px rgba(249,115,22,0.7)',
               animation: `ldDot ${DOT_DUR}ms ease-in-out infinite`,
               animationDelay: i % 2 === 0 ? `-${DOT_DUR / 2}ms` : '0ms',
             }}/>
@@ -296,7 +458,7 @@ export default function LoadingPage() {
       <div style={{
         width: 'clamp(240px, 40vw, 500px)',
         height: 'clamp(14px, 2.4vh, 26px)',
-        background: '#000000',
+        background: 'rgba(255,255,255,0.08)',
         borderRadius: '999px',
         padding: '3px',
         boxSizing: 'border-box',

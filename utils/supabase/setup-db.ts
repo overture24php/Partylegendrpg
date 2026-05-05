@@ -111,6 +111,8 @@ export async function upsertProfile(p: {
   hero_exp: number;
   vip_level?: number;
   vip_exp?: number;
+  breakthrough_stones?: number;
+  chapter1_progress?: number;
 }): Promise<{ err?: string }> {
   try {
     const res = await fetch(`${REST}/profiles`, {
@@ -134,6 +136,8 @@ export async function upsertProfile(p: {
         hero_exp: Math.round(p.hero_exp),
         vip_level: Math.round(p.vip_level ?? 0),
         vip_exp:   Math.round(p.vip_exp   ?? 0),
+        breakthrough_stones: Math.round(p.breakthrough_stones ?? 0),
+        // chapter1_progress intentionally NOT sent here — server-authoritative
       }),
     });
     if (!res.ok) {
@@ -152,7 +156,7 @@ export async function fetchProfile(userId: string): Promise<{
     id: string; email: string; username: string; nickname: string;
     level: number; xp: number; maxXp: number; exp_percentage: number;
     gold: number; gems: number; power: number; hero_exp: number; createdAt: string;
-    vip_level: number; vip_exp: number;
+    vip_level: number; vip_exp: number; breakthrough_stones: number; chapter1_progress: number;
   };
   err?: string;
 }> {
@@ -178,13 +182,15 @@ export async function fetchProfile(userId: string): Promise<{
         xp:             Number(d.xp ?? 0),
         maxXp:          Number(d.max_xp ?? 100),
         exp_percentage: Number(d.exp_percentage ?? 0),
-        gold:           Math.round(Number(d.gold ?? 500)),
-        gems:           Math.round(Number(d.gems ?? 30)),
+        gold:           Math.round(Number(d.gold ?? 0)),
+        gems:           Math.round(Number(d.gems ?? 0)),
         power:          Math.round(Number(d.power ?? 0)),
         hero_exp:       Math.round(Number(d.hero_exp ?? 0)),
         createdAt:      String(d.created_at ?? new Date().toISOString()),
         vip_level:      Math.round(Number(d.vip_level ?? 0)),
         vip_exp:        Math.round(Number(d.vip_exp   ?? 0)),
+        breakthrough_stones: Math.round(Number(d.breakthrough_stones ?? 0)),
+        chapter1_progress:   Math.round(Number(d.chapter1_progress ?? 0)),
       },
     };
   } catch (e) {
@@ -219,25 +225,29 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   email          TEXT NOT NULL,
   username       TEXT UNIQUE NOT NULL,
   nickname       TEXT DEFAULT 'New Player',
-  level          INTEGER DEFAULT 0,
+  level          INTEGER DEFAULT 1,
   xp             INTEGER DEFAULT 0,
   max_xp         INTEGER DEFAULT 100,
   exp_percentage INTEGER DEFAULT 0,
-  gold           INTEGER DEFAULT 500,
-  gems           INTEGER DEFAULT 30,
+  gold           INTEGER DEFAULT 0,
+  gems           INTEGER DEFAULT 0,
   power          INTEGER DEFAULT 0,
   hero_exp       INTEGER DEFAULT 0,
   createdAt      TIMESTAMPTZ DEFAULT NOW(),
   updated_at     TIMESTAMPTZ DEFAULT NOW(),
   vip_level      INTEGER DEFAULT 0,
-  vip_exp        INTEGER DEFAULT 0
+  vip_exp        INTEGER DEFAULT 0,
+  breakthrough_stones INTEGER DEFAULT 0,
+  chapter1_progress   INTEGER DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_profiles_username ON public.profiles(username);
 
--- Migration: add VIP columns to existing tables
+-- Migration: add new columns to existing tables
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS vip_level INTEGER DEFAULT 0;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS vip_exp   INTEGER DEFAULT 0;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS breakthrough_stones INTEGER DEFAULT 0;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS chapter1_progress   INTEGER DEFAULT 0;
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
@@ -275,7 +285,7 @@ BEGIN
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'username', SPLIT_PART(NEW.email, '@', 1)),
     'New Player',
-    0, 0, 100, 0, 500, 30, 0, 0, 0, 0
+    0, 0, 100, 0, 0, 0, 0, 0, 0, 0
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;

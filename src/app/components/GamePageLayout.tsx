@@ -13,6 +13,7 @@ import {
   getBgmEnabled, setBgmEnabled,
   getBgmVolume,   setBgmVolume,
 } from './BgmController';
+import { playBtnSound } from '../utils/buttonSound';
 
 // ─── Grid / layout constants (match GameStartPage) ────────────────────────────
 const COLS  = 8;
@@ -196,38 +197,34 @@ export function GamePageLayout({ children, activeTab, hidePlayerInfo, hideNav, h
         <div style={{ position:'absolute', top:'38%', left:0, right:0, textAlign:'center', color:'#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'clamp(6px,1.3vw,13px)', fontWeight:800, pointerEvents:'none', lineHeight:1 }}>{user?.vip_level ?? 0}</div>
       </div>}
 
+      {/* ── Social Icons Dark Bar ──────────────────────────────────────────── */}
+      {!hidePlayerInfo && <div style={{ position:'absolute', left:`calc(${(2.475/COLS)*100}% - 1.4vw)`, top:`calc(${(0.5/ROWS)*100}% - 1.5625vw)`, width:`calc(${(0.75/COLS)*100}% + 6vw)`, height:'3.125vw', zIndex:5, pointerEvents:'none', background:'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.72) 18%, rgba(0,0,0,0.82) 50%, rgba(0,0,0,0.72) 82%, transparent 100%)', borderRadius:2 }}/>}
+
       {/* ── CS Button ─────────────────────────────────────────────────────── */}
       {!hidePlayerInfo && <div style={{ position:'absolute', left:`${(2.475/COLS)*100}%`, top:`calc(${(0.5/ROWS)*100}% - 1.5625vw)`, width:'3.125vw', height:'3.125vw', zIndex:6, cursor:'pointer', pointerEvents:'auto' }}>
-        <svg viewBox="0 0 100 100" style={{ position:'absolute', inset:0, width:'100%', height:'100%' }}>
-          <circle cx="50" cy="50" r="47" fill="#29B6F6" stroke="#ffffff" strokeWidth="4"/>
-          <g transform="translate(50,50) scale(0.75) translate(-50,-50)">
-            <path d="M 18,54 C 18,16 82,16 82,54" stroke="white" strokeWidth="9" fill="none" strokeLinecap="round"/>
-            <rect x="6" y="47" width="18" height="24" rx="6" fill="white"/>
-            <rect x="76" y="47" width="18" height="24" rx="6" fill="white"/>
-            <path d="M 24,69 Q 24,86 44,86" stroke="white" strokeWidth="7" fill="none" strokeLinecap="round"/>
-            <circle cx="44" cy="86" r="6" fill="white"/>
+        <svg viewBox="0 0 74 74" style={{ position:'absolute', inset:0, width:'100%', height:'100%' }}>
+          <rect fill="#DD344C" x="5" y="5" width="64" height="64"/>
+          <rect stroke="#879196" strokeWidth="2" x="1" y="1" width="72" height="72" fill="none"/>
+          <g transform="translate(16.650000, 14.900000)" fill="#FFFFFF">
+            <path d="M2.66230657,42.032 C6.63430657,35.062 13.0963066,30.907 20.2163066,30.831 C24.0953066,30.75 27.9183066,32.007 31.2663066,34.353 C33.9013066,36.199 36.2323066,38.855 38.0693066,42.091 L2.66230657,42.032 Z M9.63430657,17.743 C9.63430657,11.876 14.4073066,7.102 20.2743066,7.102 C26.1413066,7.102 30.9153066,11.876 30.9153066,17.743 C30.9153066,19.778 30.3223066,21.758 29.2403066,23.456 C28.7933066,23.191 28.2783066,23.029 27.7223066,23.029 L24.6783066,23.029 C23.0233066,23.029 21.6783066,24.375 21.6783066,26.029 C21.6783066,26.845 22.0073066,27.583 22.5373066,28.124 C21.7953066,28.285 21.0383066,28.384 20.2743066,28.384 C14.4073066,28.384 9.63430657,23.611 9.63430657,17.743 L9.63430657,17.743 Z M7.36730657,22.029 L6.77830657,22.029 C5.44930657,22.029 4.36730657,20.973 4.36730657,19.675 L4.36730657,17.383 C4.36730657,16.085 5.44930657,15.029 6.77830657,15.029 L7.36730657,15.029 L7.36730657,22.029 Z M20.3333066,2 C27.0813066,2 32.9033066,6.727 34.2263066,13.056 C34.1353066,13.05 34.0493066,13.029 33.9563066,13.029 L32.3673066,13.029 C32.2443066,13.029 32.1293066,13.058 32.0203066,13.099 C30.1643066,8.422 25.6043066,5.102 20.2743066,5.102 C14.9583066,5.102 10.4063066,8.406 8.54230657,13.064 C8.48330657,13.054 8.42930657,13.029 8.36730657,13.029 L6.77830657,13.029 C6.66530657,13.029 6.55830657,13.054 6.44630657,13.062 C7.80630657,6.711 13.6423066,2 20.3333066,2 L20.3333066,2 Z M36.3673066,17.383 L36.3673066,19.675 C36.3673066,20.973 35.2853066,22.029 33.9563066,22.029 L33.3673066,22.029 L33.3673066,15.029 L33.9563066,15.029 C35.2853066,15.029 36.3673066,16.085 36.3673066,17.383 L36.3673066,17.383 Z M31.7013066,26.029 L30.7223066,26.029 C30.7223066,25.7 30.6553066,25.389 30.5573066,25.093 C30.9173066,24.59 31.2293066,24.059 31.5093066,23.513 C31.6813066,23.816 31.9933066,24.029 32.3673066,24.029 L33.9563066,24.029 C34.1343066,24.029 34.3033066,23.998 34.4763066,23.977 C33.9983066,25.098 33.1183066,26.029 31.7013066,26.029 L31.7013066,26.029 Z M27.7223066,27.029 L24.6783066,27.029 C24.1263066,27.029 23.6783066,26.58 23.6783066,26.029 C23.6783066,25.478 24.1263066,25.029 24.6783066,25.029 L27.7223066,25.029 C28.2733066,25.029 28.7223066,25.478 28.7223066,26.029 C28.7223066,26.58 28.2733066,27.029 27.7223066,27.029 L27.7223066,27.029 Z M40.6303066,42.649 C38.5473066,38.456 35.7053066,35.021 32.4143066,32.715 C30.1543066,31.132 27.6943066,30.015 25.1393066,29.397 C25.4073066,29.285 25.6703066,29.16 25.9313066,29.029 L27.7223066,29.029 C28.6053066,29.029 29.3923066,28.638 29.9413066,28.029 L31.7013066,28.029 C34.7383066,28.029 36.4393066,25.525 36.8333066,22.948 C37.7653066,22.149 38.3673066,20.985 38.3673066,19.675 L38.3673066,17.383 C38.3673066,15.866 37.5753066,14.531 36.3793066,13.751 L36.3733066,13.666 C35.2553066,5.875 28.3593066,-3.55271368e-15 20.3333066,-3.55271368e-15 C12.4253066,-3.55271368e-15 5.54330657,5.78 4.34630657,13.352 L4.21730657,13.852 C3.10130657,14.643 2.36730657,15.927 2.36730657,17.383 L2.36730657,19.675 C2.36730657,22.075 4.34630657,24.029 6.77830657,24.029 L8.36730657,24.029 C8.67130657,24.029 8.93430657,23.886 9.11830657,23.672 C10.4983066,26.26 12.7523066,28.311 15.4833066,29.435 C9.06430657,31.026 3.50730657,35.701 0.103306572,42.586 C-0.0496934283,42.896 -0.0316934283,43.262 0.150306572,43.556 C0.332306572,43.849 0.653306572,44.029 0.998306572,44.029 L39.7323066,44.094 L39.7343066,44.094 C40.0803066,44.094 40.4013066,43.915 40.5843066,43.621 C40.7663066,43.327 40.7843066,42.959 40.6303066,42.649 L40.6303066,42.649 Z"/>
           </g>
         </svg>
       </div>}
 
       {/* ── Discord Button ────────────────────────────────────────────────── */}
       {!hidePlayerInfo && <div style={{ position:'absolute', left:`${(2.85/COLS)*100}%`, top:`calc(${(0.5/ROWS)*100}% - 1.5625vw)`, width:'3.125vw', height:'3.125vw', zIndex:6, cursor:'pointer', pointerEvents:'auto' }}>
-        <svg viewBox="0 0 100 100" style={{ position:'absolute', inset:0, width:'100%', height:'100%' }}>
-          <circle cx="50" cy="50" r="47" fill="#29B6F6" stroke="#ffffff" strokeWidth="4"/>
-          <g transform="translate(50,50) scale(0.75) translate(-50,-50)">
-            <path d="M 20,32 C 20,17 30,10 40,10 C 43,10 46,11 48,13 C 49,13 50,14 50,14 C 50,14 51,13 52,13 C 54,11 57,10 60,10 C 70,10 80,17 80,32 L 80,63 C 80,75 71,83 62,85 L 62,93 L 50,84 L 38,93 L 38,85 C 29,83 20,75 20,63 Z" fill="white"/>
-            <ellipse cx="38" cy="48" rx="8" ry="9" fill="#29B6F6"/>
-            <ellipse cx="62" cy="48" rx="8" ry="9" fill="#29B6F6"/>
-          </g>
+        <svg viewBox="0 0 256 199" style={{ position:'absolute', inset:0, width:'100%', height:'100%' }} preserveAspectRatio="xMidYMid">
+          <path d="M216.856 16.597A208.502 208.502 0 0 0 164.042 0c-2.275 4.113-4.933 9.645-6.766 14.046-19.692-2.961-39.203-2.961-58.533 0-1.832-4.4-4.55-9.933-6.846-14.046a207.809 207.809 0 0 0-52.855 16.638C5.618 67.147-3.443 116.4 1.087 164.956c22.169 16.555 43.653 26.612 64.775 33.193A161.094 161.094 0 0 0 79.735 175.3a136.413 136.413 0 0 1-21.846-10.632 108.636 108.636 0 0 0 5.356-4.237c42.122 19.702 87.89 19.702 129.51 0a131.66 131.66 0 0 0 5.355 4.237 136.07 136.07 0 0 1-21.886 10.653c4.006 8.02 8.638 15.67 13.873 22.848 21.142-6.58 42.646-16.637 64.815-33.213 5.316-56.288-9.08-105.09-38.056-148.36ZM85.474 135.095c-12.645 0-23.015-11.805-23.015-26.18s10.149-26.2 23.015-26.2c12.867 0 23.236 11.804 23.015 26.2.02 14.375-10.148 26.18-23.015 26.18Zm85.051 0c-12.645 0-23.014-11.805-23.014-26.18s10.148-26.2 23.014-26.2c12.867 0 23.236 11.804 23.015 26.2 0 14.375-10.148 26.18-23.015 26.18Z" fill="#5865F2"/>
         </svg>
       </div>}
 
       {/* ── Facebook Button ───────────────────────────────────────────────── */}
       {!hidePlayerInfo && <div style={{ position:'absolute', left:`${(3.225/COLS)*100}%`, top:`calc(${(0.5/ROWS)*100}% - 1.5625vw)`, width:'3.125vw', height:'3.125vw', zIndex:6, cursor:'pointer', pointerEvents:'auto' }}>
-        <svg viewBox="0 0 100 100" style={{ position:'absolute', inset:0, width:'100%', height:'100%' }}>
-          <circle cx="50" cy="50" r="47" fill="#1877F2" stroke="#ffffff" strokeWidth="4"/>
-          <g transform="translate(50,50) scale(-0.75,0.75) translate(-50,-50)">
-            <path fill="white" d="M 57,30 C 45,30 37,22 39,12 C 41,4 62,4 72,14 L 72,30 L 72,90 L 57,90 L 57,62 L 35,62 L 35,50 L 57,50 Z"/>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 666.667 666.667" style={{ position:'absolute', inset:0, width:'100%', height:'100%' }}>
+          <defs><clipPath id={`${pfx}-fb-clip`} clipPathUnits="userSpaceOnUse"><path d="M0 700h700V0H0Z"/></clipPath></defs>
+          <g clipPath={`url(#${pfx}-fb-clip)`} transform="matrix(1.33333 0 0 -1.33333 -133.333 800)">
+            <path d="M0 0c0 138.071-111.929 250-250 250S-500 138.071-500 0c0-117.245 80.715-215.622 189.606-242.638v166.242h-51.552V0h51.552v32.919c0 85.092 38.508 124.532 122.048 124.532 15.838 0 43.167-3.105 54.347-6.211V81.986c-5.901.621-16.149.932-28.882.932-40.993 0-56.832-15.528-56.832-55.9V0h81.659l-14.028-76.396h-67.631v-171.773C-95.927-233.218 0-127.818 0 0" style={{fill:'#0866ff',fillOpacity:1,fillRule:'nonzero',stroke:'none'}} transform="translate(600 350)"/>
+            <path d="m0 0 14.029 76.396H-67.63v27.019c0 40.372 15.838 55.899 56.831 55.899 12.733 0 22.981-.31 28.882-.931v69.253c-11.18 3.106-38.509 6.212-54.347 6.212-83.539 0-122.048-39.441-122.048-124.533V76.396h-51.552V0h51.552v-166.242a250.559 250.559 0 0 1 60.394-7.362c10.254 0 20.358.632 30.288 1.831V0Z" style={{fill:'#fff',fillOpacity:1,fillRule:'nonzero',stroke:'none'}} transform="translate(447.918 273.604)"/>
           </g>
         </svg>
       </div>}
@@ -251,8 +248,9 @@ export function GamePageLayout({ children, activeTab, hidePlayerInfo, hideNav, h
             <span style={{ color:'#ffdd88', fontFamily:"'Roboto Condensed',sans-serif", fontSize:'11px', fontWeight:600, textShadow:'0 1px 3px rgba(0,0,0,0.8)', whiteSpace:'nowrap' }}>Lv. {user?.level ?? 0}</span>
             {(() => {
               const curXp = user?.xp ?? 0;
-              const maxXp = (user?.maxXp && user.maxXp > 0) ? user.maxXp : getMaxXpForLevel(user?.level ?? 0);
-              const fillW = Math.min(100, maxXp > 0 ? (curXp / maxXp) * 100 : 0);
+              const maxXp = (user?.maxXp && user.maxXp > 0) ? user.maxXp : getMaxXpForLevel(user?.level ?? 1);
+              // Cap display at 99% — bar never shows 100% without a real level-up
+              const fillW = maxXp > 0 ? Math.min(99, (curXp / maxXp) * 100) : 0;
               return (
                 <>
                   <div style={{ position:'relative', flexGrow:1, maxWidth:'55%' }}>
@@ -262,7 +260,7 @@ export function GamePageLayout({ children, activeTab, hidePlayerInfo, hideNav, h
                       {fillW > 0 && <rect x="0" y="0" width={fillW} height="4" fill="rgba(255,255,255,0.18)" rx="2"/>}
                     </svg>
                   </div>
-                  <span style={{ color:'#7dd3fc', fontFamily:"'Roboto Condensed',sans-serif", fontSize:'11px', fontWeight:600, textShadow:'0 1px 3px rgba(0,0,0,0.8)', whiteSpace:'nowrap' }}>{Math.round(fillW)}%</span>
+                  <span style={{ color:'#7dd3fc', fontFamily:"'Roboto Condensed',sans-serif", fontSize:'11px', fontWeight:600, textShadow:'0 1px 3px rgba(0,0,0,0.8)', whiteSpace:'nowrap' }}>{Math.floor(fillW)}%</span>
                 </>
               );
             })()}
@@ -353,7 +351,7 @@ export function GamePageLayout({ children, activeTab, hidePlayerInfo, hideNav, h
       {!hideDropdown && <div style={{ position:'absolute', left:`${(7.5/COLS)*100}%`, top:0, width:`${(0.5/COLS)*100}%`, height: menuOpen ? `${(5/ROWS)*100}%` : `${(1/ROWS)*100}%`, zIndex:10, pointerEvents:'none' }}>
 
         {!menuOpen && (
-          <div onClick={() => setMenuOpen(true)} style={{ position:'absolute', inset:0, cursor:'pointer', pointerEvents:'auto' }}>
+          <div onClick={() => { playBtnSound(); setMenuOpen(true); }} style={{ position:'absolute', inset:0, cursor:'pointer', pointerEvents:'auto' }}>
             <svg viewBox="0 0 50 100" preserveAspectRatio="none" style={{ position:'absolute', inset:0, width:'100%', height:'100%' }}>
               <path d="M 10,0 L 40,0 Q 50,0 50,10 L 50,76 L 25,100 L 0,76 L 0,10 Q 0,0 10,0 Z" fill={`url(#${pfx}-dm-pill)`} stroke="rgba(255,215,0,0.88)" strokeWidth="2.2" strokeLinejoin="round"/>
               <line x1="16" y1="36" x2="34" y2="36" stroke="rgba(255,215,0,0.5)" strokeWidth="1.2" strokeLinecap="round"/>
@@ -374,7 +372,7 @@ export function GamePageLayout({ children, activeTab, hidePlayerInfo, hideNav, h
               <polyline points="15,480 25,494 35,480" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             {/* QUEST */}
-            <div style={{ position:'absolute', top:'0%', height:'20%', left:0, right:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'4px', cursor:'pointer', pointerEvents:'auto', zIndex:1 }}>
+            <PressItem style={{ position:'absolute', top:'0%', height:'20%', left:0, right:0, cursor:'pointer', pointerEvents:'auto', zIndex:1 }}>
               <svg width="24" height="27" viewBox="0 0 22 26" fill="none">
                 <path d="M 5,3 L 17,3 Q 19,3 19,5 L 19,23 Q 19,25 17,25 L 5,25 Q 3,25 3,23 L 3,5 Q 3,3 5,3 Z" fill="white"/>
                 <path d="M 3,5 Q 3,1 5,1 L 17,1 Q 19,1 19,3" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
@@ -384,9 +382,9 @@ export function GamePageLayout({ children, activeTab, hidePlayerInfo, hideNav, h
                 <line x1="6" y1="17" x2="12" y2="17" stroke="rgba(0,0,0,0.22)" strokeWidth="1.5"/>
               </svg>
               <span style={{ color:'#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'10.5px', fontWeight:700, letterSpacing:'0.08em', textShadow:'0 1px 3px rgba(0,0,0,0.95)', lineHeight:1 }}>{t('ui.quest')}</span>
-            </div>
+            </PressItem>
             {/* BAG */}
-            <div style={{ position:'absolute', top:'20%', height:'20%', left:0, right:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'4px', cursor:'pointer', pointerEvents:'auto', zIndex:1 }}>
+            <PressItem style={{ position:'absolute', top:'20%', height:'20%', left:0, right:0, cursor:'pointer', pointerEvents:'auto', zIndex:1 }}>
               <svg width="24" height="27" viewBox="0 0 22 26" fill="none">
                 <path d="M 8,5 Q 8,1 11,1 Q 14,1 14,5" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round"/>
                 <path d="M 5,6 L 17,6 Q 19,6 19,8 L 19,22 Q 19,25 17,25 L 5,25 Q 3,25 3,22 L 3,8 Q 3,6 5,6 Z" fill="white"/>
@@ -394,9 +392,9 @@ export function GamePageLayout({ children, activeTab, hidePlayerInfo, hideNav, h
                 <rect x="6" y="15" width="10" height="8" rx="1.5" fill="rgba(0,0,0,0.15)"/>
               </svg>
               <span style={{ color:'#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'10.5px', fontWeight:700, letterSpacing:'0.08em', textShadow:'0 1px 3px rgba(0,0,0,0.95)', lineHeight:1 }}>{t('ui.bag')}</span>
-            </div>
+            </PressItem>
             {/* FRIEND */}
-            <div style={{ position:'absolute', top:'40%', height:'20%', left:0, right:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'4px', cursor:'pointer', pointerEvents:'auto', zIndex:1 }}>
+            <PressItem style={{ position:'absolute', top:'40%', height:'20%', left:0, right:0, cursor:'pointer', pointerEvents:'auto', zIndex:1 }}>
               <svg width="27" height="24" viewBox="0 0 26 22" fill="none">
                 <circle cx="7.5" cy="6" r="3.5" fill="white"/>
                 <path d="M 1,21 Q 1,14 7.5,14 Q 10,14 11.5,15.5 L 11.5,21 Z" fill="white"/>
@@ -405,24 +403,24 @@ export function GamePageLayout({ children, activeTab, hidePlayerInfo, hideNav, h
                 <path d="M 11.5,15.5 Q 13,13 14.5,15.5 L 14.5,21 L 11.5,21 Z" fill="white"/>
               </svg>
               <span style={{ color:'#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'10.5px', fontWeight:700, letterSpacing:'0.08em', textShadow:'0 1px 3px rgba(0,0,0,0.95)', lineHeight:1 }}>{t('ui.friend')}</span>
-            </div>
+            </PressItem>
             {/* MAIL */}
-            <div style={{ position:'absolute', top:'60%', height:'20%', left:0, right:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'4px', cursor:'pointer', pointerEvents:'auto', zIndex:1 }}>
+            <PressItem style={{ position:'absolute', top:'60%', height:'20%', left:0, right:0, cursor:'pointer', pointerEvents:'auto', zIndex:1 }}>
               <svg width="27" height="21" viewBox="0 0 26 20" fill="none">
                 <path d="M 2,3 L 24,3 Q 25,3 25,4 L 25,18 Q 25,19 24,19 L 2,19 Q 1,19 1,18 L 1,4 Q 1,3 2,3 Z" fill="white"/>
                 <path d="M 1,4 L 13,12 L 25,4" fill="none" stroke="rgba(0,0,0,0.18)" strokeWidth="1.8" strokeLinejoin="round"/>
               </svg>
               <span style={{ color:'#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'10.5px', fontWeight:700, letterSpacing:'0.08em', textShadow:'0 1px 3px rgba(0,0,0,0.95)', lineHeight:1 }}>{t('ui.mail')}</span>
-            </div>
+            </PressItem>
             {/* SETTINGS */}
-            <div onClick={() => { setSettingsOpen(true); setMenuOpen(false); }} style={{ position:'absolute', top:'80%', height:'15%', left:0, right:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'4px', cursor:'pointer', pointerEvents:'auto', zIndex:1 }}>
+            <PressItem onClick={() => { setSettingsOpen(true); setMenuOpen(false); }} style={{ position:'absolute', top:'80%', height:'15%', left:0, right:0, cursor:'pointer', pointerEvents:'auto', zIndex:1 }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <path d="M 12,2 L 13.8,5.8 L 17.5,4.2 L 17.8,8.2 L 21.8,9.5 L 19.8,13 L 22,16 L 18.8,17.8 L 19.8,21.8 L 15.8,21.5 L 14,24.5 L 12,22 L 10,24.5 L 8.2,21.5 L 4.2,21.8 L 5.2,17.8 L 2,16 L 4.2,13 L 2.2,9.5 L 6.2,8.2 L 6.5,4.2 L 10.2,5.8 Z" fill="white"/>
                 <circle cx="12" cy="13" r="3.5" fill="rgba(0,0,0,0.6)"/>
               </svg>
               <span style={{ color:'#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'10.5px', fontWeight:700, letterSpacing:'0.08em', textShadow:'0 1px 3px rgba(0,0,0,0.95)', lineHeight:1 }}>{t('ui.settings')}</span>
-            </div>
-            <div onClick={() => setMenuOpen(false)} style={{ position:'absolute', bottom:0, left:0, right:0, height:'5%', cursor:'pointer', pointerEvents:'auto', zIndex:2 }}/>
+            </PressItem>
+            <div onClick={() => { playBtnSound(); setMenuOpen(false); }} style={{ position:'absolute', bottom:0, left:0, right:0, height:'5%', cursor:'pointer', pointerEvents:'auto', zIndex:2 }}/>
           </>
         )}
       </div>}
@@ -549,7 +547,7 @@ export function GamePageLayout({ children, activeTab, hidePlayerInfo, hideNav, h
               <path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round"/>
             </svg>
             <span style={{ color:'#ffffff', fontFamily:"'Playfair Display',serif", fontSize:'clamp(6px,1.1vw,10px)', fontWeight:600, letterSpacing:'0.12em', flex:1, textShadow:'0 1px 4px rgba(0,0,0,0.9)' }}>BGM</span>
-            <div onClick={() => { const next=!bgmEnabled; setBgmEnabledUI(next); setBgmEnabled(next); }} style={{ position:'relative', width:'clamp(28px,5vw,44px)', height:'clamp(14px,2.4vw,22px)', borderRadius:'999px', background:bgmEnabled?'#FF7000':'rgba(255,255,255,0.18)', border:bgmEnabled?'1px solid rgba(255,180,80,0.7)':'1px solid rgba(255,255,255,0.25)', cursor:'pointer', transition:'background 0.22s', flexShrink:0 }}>
+            <div onClick={() => { playBtnSound(); const next=!bgmEnabled; setBgmEnabledUI(next); setBgmEnabled(next); }} style={{ position:'relative', width:'clamp(28px,5vw,44px)', height:'clamp(14px,2.4vw,22px)', borderRadius:'999px', background:bgmEnabled?'#FF7000':'rgba(255,255,255,0.18)', border:bgmEnabled?'1px solid rgba(255,180,80,0.7)':'1px solid rgba(255,255,255,0.25)', cursor:'pointer', transition:'background 0.22s', flexShrink:0 }}>
               <div style={{ position:'absolute', top:'50%', left:bgmEnabled?'calc(100% - clamp(12px,2.1vw,19px) - 1px)':'1px', transform:'translateY(-50%)', width:'clamp(12px,2.1vw,19px)', height:'clamp(12px,2.1vw,19px)', borderRadius:'50%', background:'#ffffff', boxShadow:'0 1px 4px rgba(0,0,0,0.5)', transition:'left 0.22s' }}/>
               <span style={{ position:'absolute', top:'50%', left:bgmEnabled?'4px':'auto', right:bgmEnabled?'auto':'3px', transform:'translateY(-50%)', fontSize:'clamp(4px,0.7vw,7px)', fontFamily:"'Playfair Display',serif", fontWeight:700, color:bgmEnabled?'rgba(255,255,255,0.9)':'rgba(255,255,255,0.5)', pointerEvents:'none' }}>{bgmEnabled?'On':'Off'}</span>
             </div>
@@ -620,11 +618,17 @@ function NavTab({ left, center, tabStyle, pfx, onClick, children }: {
 }) {
   const COLS_LOCAL = 8;
   const ROWS_LOCAL = 12;
+  const [pressed, setPressed] = useState(false);
   return (
     <div
-      onClick={onClick}
+      onClick={() => { playBtnSound(); onClick(); }}
+      onPointerDown={() => setPressed(true)}
+      onPointerUp={() => setPressed(false)}
+      onPointerLeave={() => setPressed(false)}
+      onPointerCancel={() => setPressed(false)}
       style={{ position:'absolute', left, top:center, width:`${(1.6/COLS_LOCAL)*100}%`, height:`${(1/ROWS_LOCAL)*100}%`, transform:'translate(-50%,-50%)', zIndex:5, cursor:'pointer', pointerEvents:'auto' }}
     >
+      {/* Container bg stays as-is — no scale on the box */}
       <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%' }} viewBox="0 0 100 100" preserveAspectRatio="none">
         <rect x="0" y="0" width="100" height="100" fill={tabStyle.background as string ?? 'rgba(0,0,0,0.6)'}/>
         {tabStyle.boxShadow && tabStyle.boxShadow !== 'none' && (
@@ -637,7 +641,48 @@ function NavTab({ left, center, tabStyle, pfx, onClick, children }: {
         <rect x="0" y="97.3" width="100" height="1.5" fill={`url(#${pfx}-border-fade-h)`}/>
         <rect x="0" y="98"   width="100" height="2"   fill={`url(#${pfx}-border-blk-h)`}/>
       </svg>
-      <div style={{ position:'absolute', left:'50%', top:'50%', transform:'translate(-50%,-50%)', display:'flex', flexDirection:'row', alignItems:'center', gap:'4px', pointerEvents:'none', zIndex:1 }}>
+      {/* Only SVG + text inside animate on press */}
+      <div style={{
+        position:'absolute', left:'50%', top:'50%',
+        transform: pressed
+          ? 'translate(-50%,-50%) scale(0.84) translateY(2px)'
+          : 'translate(-50%,-50%) scale(1) translateY(0px)',
+        filter: pressed ? 'brightness(0.72) drop-shadow(0 0 6px rgba(255,180,40,0.5))' : 'none',
+        transition: pressed
+          ? 'transform 0.07s cubic-bezier(0.25,0.46,0.45,0.94), filter 0.07s ease-out'
+          : 'transform 0.26s cubic-bezier(0.34,1.56,0.64,1), filter 0.2s ease-out',
+        display:'flex', flexDirection:'row', alignItems:'center', gap:'4px', pointerEvents:'none', zIndex:1,
+      }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ─── Pressable dropdown menu item — only inner SVG+label animates ─────────────
+function PressItem({ children, style, onClick }: {
+  children: React.ReactNode;
+  style: React.CSSProperties;
+  onClick?: () => void;
+}) {
+  const [pressed, setPressed] = useState(false);
+  return (
+    <div
+      onClick={() => { playBtnSound(); onClick?.(); }}
+      onPointerDown={() => setPressed(true)}
+      onPointerUp={() => setPressed(false)}
+      onPointerLeave={() => setPressed(false)}
+      onPointerCancel={() => setPressed(false)}
+      style={style}
+    >
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px',
+        transform: pressed ? 'scale(0.80) translateY(2px)' : 'scale(1) translateY(0px)',
+        filter: pressed ? 'brightness(0.68) drop-shadow(0 0 7px rgba(255,200,60,0.55))' : 'none',
+        transition: pressed
+          ? 'transform 0.07s cubic-bezier(0.25,0.46,0.45,0.94), filter 0.07s ease-out'
+          : 'transform 0.28s cubic-bezier(0.34,1.56,0.64,1), filter 0.22s ease-out',
+      }}>
         {children}
       </div>
     </div>

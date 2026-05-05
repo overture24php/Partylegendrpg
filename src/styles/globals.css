@@ -10,3 +10,51 @@ text,
 tspan {
   font-family: 'Roboto Condensed', sans-serif !important;
 }
+
+/* ── GAME: Disable ALL drag & text-selection on media elements ─────────── */
+img,
+canvas,
+svg,
+video,
+picture,
+source {
+  -webkit-user-drag: none !important;
+  user-drag: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  draggable: false;
+}
+
+/* Prevent ghost image on any drag attempt */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Touch screen optimization ─────────────────────────────────────────────── */
+/* Prevent double-tap zoom on interactive elements, remove tap delay */
+button,
+a,
+[role="button"],
+[role="tab"],
+input,
+select,
+textarea,
+label {
+  touch-action: manipulation;
+}
+
+/* Minimum tap target 44×44px on all buttons/anchors for mobile ergonomics */
+button,
+a,
+[role="button"] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Smooth momentum scrolling on iOS */
+.scroll-touch {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: scroll;
+}

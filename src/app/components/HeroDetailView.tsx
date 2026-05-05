@@ -4,9 +4,18 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+// ─── Hero gallery is the single source of truth for all hero display data ──────
+import { getHeroById } from '../data/heroGallery';
+import { computeStarBonus, computeFinalStats } from '../constants/balanceEngine';
+import { useHero } from '../context/HeroContext';
 import { useChromaKeyDataUrl } from '../utils/chromaKey';
 import { HeroCardAnimated } from './HeroCardAnimated';
+import { HeroCard, HERO_RARITIES } from './HeroCard';
 import { GamePageLayout } from './GamePageLayout';
+import { HeroLevelUpPanel } from './HeroLevelUpPanel';
+import { HeroResetPanel }  from './HeroResetPanel';
+import { HeroStarUpPanel } from './HeroStarUpPanel';
+import { playBtnSound, playBackSound } from '../utils/buttonSound';
 
 // ─── Number formatter K / M / B ───
 function fmtNum(n: number): string {
@@ -16,119 +25,102 @@ function fmtNum(n: number): string {
   return `${n}`;
 }
 
-
-
-// ─── Floating Hero Card (replaces sprite player) ──────────────────────────────
-function FloatingHeroCard({
-  name, rarity, rarityColor, rarityShine, level, ilust,
-}: { name: string; rarity: string; rarityColor: string; rarityShine: string; level: number; ilust: string }) {
-  const RARITIES: Record<string, { border: string; fill: string; shine: string; text: string; stars: number }> = {
-    mythic:    { border:'#450A0A', fill:'#E00000', shine:'#FCA5A5', text:'SS', stars:5 },
-    legendary: { border:'#78350F', fill:'#FB923C', shine:'#FED7AA', text:'S',  stars:4 },
-    epic:      { border:'#3B0764', fill:'#A855F7', shine:'#D8B4FE', text:'A',  stars:3 },
-    rare:      { border:'#1E3A5F', fill:'#1877F2', shine:'#93C5FD', text:'B',  stars:2 },
-    common:    { border:'#14532D', fill:'#22C55E', shine:'#86EFAC', text:'C',  stars:1 },
-  };
-  const cfg       = RARITIES[rarity] ?? RARITIES.rare;
-  const chromaUrl = useChromaKeyDataUrl(ilust);
-  const clipId    = `fhc-clip-${name}`;
-  const tgId      = `fhc-tg-${name}`;
-  const barId     = `fhc-bar-${name}`;
-  const botId     = `fhc-bot-${name}`;
-  const RS_R = 14, RS_r = 5.3, RS_CY = 338, RS_X0 = 24, RS_STEP = 32;
-  const sx = cfg.text === 'SS' ? 210 : 218;
-  const sy = 321;
-  const starPath = `M ${sx},${sy-28} Q ${sx+5},${sy-5} ${sx+28},${sy} Q ${sx+5},${sy+5} ${sx},${sy+28} Q ${sx-5},${sy+5} ${sx-28},${sy} Q ${sx-5},${sy-5} ${sx},${sy-28} Z`;
-  const S          = 66;
-  const lvFontSize = level >= 100 ? 11 : level >= 10 ? 14 : 18;
-  const lvStroke   = level >= 100 ? 3   : level >= 10 ? 3.5 : 4;
-  const fiveStarP  = (cx: number, cy: number, R: number, r: number) => {
-    const pts: string[] = [];
-    for (let k = 0; k < 5; k++) {
-      const oa = (-90 + k * 72) * (Math.PI / 180);
-      const ia = (-54 + k * 72) * (Math.PI / 180);
-      pts.push(`${(cx + R * Math.cos(oa)).toFixed(1)},${(cy + R * Math.sin(oa)).toFixed(1)}`);
-      pts.push(`${(cx + r * Math.cos(ia)).toFixed(1)},${(cy + r * Math.sin(ia)).toFixed(1)}`);
+// ─── Trim transparent padding: finds actual-art bounding box ─────────────────
+interface TrimBounds { sx: number; sy: number; sw: number; sh: number; }
+function detectTrimBounds(img: HTMLImageElement): TrimBounds {
+  const w = img.naturalWidth;
+  const h = img.naturalHeight;
+  const off = document.createElement('canvas');
+  off.width = w; off.height = h;
+  const ctx = off.getContext('2d', { willReadFrequently: true })!;
+  ctx.drawImage(img, 0, 0);
+  // getImageData throws SecurityError if canvas is tainted (CORS)
+  let data: Uint8ClampedArray;
+  try {
+    data = ctx.getImageData(0, 0, w, h).data;
+  } catch (_) {
+    return { sx: 0, sy: 0, sw: w, sh: h };
+  }
+  let minX = w, maxX = 0, minY = h, maxY = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (data[(y * w + x) * 4 + 3] > 15) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
     }
-    return `M ${pts.join(' L ')} Z`;
-  };
+  }
+  if (minX > maxX || minY > maxY) return { sx: 0, sy: 0, sw: w, sh: h };
+  return { sx: minX, sy: minY, sw: maxX - minX + 1, sh: maxY - minY + 1 };
+}
+
+// ─── SkillIconChroma: loads icon + applies chroma key (mandatory for green-screen skill arts)
+// All skill icons must pass through chroma key — the green background is standard for all heroes.
+function SkillIconChroma({ src }: { src: string }) {
+  const dataUrl = useChromaKeyDataUrl(src);
   return (
-    <div style={{
-      position: 'absolute', top: '50%', left: '50%',
-      transform: 'translate(-50%, -50%)',
-      width: 'min(220px, 38vw)', aspectRatio: '250 / 400',
-      filter: `drop-shadow(0 0 48px ${rarityColor}80) drop-shadow(0 12px 40px rgba(0,0,0,0.9))`,
-      zIndex: 6, pointerEvents: 'auto',
-    }}>
-      <HeroCardAnimated rarityColor={rarityColor}>
-      <svg viewBox="0 0 250 400" xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink"
-        style={{ display:'block', width:'100%', height:'100%' }}>
-        <defs>
-          <clipPath id={clipId}><rect x="3" y="3" width="244" height="394" rx="10" ry="10"/></clipPath>
-          <linearGradient id={tgId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"   stopColor={cfg.shine} stopOpacity="1"/>
-            <stop offset="48%"  stopColor={cfg.shine} stopOpacity="1"/>
-            <stop offset="100%" stopColor={cfg.fill}  stopOpacity="1"/>
-          </linearGradient>
-          <linearGradient id={barId} x1="0" y1="0" x2="1" y2="0">
-            <stop offset="55%"  stopColor="#000000" stopOpacity="0.55"/>
-            <stop offset="100%" stopColor="#000000" stopOpacity="0"/>
-          </linearGradient>
-          <linearGradient id={botId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"   stopColor="#000000" stopOpacity="0"/>
-            <stop offset="100%" stopColor="#000000" stopOpacity="1"/>
-          </linearGradient>
-        </defs>
-        <rect x="0" y="0" width="250" height="400" rx="12" ry="12" fill={cfg.border}/>
-        <rect x="3" y="3" width="244" height="394" rx="10" ry="10" fill={cfg.fill}/>
-        <rect x="3" y="3" width="244" height="394" rx="10" ry="10" fill="none" stroke="rgba(0,0,0,0.35)" strokeWidth="2"/>
-
-        {/* Static clip <g> — locks to card frame coordinate space, never moves */}
-        <g clipPath={`url(#${clipId})`}>
-          {/* Parallax outer g — reads --hci-x/--hci-y CSS vars set by HeroCardAnimated */}
-          <g style={{ transform: 'translateX(var(--hci-x, 0px)) translateY(var(--hci-y, 0px))' }}>
-            {/* Float + breath animation inner g */}
-            <g className="hca-ilust-anim">
-              {/* foreignObject + <img> shares decoded bitmap cache with chromaImgKeeper → instant render, zero delay */}
-              <foreignObject x="3" y="3" width="244" height="394">
-                <img
-                  src={chromaUrl ?? ''}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center bottom', display: 'block' }}
-                />
-              </foreignObject>
-            </g>
-          </g>
-        </g>
-
-        <rect x="3" y="280" width="244" height="77" fill={`url(#${botId})`} clipPath={`url(#${clipId})`}/>
-        <rect x="3" y="291" width="185" height="25" fill={`url(#${barId})`}/>
-        {Array.from({ length: cfg.stars }).map((_, i) => (
-          <path key={i} d={fiveStarP(RS_X0 + i * RS_STEP, RS_CY, RS_R, RS_r)} fill="#FFD700" stroke="#000000" strokeWidth="1.2" strokeLinejoin="round"/>
-        ))}
-        <path d={starPath} fill="rgba(0,0,0,0.6)"/>
-        <text x={sx} y={sy} textAnchor="middle" dominantBaseline="middle"
-          fill={`url(#${tgId})`} stroke="#000000" strokeWidth="1.5" paintOrder="stroke"
-          fontFamily="'Playfair Display',serif" fontSize="52" fontWeight="bold">{cfg.text}</text>
-        <rect x="3" y="357" width="244" height="40" fill="#000000" clipPath={`url(#${clipId})`}/>
-        <polyline
-          points="3,367 15,387 27,367 39,387 51,367 63,387 75,367 87,387 99,367 111,387 123,367 135,387 147,367 159,387 171,367 183,387 195,367 207,387 219,367 231,387 243,367"
-          fill="none" stroke="rgba(100,60,10,0.35)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" clipPath={`url(#${clipId})`}/>
-        <text x="125" y="378" textAnchor="middle" dominantBaseline="middle"
-          fill="#ffffff" fontFamily="'Playfair Display',serif" fontSize="18" fontWeight="700" letterSpacing="3"
-          clipPath={`url(#${clipId})`}>{name}</text>
-        <path d={`M 3,3 L ${3+S},3 L 3,${3+S} Z`} fill="rgba(0,0,0,0.78)" clipPath={`url(#${clipId})`}/>
-        <text x={3+S*0.28} y={3+S*0.28} textAnchor="middle" dominantBaseline="middle"
-          transform={`rotate(-45, ${3+S*0.28}, ${3+S*0.28})`}
-          fill="#ffffff" stroke="#000000" strokeWidth={lvStroke} paintOrder="stroke"
-          fontFamily="'Playfair Display',serif" fontSize={lvFontSize} fontWeight="700" letterSpacing="1"
-          clipPath={`url(#${clipId})`}>Lv. {level}</text>
-        <rect x="1" y="1" width="248" height="398" rx="11" ry="11" fill="none" stroke={cfg.shine} strokeWidth="1" strokeOpacity="0.4"/>
-      </svg>
-      </HeroCardAnimated>
-    </div>
+    <img
+      src={dataUrl ?? ''}
+      draggable={false}
+      style={{ width:'100%', height:'100%', objectFit:'contain', display:'block', pointerEvents:'none' }}
+    />
   );
 }
 
+// ─── SkillIconCanvas: renders skill art cropped to actual content bounds ──────
+function SkillIconCanvas({ src }: { src: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    let active = true;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    let ro: ResizeObserver | null = null;
+    const draw = (bounds: TrimBounds) => {
+      if (!active) return;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const parent = canvas.parentElement;
+      if (!parent) return;
+      const size = parent.clientWidth;
+      if (size === 0) return;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width  = size * dpr;
+      canvas.height = size * dpr;
+      canvas.style.width  = size + 'px';
+      canvas.style.height = size + 'px';
+      const c = canvas.getContext('2d')!;
+      c.scale(dpr, dpr);
+      c.clearRect(0, 0, size, size);
+      // Preserve aspect ratio — letterbox/pillarbox so art is never stretched
+      const aspect = bounds.sw / (bounds.sh || 1);
+      let dx = 0, dy = 0, dw = size, dh = size;
+      if (aspect > 1) { dh = size / aspect; dy = (size - dh) / 2; }
+      else if (aspect < 1) { dw = size * aspect; dx = (size - dw) / 2; }
+      c.drawImage(img, bounds.sx, bounds.sy, bounds.sw, bounds.sh, dx, dy, dw, dh);
+    };
+    img.onload = () => {
+      if (!active) return;
+      let bounds: TrimBounds;
+      try {
+        bounds = detectTrimBounds(img);
+      } catch (_) {
+        // CORS getImageData blocked — fall back to full image
+        bounds = { sx: 0, sy: 0, sw: img.naturalWidth, sh: img.naturalHeight };
+      }
+      draw(bounds);
+      const parent = canvasRef.current?.parentElement;
+      if (parent) {
+        ro = new ResizeObserver(() => draw(bounds));
+        ro.observe(parent);
+      }
+    };
+    img.src = src;
+    return () => { active = false; ro?.disconnect(); };
+  }, [src]);
+  return <canvas ref={canvasRef} style={{ display: 'block' }} />;
+}
 
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -138,8 +130,10 @@ interface HeroStats {
   expCurrent: number; expMax: number;
 }
 interface HeroDetailViewProps {
+  heroId:       string;
   name: string; rarity: string; rarityLabel: string;
   rarityColor: string; rarityShine: string;
+  role: string;
   level: number; ilust: string; stats: HeroStats; onClose: () => void;
 }
 
@@ -148,96 +142,142 @@ const BADGE_COLORS: Record<string, string> = {
 };
 
 // ─── Skill Slot Box ───────────────────────────────────────────────────────────
-function SkillSlot({ children, left, top, width }: {
+function SkillSlot({ children, left, top, width, label, skillInfo, skillLevel, locked, onHold, onRelease }: {
   children: React.ReactNode;
-  left: string; top: string; width: string;
+  left: string; top: string; width: string; label: string;
+  skillInfo: SkillInfo; skillLevel: number; locked: boolean;
+  onHold: (info: SkillInfo, level: number, isLocked: boolean) => void;
+  onRelease: () => void;
 }) {
+  const [pressed, setPressed] = useState(false);
   return (
-    <div style={{
-      position: 'absolute', left, top, width,
-      aspectRatio: '1 / 1',
-      background: 'rgba(0,0,0,0.40)',
-      border: '1.5px solid #dc2626',
-      zIndex: 15, boxSizing: 'border-box', overflow: 'hidden',
-    }}>
-      {children}
+    <div
+      style={{
+        position: 'absolute', left, top, width,
+        zIndex: 15,
+        cursor: 'pointer', userSelect: 'none',
+      }}
+      onPointerDown={() => {
+        setPressed(true);
+        // locked skills show Lv1 preview info (no next-level scaling)
+        onHold(skillInfo, locked ? 1 : skillLevel, locked);
+      }}
+      onPointerUp={() => { setPressed(false); onRelease(); }}
+      onPointerLeave={() => { setPressed(false); onRelease(); }}
+      onPointerCancel={() => { setPressed(false); onRelease(); }}
+    >
+      {/* ── Animated inner: only label + icon scale, outer container is stable ── */}
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
+        transform: pressed && !locked ? 'scale(0.82) translateY(2px)' : 'scale(1) translateY(0px)',
+        filter:    pressed && !locked ? 'brightness(0.70) drop-shadow(0 0 7px rgba(255,200,50,0.6))' : 'none',
+        transition: pressed
+          ? 'transform 0.07s cubic-bezier(0.25,0.46,0.45,0.94), filter 0.07s ease-out'
+          : 'transform 0.28s cubic-bezier(0.34,1.56,0.64,1), filter 0.22s ease-out',
+      }}>
+      <span style={{
+        color: locked ? 'rgba(255,255,255,0.35)' : 'rgba(255,215,0,0.95)',
+        fontFamily: "'Roboto Condensed', sans-serif",
+        fontSize: 'clamp(6px, 1.1vw, 10px)',
+        fontWeight: 700,
+        letterSpacing: '0.07em',
+        textShadow: locked ? 'none' : '0 1px 6px rgba(0,0,0,1), 0 0 10px rgba(0,0,0,0.9)',
+        whiteSpace: 'nowrap',
+        textAlign: 'center',
+        lineHeight: 1,
+        userSelect: 'none',
+      }}>{label}</span>
+      <div style={{ position: 'relative', width: '100%', aspectRatio: '1/1', boxSizing: 'border-box', overflow: 'hidden' }}>
+        <div style={{ width: '100%', height: '100%', opacity: locked ? 0.18 : 1 }}>
+          {children}
+        </div>
+        {locked && (
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'rgba(0,0,0,0.62)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <svg width="42%" height="42%" viewBox="0 0 24 28" fill="none">
+              <rect x="2" y="12" width="20" height="14" rx="3" fill="white" fillOpacity="0.92"/>
+              <path d="M6 12V9a6 6 0 0 1 12 0v3" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="12" cy="18.5" r="1.8" fill="#111"/>
+              <line x1="12" y1="20.3" x2="12" y2="23" stroke="#111" strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+          </div>
+        )}
+        {!locked && (
+          <div style={{
+            position: 'absolute', bottom: '3px', right: '3px',
+            background: 'rgba(0,0,0,0.78)',
+            border: `1px solid ${skillLevel >= 4 ? '#F97316' : 'rgba(255,215,0,0.55)'}`,
+            borderRadius: '3px', padding: '1px 4px',
+            fontFamily: "'Roboto Condensed', sans-serif",
+            fontSize: 'clamp(5px, 0.85vw, 8px)',
+            fontWeight: 700,
+            color: skillLevel >= 4 ? '#F97316' : '#FFD700',
+            lineHeight: 1, letterSpacing: '0.03em',
+          }}>{skillLevel >= 4 ? 'MAX' : `Lv.${skillLevel}`}</div>
+        )}
+      </div>
+      </div>{/* end animated inner wrapper */}
     </div>
   );
 }
 
-// ─── Lucas Skill Image URLs ───────────────────────────────────────────────────
-const LUCAS_SKILL_URLS = {
-  sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777420534/sk1_lukas_65c48d.png',
-  sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777420599/sk2_luk_5f55c9.png',
-  sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777420393/sk3_lucas_5f4d58.png',
-  ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777420297/ult_lucas_4cf45e.png',
+// ─── All skill data & icon URLs → /src/app/data/heroGallery.ts ───────────────
+// DO NOT add hero skill data here. Use heroGallery.ts as the single source.
+
+// ─── Skill System — Unlock Levels & Level Scaling ────────────────────────────
+// Skill slot : [ heroLv to reach Lv1, Lv2, Lv3, Lv4 ]
+const SKILL_UNLOCK_LVL: Record<'sk1'|'sk2'|'sk3'|'ult', number[]> = {
+  sk1: [  1,  81, 161, 240 ],
+  sk2: [ 21, 101, 181, 240 ],
+  sk3: [ 41, 121, 201, 240 ],
+  ult: [ 61, 141, 221, 240 ],
 };
 
-// ─── Emma Skill Icons ─────────────────────────────────────────────────────────
-function PlusSign({ cx, cy, s }: { cx: number; cy: number; s: number }) {
-  const t = s * 0.32;
-  return (
-    <>
-      <rect x={cx - t / 2} y={cy - s / 2} width={t} height={s} rx={t / 3} fill="white"/>
-      <rect x={cx - s / 2} y={cy - t / 2} width={s} height={t} rx={t / 3} fill="white"/>
-    </>
-  );
+function computeSkillLevel(heroLv: number, key: 'sk1'|'sk2'|'sk3'|'ult'): { level: number; locked: boolean } {
+  const tiers = SKILL_UNLOCK_LVL[key];
+  if (heroLv < tiers[0]) return { level: 0, locked: true };
+  let sl = 1;
+  for (let i = 1; i < tiers.length; i++) {
+    if (heroLv >= tiers[i]) sl = i + 1; else break;
+  }
+  return { level: sl, locked: false };
 }
 
-function CircleFramed({ cx, cy, r }: { cx: number; cy: number; r: number }) {
-  return (
-    <>
-      <circle cx={cx} cy={cy} r={r + 5} fill="none" stroke="white" strokeWidth="1"/>
-      <circle cx={cx} cy={cy} r={r + 2.5} fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5"/>
-      <circle cx={cx} cy={cy} r={r} fill="white"/>
-    </>
-  );
-}
+// ─── Local type aliases (match heroGallery.ts shapes) ────────────────────────
+interface SkillRatioLevel { label: string; values: string[]; }
+interface SkillInfo { name: string; description: string; ratioLevels: SkillRatioLevel[]; }
 
-function EmmaHealPlus({ label }: { label: string }) {
+const PLACEHOLDER_SKILL: SkillInfo = {
+  name: '???',
+  description: 'This skill has not been revealed yet. Stay tuned for future story content.',
+  ratioLevels: [],
+};
+
+// ─── Placeholder icon — pure SVG, zero external dependency ───────────────────
+function PlaceholderSkillIcon() {
   return (
-    <svg width="100%" height="100%" viewBox="0 0 60 60" preserveAspectRatio="xMidYMid meet" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <PlusSign cx={30} cy={17} s={11}/>
-      <PlusSign cx={17} cy={38} s={11}/>
-      <PlusSign cx={43} cy={38} s={11}/>
-      <polyline points="7,30 4,22 1,30" fill="none" stroke="white" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"/>
-      <line x1="4" y1="22" x2="4" y2="53" stroke="white" strokeWidth="1.1" strokeLinecap="round"/>
-      <polyline points="53,30 56,22 59,30" fill="none" stroke="white" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"/>
-      <line x1="56" y1="22" x2="56" y2="53" stroke="white" strokeWidth="1.1" strokeLinecap="round"/>
-      <text x="2" y="58" fontSize="8" fill="white" fontFamily="'Playfair Display',serif" fontWeight="700">{label}</text>
+    <svg viewBox="0 0 48 48" style={{ width:'100%', height:'100%', display:'block' }}>
+      <rect x="2" y="2" width="44" height="44" rx="8" ry="8"
+        fill="rgba(20,10,40,0.85)" stroke="rgba(120,80,200,0.35)" strokeWidth="1.5"/>
+      <text x="24" y="30" textAnchor="middle" dominantBaseline="middle"
+        fontFamily="'Playfair Display', serif" fontSize="24" fontWeight="900"
+        fill="rgba(160,120,220,0.40)" stroke="rgba(0,0,0,0.6)" strokeWidth="1" paintOrder="stroke">
+        ?
+      </text>
     </svg>
   );
 }
-
-function EmmaCirclePyramid() {
-  return (
-    <svg width="100%" height="100%" viewBox="0 0 60 60" preserveAspectRatio="xMidYMid meet" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <CircleFramed cx={30} cy={17} r={6}/>
-      <CircleFramed cx={17} cy={38} r={6}/>
-      <CircleFramed cx={43} cy={38} r={6}/>
-      <polyline points="7,30 4,22 1,30" fill="none" stroke="white" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"/>
-      <line x1="4" y1="22" x2="4" y2="53" stroke="white" strokeWidth="1.1" strokeLinecap="round"/>
-      <polyline points="53,30 56,22 59,30" fill="none" stroke="white" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"/>
-      <line x1="56" y1="22" x2="56" y2="53" stroke="white" strokeWidth="1.1" strokeLinecap="round"/>
-    </svg>
-  );
-}
-
-function EmmaPassiveSkill() {
-  return (
-    <svg width="100%" height="100%" viewBox="0 0 60 60" preserveAspectRatio="xMidYMid meet" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="26" y="10" width="8" height="38" rx="3" fill="white"/>
-      <rect x="10" y="26" width="38" height="8" rx="3" fill="white"/>
-      <text x="2" y="58" fontSize="8" fill="white" fontFamily="'Playfair Display',serif" fontWeight="700">PPsv.</text>
-    </svg>
-  );
-}
+// ─── heroGallery.ts is the registry. Nothing else needed here. ────────────────
 
 const ACTION_TABS = [
   { id: 'levelup',   label: 'Level UP',  icon: LevelUpIcon   },
   { id: 'starup',    label: 'Star UP',   icon: StarUpIcon    },
   { id: 'awakening', label: 'Awakening', icon: AwakeningIcon },
   { id: 'skin',      label: 'Skin',      icon: SkinIcon      },
+  { id: 'reset',     label: 'Reset Lv',  icon: ResetIcon     },
 ] as const;
 
 // ── Stat Icons — all solid white ─────────────────────────────────────────────
@@ -344,22 +384,24 @@ function SkinIcon({ active }: { active: boolean }) {
     </svg>
   );
 }
-
-// ─── Grid overlay constants ───────────────────────────────────────────────────
-const GRID_COLS = 20;
-const GRID_ROWS = 20;
+function ResetIcon({ active }: { active: boolean }) {
+  const c = active ? '#f87171' : 'rgba(255,255,255,0.7)';
+  return (
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+      <path d="M4 11 A7 7 0 1 1 11 18" stroke={c} strokeWidth="1.8" strokeLinecap="round"/>
+      <polyline points="4,7 4,11 8,11" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+      <line x1="11" y1="8" x2="11" y2="12" stroke={c} strokeWidth="2" strokeLinecap="round"/>
+      <circle cx="11" cy="14" r="0.9" fill={c}/>
+    </svg>
+  );
+}
 
 // ─── Rarity letter map ────────────────────────────────────────────────────────
 const RARITY_TEXT: Record<string, string> = {
   mythic: 'SS', legendary: 'S', epic: 'A', rare: 'B', common: 'C',
 };
 
-// ─── Rarity star count (matches SvgLibraryPage HERO_CARD_CFGS) ──────────────
-const RARITY_STARS: Record<string, number> = {
-  common: 1, rare: 2, epic: 3, legendary: 4, mythic: 5,
-};
-
-// ─── 5-pointed star path — exact copy of SvgLibraryPage helper ───────────────
+// ─── 5-pointed star path — used by the stats overlay star row ────────────────
 // RS_R=14, RS_r=5.3, RS_CY=338, RS_X0=24, RS_STEP=32
 function fiveStarPath(cx: number, cy: number, R: number, r: number): string {
   const pts: string[] = [];
@@ -377,71 +419,73 @@ const HERO_DETAIL_BG = 'https://res.cloudinary.com/dhkethrmc/image/upload/v17773
 
 // ── Main Component ───────────────────────────────────────────────────────────
 export function HeroDetailView({
-  name, rarity, rarityLabel, rarityColor, rarityShine,
-  level, ilust, stats, onClose,
+  heroId, name, rarity, rarityLabel, rarityColor, rarityShine,
+  role, level, ilust, stats, onClose,
 }: HeroDetailViewProps) {
-  const [activeTab, setActiveTab] = useState<string>('levelup');
-  const expPct     = Math.round((stats.expCurrent / stats.expMax) * 100);
+  const [activeTab,     setActiveTab]     = useState<string | null>(null);
+  const [heldSkillData, setHeldSkillData] = useState<{ info: SkillInfo; level: number; isLocked: boolean } | null>(null);
+
+  // ── Live hero data from HeroContext — updates immediately on level/star up ───
+  const { ownedHeroes } = useHero();
+  const liveHero  = ownedHeroes.find(h => h.playerHero.hero_id === heroId);
+  const liveLevel = liveHero?.playerHero.level ?? level;
+  // Live star count — reflects Star Up immediately
+  const rarityBaseCfg = HERO_RARITIES.find(r => r.id === rarity);
+  const liveStars = liveHero?.playerHero.stars ?? rarityBaseCfg?.stars ?? 1;
+  // ── FinalStat = (base + level × growth) × StarBonus ──────────────────────
+  // Engine formula: balanceEngine.computeFinalStats — SSOT for all stat display.
+  const starMult = computeStarBonus(rarity, liveStars);
+  const liveStats = (() => {
+    if (!liveHero) return stats;
+    const d  = liveHero.def;
+    const s  = computeFinalStats(d, liveLevel, liveStars);
+    return { ...s,
+      expCurrent: liveHero.playerHero.xp ?? stats.expCurrent,
+      expMax: stats.expMax,
+    };
+  })();
+
+  // ── Tab toggle: same tab → hide panel, different tab → show ─────────────────
+  const handleTabClick = (id: string) => {
+    playBtnSound();
+    setActiveTab(prev => prev === id ? null : id);
+  };
+  const closePanel = () => setActiveTab(null);
+
+  // ── heroGallery lookup — single source of truth for all hero display data ────
+  // getHeroById reads from /src/app/data/heroGallery.ts (add new heroes there).
+  const galleryEntry = getHeroById(heroId);
+  const heroSkills = {
+    sk1: (galleryEntry?.skills.sk1 ?? PLACEHOLDER_SKILL) as SkillInfo,
+    sk2: (galleryEntry?.skills.sk2 ?? PLACEHOLDER_SKILL) as SkillInfo,
+    sk3: (galleryEntry?.skills.sk3 ?? PLACEHOLDER_SKILL) as SkillInfo,
+    ult: (galleryEntry?.skills.ult  ?? PLACEHOLDER_SKILL) as SkillInfo,
+  };
+  const heroUrls = galleryEntry?.skillIcons ?? { sk1: null, sk2: null, sk3: null, ult: null };
+  // Force locked when hero has no gallery entry yet (future heroes pre-listed)
+  const hasSkills = galleryEntry !== null;
+
+  // ── Compute each skill's current level from LIVE hero level ──────────────────
+  const sk1State = computeSkillLevel(liveLevel, 'sk1');
+  const sk2State = computeSkillLevel(liveLevel, 'sk2');
+  const sk3State = computeSkillLevel(liveLevel, 'sk3');
+  const ultState = computeSkillLevel(liveLevel, 'ult');
+  const expPct     = Math.round((liveStats.expCurrent / liveStats.expMax) * 100);
   const rarityText = RARITY_TEXT[rarity] ?? 'C';
 
-  // ── Derived power score ───────────────────────────────────────────────────────
+  // ── Derived power score ──────────────────────────────────���──────────────────
+  // 15 HP = 1 pt │ 1 SPD = 121 pt │ all other stats = 2 pt each
   const power = Math.round(
-    stats.hp * 0.5 +
-    stats.pAtk * 3 +
-    stats.mAtk * 3 +
-    stats.pDef * 1.5 +
-    stats.mDef * 1.5 +
-    stats.speed * 2
+    liveStats.hp    / 15  +
+    liveStats.pAtk  * 2   +
+    liveStats.mAtk  * 2   +
+    liveStats.pDef  * 2   +
+    liveStats.mDef  * 2   +
+    liveStats.speed * 121
   );
 
-  // ── Grid overlay ─────────────────────────────────────────────────────────────
-  const [showGrid,  setShowGrid]  = useState(false);
-  const gridCanvasRef             = useRef<HTMLCanvasElement>(null);
-  const rootRef                   = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const drawGrid = () => {
-      const canvas = gridCanvasRef.current;
-      const root   = rootRef.current;
-      if (!canvas || !root) return;
-      canvas.width  = root.clientWidth;
-      canvas.height = root.clientHeight;
-      if (!showGrid) return;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      const W  = canvas.width;
-      const H  = canvas.height;
-      const cW = W / GRID_COLS;
-      const cH = H / GRID_ROWS;
-      ctx.strokeStyle = 'rgba(255,220,80,1)';
-      ctx.lineWidth   = 1;
-      ctx.beginPath();
-      for (let i = 0; i <= GRID_COLS; i++) { const x = i * cW; ctx.moveTo(x, 0); ctx.lineTo(x, H); }
-      for (let i = 0; i <= GRID_ROWS; i++) { const y = i * cH; ctx.moveTo(0, y); ctx.lineTo(W, y); }
-      ctx.stroke();
-      const COL_LETTERS = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T'];
-      const labelSize   = Math.max(9, Math.floor(Math.min(cW, cH) * 0.22));
-      ctx.shadowColor   = 'rgba(0,0,0,0.95)';
-      ctx.shadowBlur    = 4;
-      ctx.fillStyle     = 'rgba(255,220,80,1)';
-      ctx.font          = `bold ${labelSize}px 'Roboto Condensed'`;
-      ctx.textAlign     = 'center';
-      ctx.textBaseline  = 'top';
-      for (let i = 0; i < GRID_COLS; i++) ctx.fillText(COL_LETTERS[i] ?? `${i}`, (i + 0.5) * cW, 4);
-      ctx.textAlign     = 'left';
-      ctx.textBaseline  = 'middle';
-      for (let j = 0; j < GRID_ROWS; j++) ctx.fillText(`${j + 1}`, 4, (j + 0.5) * cH);
-      ctx.shadowBlur    = 0;
-    };
-    drawGrid();
-    const ro   = new ResizeObserver(drawGrid);
-    const root = rootRef.current;
-    if (root) ro.observe(root);
-    return () => ro.disconnect();
-  }, [showGrid]);
-
   return (
-    <div ref={rootRef} style={{ position: 'fixed', inset: 0, zIndex: 200, background: '#000', overflow: 'hidden' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: '#000', overflow: 'hidden' }}>
 
       {/* ── Layer 0: background ── */}
       <img src={HERO_DETAIL_BG} alt="" style={{
@@ -462,7 +506,7 @@ export function HeroDetailView({
       </>
 
       {/* ── Floating BACK button — top-left ────────────────────────────────── */}
-      <button onClick={onClose} style={{
+      <button onClick={() => { playBackSound(); onClose(); }} style={{
         position: 'absolute', top: '14px', left: '14px', zIndex: 20,
         display: 'flex', alignItems: 'center', gap: '6px',
         background: 'rgba(0,0,0,0.50)', border: `1px solid ${rarityColor}55`,
@@ -477,7 +521,7 @@ export function HeroDetailView({
         BACK
       </button>
 
-      {/* ══════════════════════════════════════════════════════════════════════
+      {/* ══════════════════════════════════════���═══════════════════════════════
           A3–D3 │ Rarity color bar — full-width bg strip behind icon + name
           Color = rarityColor, fade-out on right side
           z:14 (below icon z:15)
@@ -558,12 +602,18 @@ export function HeroDetailView({
       ═════════════════════════════════════════════════════════════════════= */}
       {(() => {
         const RS_R = 14, RS_r = 5.3, RS_CY = 338, RS_X0 = 24, RS_STEP = 32;
-        const n    = RARITY_STARS[rarity] ?? 2;
-        // viewBox crops tightly around the n stars
-        const vbX  = RS_X0 - RS_R - 2;                              // 8
-        const vbW  = (RS_X0 + (n - 1) * RS_STEP + RS_R + 2) - vbX; // n*32
-        const vbY  = RS_CY - RS_R - 2;                              // 322
-        const vbH  = (RS_R + 2) * 2;                                // 32
+        const n      = Math.max(1, liveStars);
+        // Tier: yellow 1-5 | red 6-10 | white 11-15 | rainbow 16 (max)
+        const tier   = Math.min(3, Math.floor((n - 1) / 5));
+        const inTier = n - tier * 5;
+        const slots  = tier === 3 ? 1 : 5;
+        const FILL   = ['#FFD700', '#FF3333', '#D8D8D8', '#FFD700'] as const;
+        const STROKE = ['#000000', '#000000', '#888888', '#000000'] as const;
+        // viewBox always covers 5 slots (or 1 for rainbow)
+        const vbX  = RS_X0 - RS_R - 2;
+        const vbW  = (RS_X0 + (slots - 1) * RS_STEP + RS_R + 2) - vbX;
+        const vbY  = RS_CY - RS_R - 2;
+        const vbH  = (RS_R + 2) * 2;
         return (
           <div style={{
             position: 'absolute',
@@ -579,22 +629,24 @@ export function HeroDetailView({
               preserveAspectRatio="xMinYMid meet"
               style={{ height: '105%', width: 'auto', overflow: 'visible' }}
             >
-              {Array.from({ length: n }).map((_, i) => (
-                <path
-                  key={i}
-                  d={fiveStarPath(RS_X0 + i * RS_STEP, RS_CY, RS_R, RS_r)}
-                  fill="#FFD700"
-                  stroke="#000000"
-                  strokeWidth="1.2"
-                  strokeLinejoin="round"
-                />
-              ))}
+              {Array.from({ length: slots }).map((_, i) => {
+                const lit = i < inTier;
+                return (
+                  <path key={i}
+                    d={fiveStarPath(RS_X0 + i * RS_STEP, RS_CY, RS_R, RS_r)}
+                    fill={lit ? FILL[tier] : 'rgba(0,0,0,0.38)'}
+                    stroke={lit ? STROKE[tier] : 'rgba(255,255,255,0.18)'}
+                    strokeWidth="1.2" strokeLinejoin="round"
+                    style={lit && tier === 3 ? { filter:'drop-shadow(0 0 6px #FFD700) drop-shadow(0 0 12px rgba(255,80,255,0.7))' } : undefined}
+                  />
+                );
+              })}
             </svg>
           </div>
         );
       })()}
 
-      {/* ═════════════════════════════════════════════════════════════════════
+      {/* ═══════════════════════════════════════════════════��═════════════════
           A5–D5 │ Thin dark-orange bottom rule — shifted down 1 grid (was A4)
           left:0%, top:calc(25% - 1.5px), width:20%
           z:15
@@ -610,7 +662,7 @@ export function HeroDetailView({
         pointerEvents: 'none',
       }}/>
 
-      {/* ══════════════════════════════════════════════════���═══════════════════
+      {/* ═════════════════════════════════════════════════════════════════════
           B3–C3 │ Hero Name — 1 grid row, h=5% (row 3 only), z:15
       ═══════════════════════════════════════════════════════════════════════ */}
       <div style={{
@@ -667,7 +719,7 @@ export function HeroDetailView({
           <div style={{ marginBottom: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '7px' }}>
               <span style={{ color: 'rgba(255,255,255,0.5)', fontFamily: "'Roboto Condensed',sans-serif", fontSize: '15px', fontWeight: 600, letterSpacing: '0.12em' }}>Level</span>
-              <span style={{ color: '#FFD700', fontFamily: "'Roboto Condensed',sans-serif", fontSize: '30px', fontWeight: 800, textShadow: '0 0 12px rgba(255,215,0,0.6)' }}>{level}</span>
+              <span style={{ color: '#FFD700', fontFamily: "'Roboto Condensed',sans-serif", fontSize: '30px', fontWeight: 800, textShadow: '0 0 12px rgba(255,215,0,0.6)' }}>{liveLevel}</span>
             </div>
             {/* EXP bar */}
             <div style={{ position: 'relative', paddingRight: '30px' }}>
@@ -679,7 +731,7 @@ export function HeroDetailView({
             </div>
             {/* EXP text */}
             <div style={{ marginTop: '3px', color: 'rgba(255,255,255,0.28)', fontFamily: "'Playfair Display',serif", fontSize: '8px', letterSpacing: '0.06em' }}>
-              {fmtNum(stats.expCurrent)} / {fmtNum(stats.expMax)} EXP
+              {fmtNum(liveStats.expCurrent)} / {fmtNum(liveStats.expMax)} EXP
             </div>
           </div>
 
@@ -691,12 +743,12 @@ export function HeroDetailView({
 
           {/* Stat rows */}
           {[
-            { Icon: HpIcon,    label: 'HP',     value: stats.hp    },
-            { Icon: PAtkIcon,  label: 'P. ATK', value: stats.pAtk  },
-            { Icon: MAtkIcon,  label: 'M. ATK', value: stats.mAtk  },
-            { Icon: PDefIcon,  label: 'P. DEF', value: stats.pDef  },
-            { Icon: MDefIcon,  label: 'M. DEF', value: stats.mDef  },
-            { Icon: SpeedIcon, label: 'SPEED',  value: stats.speed },
+            { Icon: HpIcon,    label: 'HP',     value: liveStats.hp    },
+            { Icon: PAtkIcon,  label: 'P. ATK', value: liveStats.pAtk  },
+            { Icon: MAtkIcon,  label: 'M. ATK', value: liveStats.mAtk  },
+            { Icon: PDefIcon,  label: 'P. DEF', value: liveStats.pDef  },
+            { Icon: MDefIcon,  label: 'M. DEF', value: liveStats.mDef  },
+            { Icon: SpeedIcon, label: 'SPEED',  value: liveStats.speed },
           ].map(({ Icon, label, value }) => (
             <div key={label} style={{
               display: 'flex', alignItems: 'center', gap: '7px',
@@ -718,10 +770,26 @@ export function HeroDetailView({
         left: '20%', right: '20%',
         zIndex: 5, pointerEvents: 'none',
       }}>
-        <FloatingHeroCard
-          name={name} rarity={rarity} rarityColor={rarityColor}
-          rarityShine={rarityShine} level={level} ilust={ilust}
-        />
+        {/* ── Shared HeroCard — 100% identical design to obtained hero grid ── */}
+        <div style={{
+          position: 'absolute', top: '50%', left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 'min(220px, 38vw)', aspectRatio: '250 / 400',
+          filter: `drop-shadow(0 0 48px ${rarityColor}80) drop-shadow(0 12px 40px rgba(0,0,0,0.9))`,
+          zIndex: 6, pointerEvents: 'auto',
+        }}>
+          <HeroCardAnimated rarityColor={rarityColor}>
+            <HeroCard
+              name={name}
+              rarity={rarity}
+              level={liveLevel}
+              ilust={ilust}
+              heroType={role}
+              stars={liveStars}
+              uid={`detail-${heroId}`}
+            />
+          </HeroCardAnimated>
+        </div>
         <div style={{
           position: 'absolute', bottom: 0, left: '10%', right: '10%', height: '60px',
           background: `radial-gradient(ellipse 80% 100% at 50% 100%, ${rarityColor}44 0%, transparent 70%)`,
@@ -742,7 +810,7 @@ export function HeroDetailView({
           return (
             <button
               key={id}
-              onClick={() => setActiveTab(id)}
+              onClick={() => handleTabClick(id)}
               style={{
                 display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px',
                 background: isActive
@@ -842,79 +910,153 @@ export function HeroDetailView({
           Grid 20×20 — cols F-G = 25-35% (left:25%, w:10%) | cols O-P = 70-80% (left:70%, w:10%)
           Rows 6-8  = top:25%, h:15%   |   Rows 13-15 = top:60%, h:15%
       ═══════════════════════════════════════════════════════════════════════ */}
-      {name === 'Lucas' && (
-        <>
-          {/* Skill 1 — F6-G8 */}
-          <SkillSlot left="25%" top="25%" width="10%">
-            <img src={LUCAS_SKILL_URLS.sk1} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} draggable={false}/>
-          </SkillSlot>
-          {/* Skill 2 — F13-G15 */}
-          <SkillSlot left="25%" top="60%" width="10%">
-            <img src={LUCAS_SKILL_URLS.sk2} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} draggable={false}/>
-          </SkillSlot>
-          {/* Skill 3 — 65% (+0.5 grid right from 62%) */}
-          <SkillSlot left="65%" top="25%" width="10%">
-            <img src={LUCAS_SKILL_URLS.sk3} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} draggable={false}/>
-          </SkillSlot>
-          {/* Ultimate — 65% */}
-          <SkillSlot left="65%" top="60%" width="10%">
-            <img src={LUCAS_SKILL_URLS.ult} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} draggable={false}/>
-          </SkillSlot>
-        </>
-      )}
-      {name === 'Emma' && (
-        <>
-          {/* Skill 1 — F6-G8 */}
-          <SkillSlot left="25%" top="25%" width="10%">
-            <EmmaHealPlus label="Act."/>
-          </SkillSlot>
-          {/* Skill 2 — F13-G15 */}
-          <SkillSlot left="25%" top="60%" width="10%">
-            <EmmaCirclePyramid/>
-          </SkillSlot>
-          {/* Passive — 65% */}
-          <SkillSlot left="65%" top="25%" width="10%">
-            <EmmaPassiveSkill/>
-          </SkillSlot>
-          {/* Ultimate — 65% */}
-          <SkillSlot left="65%" top="60%" width="10%">
-            <EmmaHealPlus label="Ult."/>
-          </SkillSlot>
-        </>
+      {/* ── Skill Slots — ALWAYS rendered for every hero ──────────────────────
+           Known heroes:   skill data + icons from /src/app/data/heroGallery.ts
+           Unknown heroes: PlaceholderSkillIcon + "???" info, all locked
+           To add a new hero: add ONE entry to heroGallery.ts — nothing else.   */}
+      <>
+        <SkillSlot left="25%" top="25%" width="10%" label="Skill 1"
+          skillInfo={heroSkills.sk1} skillLevel={sk1State.level} locked={!hasSkills || sk1State.locked}
+          onHold={(info, lv, il) => setHeldSkillData({ info, level: lv, isLocked: il })} onRelease={() => setHeldSkillData(null)}>
+          {heroUrls.sk1 ? <SkillIconChroma src={heroUrls.sk1} /> : <PlaceholderSkillIcon />}
+        </SkillSlot>
+        <SkillSlot left="25%" top="60%" width="10%" label="Skill 2"
+          skillInfo={heroSkills.sk2} skillLevel={sk2State.level} locked={!hasSkills || sk2State.locked}
+          onHold={(info, lv, il) => setHeldSkillData({ info, level: lv, isLocked: il })} onRelease={() => setHeldSkillData(null)}>
+          {heroUrls.sk2 ? <SkillIconChroma src={heroUrls.sk2} /> : <PlaceholderSkillIcon />}
+        </SkillSlot>
+        <SkillSlot left="65%" top="25%" width="10%" label="Passif Skill"
+          skillInfo={heroSkills.sk3} skillLevel={sk3State.level} locked={!hasSkills || sk3State.locked}
+          onHold={(info, lv, il) => setHeldSkillData({ info, level: lv, isLocked: il })} onRelease={() => setHeldSkillData(null)}>
+          {heroUrls.sk3 ? <SkillIconChroma src={heroUrls.sk3} /> : <PlaceholderSkillIcon />}
+        </SkillSlot>
+        <SkillSlot left="65%" top="60%" width="10%" label="Ultimate Skill"
+          skillInfo={heroSkills.ult} skillLevel={ultState.level} locked={!hasSkills || ultState.locked}
+          onHold={(info, lv, il) => setHeldSkillData({ info, level: lv, isLocked: il })} onRelease={() => setHeldSkillData(null)}>
+          {heroUrls.ult ? <SkillIconChroma src={heroUrls.ult} /> : <PlaceholderSkillIcon />}
+        </SkillSlot>
+      </>
+
+      {/* ── Level-up panel ─────────────────────────────────────────────────────── */}
+      {activeTab === 'levelup' && (
+        <HeroLevelUpPanel
+          heroId={heroId}
+          rarity={rarity}
+          currentLevel={liveLevel}
+          rarityColor={rarityColor}
+          onClose={closePanel}
+        />
       )}
 
-      {/* ── Grid canvas overlay ───────────────────────────────────────────────── */}
-      <canvas
-        ref={gridCanvasRef}
-        style={{
-          position: 'absolute', inset: 0,
-          width: '100%', height: '100%',
-          zIndex: 60, pointerEvents: 'none', display: 'block',
-        }}
-      />
+      {/* ── Star Up panel ─────────────────────────────────────────────────────── */}
+      {activeTab === 'starup' && (
+        <HeroStarUpPanel
+          heroId={heroId}
+          rarity={rarity}
+          rarityColor={rarityColor}
+          onClose={closePanel}
+        />
+      )}
 
-      {/* ── Grid toggle button ────────────────────────────────────────────────── */}
-      <button className="font-normal"
-        onClick={() => setShowGrid(v => !v)}
-        style={{
-          position: 'absolute', bottom: '16px', right: 'calc(20% + 16px)', zIndex: 61,
-          display: 'flex', alignItems: 'center', gap: '6px',
-          background:     showGrid ? 'rgba(255,220,80,0.18)' : 'rgba(0,0,0,0.5)',
-          border:         showGrid ? '1px solid rgba(255,220,80,0.6)' : '1px solid rgba(255,255,255,0.25)',
-          color:          showGrid ? 'rgba(255,220,80,1)' : '#fff',
-          fontSize: '10px', fontFamily: "'Playfair Display',serif", letterSpacing: '0.12em',
-          padding: '6px 14px', borderRadius: '6px', cursor: 'pointer',
-          backdropFilter: 'blur(6px)',
-          boxShadow: showGrid ? '0 0 10px rgba(255,220,80,0.25)' : 'none',
-          transition: 'all 0.2s',
-        }}
-      >
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-        </svg>
-        {showGrid ? 'HIDE GRID' : 'GRID'}
-      </button>
+      {/* ── Reset panel ────────────────────────────────────────────────────────── */}
+      {activeTab === 'reset' && (
+        <HeroResetPanel
+          heroId={heroId}
+          rarity={rarity}
+          currentLevel={liveLevel}
+          rarityColor={rarityColor}
+          onClose={closePanel}
+        />
+      )}
+
+      {/* ── Skill Info Popup — hold to show, release to dismiss ──────────────── */}
+      {heldSkillData && (() => {
+        const { info, level, isLocked } = heldSkillData;
+        const isMax = level >= 4;
+        return (
+          <div style={{
+            position: 'absolute', top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 90,
+            background: '#000',
+            border: `2.5px solid ${isLocked ? 'rgba(150,150,200,0.7)' : '#F97316'}`,
+            borderRadius: '10px',
+            padding: '16px 20px',
+            minWidth: '200px',
+            maxWidth: 'min(320px, 55vw)',
+            boxShadow: '0 0 32px rgba(249,115,22,0.35), 0 8px 40px rgba(0,0,0,0.9)',
+            pointerEvents: 'none',
+          }}>
+            {/* Header: name + level badge */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '8px' }}>
+              <span style={{
+                fontFamily: "'Roboto Condensed', sans-serif",
+                fontSize: 'clamp(13px, 2.2vw, 17px)',
+                fontWeight: 700, color: '#fff', letterSpacing: '0.04em',
+              }}>{info.name}</span>
+              <span style={{
+                fontFamily: "'Roboto Condensed', sans-serif",
+                fontSize: 'clamp(8px, 1.2vw, 11px)',
+                fontWeight: 700,
+                color: isLocked ? 'rgba(180,180,220,0.85)' : isMax ? '#F97316' : '#FFD700',
+                border: `1px solid ${isLocked ? 'rgba(150,150,200,0.5)' : isMax ? '#F97316' : 'rgba(255,215,0,0.5)'}`,
+                borderRadius: '4px', padding: '2px 6px',
+                whiteSpace: 'nowrap',
+              }}>{isLocked ? 'Locked — Lv. 1 Preview' : isMax ? 'MAX Lv.' : `Lv. ${level}`}</span>
+            </div>
+            {/* Divider */}
+            <div style={{ height: '1px', background: 'rgba(249,115,22,0.45)', marginBottom: '10px' }}/>
+            {/* Description */}
+            <div style={{
+              fontFamily: "'Roboto Condensed', sans-serif",
+              fontSize: 'clamp(9px, 1.5vw, 12px)',
+              color: 'rgba(255,255,255,0.68)',
+              marginBottom: '12px', lineHeight: 1.5,
+            }}>{info.description}</div>
+            {/* Ratio rows — current → next (hidden when locked) */}
+            {info.ratioLevels.map(r => {
+              const cur  = r.values[level - 1] ?? r.values[0];
+              const next = !isLocked && !isMax ? r.values[level] : undefined;
+              return (
+                <div key={r.label} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  gap: '10px', marginBottom: '6px',
+                }}>
+                  <span style={{
+                    fontFamily: "'Roboto Condensed', sans-serif",
+                    fontSize: 'clamp(9px, 1.4vw, 12px)',
+                    color: isLocked ? 'rgba(180,180,220,0.7)' : '#F97316',
+                    letterSpacing: '0.06em', flexShrink: 0,
+                  }}>{r.label}</span>
+                  <span style={{
+                    fontFamily: "'Roboto Condensed', sans-serif",
+                    fontSize: 'clamp(9px, 1.4vw, 12px)',
+                    fontWeight: 700, whiteSpace: 'nowrap',
+                    display: 'flex', alignItems: 'center', gap: '4px',
+                  }}>
+                    <span style={{ color: isLocked ? 'rgba(200,200,240,0.8)' : '#FFD700' }}>{cur}</span>
+                    {next && <>
+                      <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.85em' }}>▶</span>
+                      <span style={{ color: '#4ade80' }}>{next}</span>
+                    </>}
+                    {isMax && <span style={{ color: '#F97316', fontSize: '0.8em', marginLeft: '4px' }}>MAX</span>}
+                  </span>
+                </div>
+              );
+            })}
+            {/* Next unlock info — only when skill is actively leveled (not locked preview) */}
+            {!isMax && !isLocked && (
+              <div style={{
+                marginTop: '8px', paddingTop: '8px',
+                borderTop: '1px solid rgba(255,255,255,0.08)',
+                fontFamily: "'Roboto Condensed', sans-serif",
+                fontSize: 'clamp(8px, 1.2vw, 10px)',
+                color: 'rgba(255,255,255,0.38)',
+              }}>Next upgrade → Lv. {info.ratioLevels[0]?.values[level] ? (level + 1) : '—'}</div>
+            )}
+          </div>
+        );
+      })()}
 
     </div>
   );

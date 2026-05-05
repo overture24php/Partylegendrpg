@@ -29,7 +29,7 @@ export function preloadBgm(): void {
   getAudio().load();
 }
 
-// ── Fade helpers ──────────────────────────────────────────────────────────────
+// ── Fade helpers ────────────────────────────────────────────────────���─────────
 const FADE_STEPS = 30;
 const FADE_MS    = 800;
 
@@ -69,6 +69,18 @@ export function startBgm(): void {
   _bgmAllowed = true;
   const audio = getAudio();
   if (audio.paused && _bgmEnabled) fadeIn(audio);
+}
+
+/** Pause main BGM (e.g. during battle) */
+export function pauseMainBgm(): void {
+  const audio = getAudio();
+  if (!audio.paused) fadeOut(audio);
+}
+
+/** Resume main BGM after battle ends */
+export function resumeMainBgm(): void {
+  const audio = getAudio();
+  if (_bgmAllowed && _bgmEnabled && audio.paused) fadeIn(audio);
 }
 
 // ── BGM enabled toggle ────────────────────────────────────────────────────────

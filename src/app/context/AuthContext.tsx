@@ -47,6 +47,8 @@ export interface UserProfile {
   hero_exp: number;
   vip_level: number;
   vip_exp: number;
+  breakthrough_stones: number;
+  chapter1_progress: number;
   createdAt: string;
 }
 
@@ -60,15 +62,15 @@ interface AuthContextType {
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<{ error?: string }>;
   refreshProfile: () => Promise<void>;
-  /** Gain `amount` XP — auto handles multi-level-up cascade */
-  gainExp: (amount: number) => Promise<{ leveledUp: boolean; newLevel: number }>;
+  /** Gain `amount` XP + optional resource deltas — all applied atomically */
+  gainExp: (amount: number, resources?: { gold?: number; gems?: number; hero_exp?: number }) => Promise<{ leveledUp: boolean; newLevel: number }>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 const asInt = (v: unknown, fb = 0): number =>
   typeof v === 'number' ? Math.round(v) : fb;
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// ─── Helpers ───────────────────────────────────────────────────────────────
 function applyLevelState(profile: UserProfile, ls: LevelState): UserProfile {
   return {
     ...profile,
@@ -113,7 +115,8 @@ async function resolveProfile(session: Session): Promise<UserProfile> {
   // 1. Try DB (service_role fetch — bypasses RLS)
   const dbResult = await fetchProfile(userId);
   if (dbResult.prof) {
-    // Re-derive maxXp from table (don't trust stored value)
+    // hydrateLevelState cascades level-ups if xp >= maxXp (fixes stuck players
+    // who accumulated raw xp from old server-side double-write bug).
     const ls = hydrateLevelState(
       dbResult.prof.level,
       dbResult.prof.xp,
@@ -126,6 +129,14 @@ async function resolveProfile(session: Session): Promise<UserProfile> {
       vip_exp:   dbResult.prof.vip_exp   ?? 0,
     }, ls);
     lsSave(prof);
+
+    // If cascade happened (level or xp changed from DB values), write corrected
+    // state back to DB immediately — permanently fixes stuck players, not just display.
+    if (ls.level !== dbResult.prof.level || ls.xp !== dbResult.prof.xp) {
+      console.log(`[Profile] ⚡ Cascade fix: lv${dbResult.prof.level}→${ls.level} xp${dbResult.prof.xp}→${ls.xp}`);
+      upsertProfile(prof); // fire-and-forget: corrects DB asynchronously on login
+    }
+
     console.log('[Profile] ✓ DB (gold:', prof.gold, 'gems:', prof.gems, 'lv:', prof.level, 'vip:', prof.vip_level, ')');
     return prof;
   }
@@ -146,9 +157,11 @@ async function resolveProfile(session: Session): Promise<UserProfile> {
   const fresh: UserProfile = {
     id: userId, email, username,
     nickname: 'New Player',
-    level: 0, xp: 0, maxXp: getMaxXpForLevel(0), exp_percentage: 0,
-    gold: 500, gems: 30, power: 0, hero_exp: 0,
+    level: 1, xp: 0, maxXp: getMaxXpForLevel(1), exp_percentage: 0,
+    gold: 0, gems: 0, power: 0, hero_exp: 0,
     vip_level: 0, vip_exp: 0,
+    breakthrough_stones: 0,
+    chapter1_progress: 0,
     createdAt: new Date().toISOString(),
   };
 
@@ -280,8 +293,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const profile: UserProfile = {
       id: data.user.id, email, username,
       nickname: 'New Player',
-      level: 0, xp: 0, maxXp: getMaxXpForLevel(0), exp_percentage: 0,
-      gold: 500, gems: 30, power: 0, hero_exp: 0,
+      level: 1, xp: 0, maxXp: getMaxXpForLevel(1), exp_percentage: 0,
+      gold: 0, gems: 0, power: 0, hero_exp: 0,
+      vip_level: 0, vip_exp: 0, breakthrough_stones: 0,
+      chapter1_progress: 0,
       createdAt: new Date().toISOString(),
     };
     lsSave(profile);
@@ -294,7 +309,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return {};
   }, []);
 
-  // ── logout ────────────────────────────────���─────────────────────────────
+  // ── logout ─────────────────────────────────────────────────────────────
   const logout = useCallback(async () => {
     if (user) lsClear(user.id);
     await getSupabase().auth.signOut();
@@ -316,6 +331,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       gems:     updates.gems !== undefined ? Math.round(updates.gems) : user.gems,
       power:    updates.power !== undefined ? Math.round(updates.power) : user.power,
       hero_exp: updates.hero_exp !== undefined ? Math.round(updates.hero_exp) : user.hero_exp,
+      breakthrough_stones: updates.breakthrough_stones !== undefined
+        ? Math.round(updates.breakthrough_stones)
+        : (user.breakthrough_stones ?? 0),
+      chapter1_progress: user.chapter1_progress ?? 0,
     };
 
     // If xp/level is being updated directly, re-validate through exp table
@@ -326,13 +345,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     lsSave(base);
     setUser(base);
-    upsertProfile(base);
+    await upsertProfile(base);
     return {};
   }, [user]);
 
-  // ── gainExp ──────────────────────────────────────────────────────────────
+  // ── gainExp ─────────────────────────────────────────────────────────────────
+  // Atomically applies EXP (with level-up cascade) AND optional resource deltas
+  // in a single upsertProfile call, avoiding race conditions.
   const gainExp = useCallback(async (
-    amount: number
+    amount: number,
+    resources?: { gold?: number; gems?: number; hero_exp?: number }
   ): Promise<{ leveledUp: boolean; newLevel: number }> => {
     if (!user) return { leveledUp: false, newLevel: 0 };
 
@@ -340,10 +362,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const currentState = { level: user.level, xp: user.xp, maxXp: user.maxXp, exp_percentage: user.exp_percentage };
     const newState = addExp(currentState, amount);
 
-    const updated = applyLevelState(user, newState);
+    // Build profile with updated level/xp AND resource deltas in one shot
+    const base: UserProfile = {
+      ...user,
+      gold:     user.gold     + (resources?.gold     ?? 0),
+      gems:     user.gems     + (resources?.gems     ?? 0),
+      hero_exp: user.hero_exp + (resources?.hero_exp ?? 0),
+    };
+    const updated = applyLevelState(base, newState);
     lsSave(updated);
     setUser(updated);
-    upsertProfile(updated);
+    // MUST await so DB write completes before any subsequent refreshProfile()
+    // can re-fetch — otherwise refreshProfile reads stale data and reverts the level-up.
+    await upsertProfile(updated);
 
     const leveledUp = newState.level > prevLevel;
     if (leveledUp) {

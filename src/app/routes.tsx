@@ -1,7 +1,11 @@
 import { createBrowserRouter, Navigate, Outlet } from 'react-router';
-import { useAuth } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { HeroProvider } from './context/HeroContext';
+import { LanguageProvider } from './context/LanguageContext';
 import { BgmController } from './components/BgmController';
 import { OfflineOverlay } from './components/OfflineOverlay';
+import { OrientationGuard } from './components/OrientationGuard';
+import { HeroDbSetupNotice } from './components/HeroDbSetupNotice';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import LoadingPage from './pages/LoadingPage';
@@ -76,12 +80,19 @@ function PersistentBgKeeper() {
 
 function RootLayout() {
   return (
-    <>
-      <BgmController />
-      <PersistentBgKeeper />
-      <OfflineOverlay />
-      <Outlet />
-    </>
+    <LanguageProvider>
+      <AuthProvider>
+        <HeroProvider>
+          <OrientationGuard>
+            <BgmController />
+            <PersistentBgKeeper />
+            <OfflineOverlay />
+            <HeroDbSetupNotice />
+            <Outlet />
+          </OrientationGuard>
+        </HeroProvider>
+      </AuthProvider>
+    </LanguageProvider>
   );
 }
 
