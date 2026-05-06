@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, memo } from 'react';
+import { useState, useMemo, useEffect, useRef, memo, useCallback } from 'react';
 import { GamePageLayout }   from '../components/GamePageLayout';
 import { HeroDetailView }   from '../components/HeroDetailView';
 import { EmmaDetailView }   from '../components/EmmaDetailView';
@@ -10,6 +10,7 @@ import { useHero }          from '../context/HeroContext';
 import { playBtnSound }     from '../utils/buttonSound';
 import { chromaDataUrlCache, keepChromaUrl } from '../utils/chromaKey';
 import { HERO_GALLERY, getHeroIlust } from '../data/heroGallery';
+import { PixiObtainedGrid, HeroData as PixiHeroData } from '../components/PixiObtainedGrid';
 
 // ─── Card Shell CSS (injected once) ──────────────────────────────────────────
 const SHELL_CSS_ID = 'hcs-css';
@@ -378,6 +379,27 @@ export default function HeroPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // stable — hero list doesn't change within session
 
+  // ── PixiJS hero data + click handler ──────────────────────────────────────
+  const pixiHeroes = useMemo<PixiHeroData[]>(() => ownedHeroes.map(oh => {
+    const hid     = oh.playerHero.hero_id;
+    const rar     = normRarity(oh.def.rarity);
+    const heroCfg = HERO_RARITIES.find(r => r.id === rar) ?? HERO_RARITIES[4];
+    return {
+      heroId:    hid,
+      name:      oh.def.name ?? hid,
+      rarity:    rar,
+      heroType:  oh.def.hero_type ?? '',
+      level:     oh.playerHero.level ?? 1,
+      stars:     oh.playerHero.stars ?? heroCfg.stars,
+      illustUrl: getIlust(hid),
+    };
+  }), [ownedHeroes]);
+
+  const handlePixiCardClick = useCallback((heroId: string) => {
+    const handler = openDetailCallbacks.get(heroId);
+    if (handler) handler();
+  }, [openDetailCallbacks]);
+
   return (
     <div style={{ position: 'relative', width: '100%', height: '100dvh', background: '#1a0535', overflow: 'hidden' }}>
 
@@ -444,54 +466,15 @@ export default function HeroPage() {
         zIndex:10, background:'rgba(255,140,0,0.85)', pointerEvents:'none' }}/>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          OBTAINED GRID — always mounted; toggled via display:none.
-          Zero-JS CardShell: no particles, no IO, no RAF per card.
-          content-visibility:auto on each cell → browser skips off-screen.
+          OBTAINED GRID — PixiJS WebGL renderer.
+          GPU chroma key, single Ticker loop, momentum scroll.
+          Handles 60–200+ cards at 60fps with full animation.
       ════════════════════════════════════════════════════════════════════════ */}
-      <div
-        style={{
-          position: 'absolute', top: '20.5%', bottom: '9%', left: 0, right: 0,
-          zIndex: 10,
-          overflowY: 'auto', overflowX: 'hidden',
-          padding: '10px 10px 0 10px',
-          display: tab === 'obtained' ? 'flex' : 'none',
-          flexWrap: 'wrap',
-          alignContent: 'flex-start', alignItems: 'flex-start', justifyContent: 'flex-start',
-          gap: '8px',
-          // Scroll-optimised containment — does NOT prevent subpixel compositing
-          contain: 'paint layout',
-          WebkitOverflowScrolling: 'touch',
-        } as React.CSSProperties}
-      >
-        {ownedHeroes.length === 0 ? (
-          <div style={{ width:'100%', textAlign:'center', padding:'40px 0',
-            color:'rgba(255,255,255,.3)', fontFamily:"'Roboto Condensed',sans-serif",
-            fontSize:13, letterSpacing:'.08em' }}>
-            No heroes yet — visit the Tavern to summon!
-          </div>
-        ) : ownedHeroes.map(oh => {
-          const hid      = oh.playerHero.hero_id;
-          const rar      = normRarity(oh.def.rarity);
-          const heroCfg  = HERO_RARITIES.find(r => r.id === rar) ?? HERO_RARITIES[4];
-          const ilust    = getIlust(hid);
-          const resolved = chromaMap.get(ilust) ?? null;
-          const onClick  = openDetailCallbacks.get(hid) ?? (() => {});
-          return (
-            <ObtainedCard
-              key={hid}
-              heroId={hid}
-              name={oh.def.name ?? hid}
-              rarity={rar}
-              heroType={oh.def.hero_type ?? ''}
-              level={oh.playerHero.level ?? 1}
-              stars={oh.playerHero.stars ?? heroCfg.stars}
-              resolvedSrc={resolved}
-              rarityColor={heroCfg.fill}
-              onClick={onClick}
-            />
-          );
-        })}
-      </div>
+      <PixiObtainedGrid
+        heroes={pixiHeroes}
+        visible={tab === 'obtained'}
+        onCardClick={handlePixiCardClick}
+      />
 
       {/* ══════════════════════════════════════════════════════════════════════
           GALLERY GRID — lazy-mounted on first visit, then CSS-toggled.
