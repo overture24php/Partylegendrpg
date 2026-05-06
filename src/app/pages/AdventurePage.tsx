@@ -17,6 +17,8 @@ import { simulateBattle } from '/utils/supabase/battle-service';
 import type { SimBattleResult } from '/utils/supabase/battle-service';
 import { useAuth } from '../context/AuthContext';
 import { getHeroIlust } from '../data/heroGallery';
+import { PixiEnemyInfoRow, EnemyCardData } from '../components/PixiEnemyInfoRow';
+import { PixiDeployGrid, DeployHeroData } from '../components/PixiDeployGrid';
 
 
 const MAP_URL   = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777566900/ChatGPT_Image_Apr_30_2026_11_34_05_PM_ptwl1w.png';
@@ -658,29 +660,23 @@ function StageInfoPanel({ stageId, chapter1Progress, onChallenge }: {
         {/* Enemy Info */}
         <div style={{ fontFamily: FP, fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.1em', marginBottom: 4, flexShrink: 0 }}>Enemy Info</div>
         <OrangeDivider />
-        <div style={{ display: 'flex', flexDirection: 'row', gap: 7, overflowX: 'auto', scrollbarWidth: 'none', padding: '6px 0 8px', flexShrink: 0 }}>
-          {uniqueEnemyIds.map((eid, i) => {
-            const def = ENEMY_DEFS[eid];
-            if (!def) return null;
-            const count = data.enemyIds.filter(x => x === eid).length;
-            return (
-              <div key={i} style={{ flexShrink: 0, position: 'relative' }}>
-                <div style={{ width: 82, height: 132 }}>
-                  <HeroCardAnimated rarityColor={def.rarityColor}>
-                    <HeroCard name={def.name} rarity={def.rarity} level={displayLevel || 1} ilust={def.ilust} heroType={def.heroType} />
-                  </HeroCardAnimated>
-                </div>
-                {count > 1 && (
-                  <div style={{
-                    position: 'absolute', top: 4, right: 4,
-                    background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.3)',
-                    borderRadius: 10, padding: '1px 5px',
-                    fontFamily: F, fontSize: 10, fontWeight: 800, color: '#ffd54f',
-                  }}>×{count}</div>
-                )}
-              </div>
-            );
-          })}
+        <div style={{ padding: '6px 0 8px', flexShrink: 0 }}>
+          <PixiEnemyInfoRow
+            enemies={uniqueEnemyIds.reduce<EnemyCardData[]>((acc, eid) => {
+              const def = ENEMY_DEFS[eid];
+              if (!def) return acc;
+              acc.push({
+                enemyId:   eid,
+                name:      def.name,
+                rarity:    def.rarity,
+                heroType:  def.heroType,
+                level:     displayLevel || 1,
+                illustUrl: def.ilust,
+                count:     data.enemyIds.filter(x => x === eid).length,
+              });
+              return acc;
+            }, [])}
+          />
         </div>
 
         {/* Stage Reward */}
@@ -1125,56 +1121,37 @@ function HeroDeployOverlay({ occupiedNames, onSelect, onClose }: {
         })}
       </div>
 
-      {/* Hero card grid — fills remaining space */}
-      <div style={{
-        flex: 1, overflowY: 'auto', scrollbarWidth: 'none',
-        display: 'flex', flexWrap: 'wrap', alignContent: 'flex-start',
-        gap: 8, padding: 10,
-      }}>
-        {isLoading ? (
-          <div style={{ width: '100%', textAlign: 'center', paddingTop: 40,
-            fontFamily: F, fontSize: 12, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em' }}>
-            Loading heroes…
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ width: '100%', textAlign: 'center', paddingTop: 40,
-            fontFamily: F, fontSize: 12, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em' }}>
-            No heroes
-          </div>
-        ) : filtered.map(({ playerHero: ph, def }) => {
-          const heroName    = def.name;
-          const rarityColor = RARITY_COLOR[def.rarity] ?? '#1877F2';
-          const isDeployed  = occupiedNames.includes(heroName);
-          // Gallery ilust takes priority (heroGallery = single source of truth)
-          const ilust = getHeroIlust(ph.hero_id) ?? def.illust_url ?? '';
-          return (
-            <div
-              key={ph.hero_id}
-              onClick={() => { if (isDeployed) return; playCardSound(); onSelect(heroName); }}
-              style={{
-                width: 'calc(25% - 6px)', aspectRatio: '250/400',
-                borderRadius: 10, overflow: 'hidden', cursor: isDeployed ? 'default' : 'pointer',
-                opacity: isDeployed ? 0.4 : 1,
-                outline: isDeployed ? '2px solid rgba(255,255,255,0.15)' : '2px solid transparent',
-                position: 'relative',
-              }}
-            >
-              <HeroCardAnimated rarityColor={rarityColor}>
-                <HeroCard name={heroName} rarity={def.rarity} level={ph.level}
-                  ilust={ilust} heroType={def.hero_type} stars={ph.stars ?? undefined} />
-              </HeroCardAnimated>
-              {isDeployed && (
-                <div style={{
-                  position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 10,
-                }}>
-                  <span style={{ fontFamily: F, fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.1em' }}>DEPLOYED</span>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      {/* Hero card grid — PixiJS WebGL, 5 per row, vertical scroll */}
+      {isLoading ? (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: F, fontSize: 12, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em' }}>
+          Loading heroes…
+        </div>
+      ) : filtered.length === 0 ? (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: F, fontSize: 12, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em' }}>
+          No heroes
+        </div>
+      ) : (
+        <PixiDeployGrid
+          heroes={filtered.map(({ playerHero: ph, def }): DeployHeroData => ({
+            heroId:    ph.hero_id,
+            name:      def.name,
+            rarity:    def.rarity,
+            heroType:  def.hero_type,
+            level:     ph.level,
+            stars:     ph.stars ?? 1,
+            illustUrl: getHeroIlust(ph.hero_id) ?? def.illust_url ?? '',
+            deployed:  occupiedNames.includes(def.name),
+          }))}
+          onCardClick={(heroId) => {
+            const oh = filtered.find(h => h.playerHero.hero_id === heroId);
+            if (!oh || occupiedNames.includes(oh.def.name)) return;
+            playCardSound();
+            onSelect(oh.def.name);
+          }}
+        />
+      )}
     </div>
   );
 }

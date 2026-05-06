@@ -1,122 +1,28 @@
-import { useState, useMemo, useEffect, useRef, memo, useCallback } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { GamePageLayout }   from '../components/GamePageLayout';
 import { HeroDetailView }   from '../components/HeroDetailView';
 import { EmmaDetailView }   from '../components/EmmaDetailView';
 import { HeroPreviewView }  from '../components/HeroPreviewView';
 import { useLanguage }      from '../context/LanguageContext';
-import { HeroCard, HeroCardWithAnimation, HERO_RARITIES } from '../components/HeroCard';
-import { LockedHeroCard }   from '../components/LockedHeroCard';
+import { HERO_RARITIES }    from '../components/HeroCard';
 import { useHero }          from '../context/HeroContext';
 import { playBtnSound }     from '../utils/buttonSound';
 import { chromaDataUrlCache, keepChromaUrl } from '../utils/chromaKey';
 import { HERO_GALLERY, getHeroIlust } from '../data/heroGallery';
 import { PixiObtainedGrid, HeroData as PixiHeroData } from '../components/PixiObtainedGrid';
+import { PixiGalleryGrid, GalleryHeroData }            from '../components/PixiGalleryGrid';
 
-// ─── Card Shell CSS (injected once) ──────────────────────────────────────────
-const SHELL_CSS_ID = 'hcs-css';
-function injectShellCss() {
-  if (typeof document === 'undefined') return;
-  if (document.getElementById(SHELL_CSS_ID)) return;
-  const s = document.createElement('style');
-  s.id = SHELL_CSS_ID;
-  // ALL animations use ONLY transform/opacity — compositor thread only,
-  // never blocks main thread during scroll. Zero layout, zero paint.
-  s.textContent = `
-    .hcs-wrap {
-      position: relative; width: 100%; height: 100%;
-      contain: layout style paint;
-      transform: translateZ(0);
-      cursor: pointer;
-      border-radius: 12px;
-      overflow: hidden;
-    }
-    .hcs-wrap:active { transform: translateZ(0) scale(0.965); transition: transform .1s; }
-
-    /* Diagonal sweep — translateX only, pure compositor */
-    @keyframes hcsSwp {
-      0%   { transform: translateX(-220%); }
-      40%  { transform: translateX(280%); }
-      100% { transform: translateX(280%); }
-    }
-    .hcs-sweep {
-      position: absolute;
-      left: 0; top: -60%; height: 220%; width: 52%;
-      background: linear-gradient(102deg, transparent 30%, rgba(255,255,255,0.20) 50%, transparent 70%);
-      animation: hcsSwp 5.4s ease-in-out infinite;
-      will-change: transform;
-      pointer-events: none;
-    }
-
-    /* Holographic foil — opacity only, pure compositor */
-    @keyframes hcsHolo {
-      0%,100% { opacity: 0.07; }
-      50%     { opacity: 0.19; }
-    }
-    .hcs-holo {
-      position: absolute; inset: 0; border-radius: 10px;
-      background: linear-gradient(125deg,
-        rgba(255,0,102,0.32), rgba(255,153,0,0.32), rgba(0,255,136,0.32),
-        rgba(0,153,255,0.32), rgba(204,0,255,0.32), rgba(255,0,102,0.32));
-      mix-blend-mode: color-burn;
-      animation: hcsHolo 9s linear infinite;
-      will-change: opacity;
-      pointer-events: none;
-    }
-
-    /* Tap glow ring */
-    .hcs-ring {
-      position: absolute; inset: 0; border-radius: 12px;
-      pointer-events: none;
-      opacity: 0; transition: opacity .15s;
-    }
-    .hcs-wrap:active .hcs-ring { opacity: 1; }
-  `;
-  document.head.appendChild(s);
-}
-
-// ─── CardShell — lightweight animated wrapper ─────────────────────────────────
-// Sweep + holo + illustration-float = pure CSS, compositor thread only.
-// No IntersectionObserver, no RAF, no particles → zero JS per card.
-const CardShell = memo(function CardShell({
-  children, rarityColor,
-}: { children: React.ReactNode; rarityColor: string }) {
-  injectShellCss();
-  return (
-    <div className="hcs-wrap">
-      {children}
-      <div className="hcs-sweep" />
-      <div className="hcs-holo" />
-      <div
-        className="hcs-ring"
-        style={{ boxShadow: `0 0 22px ${rarityColor}66, inset 0 0 10px ${rarityColor}22` }}
-      />
-    </div>
-  );
-});
-
-// ─── Batch chroma-key hook ────────────────────────────────────────────────────
-// Processes all URLs in ONE pass on mount, returns a stable Map.
-// Already-cached URLs resolve synchronously and don't trigger any setState.
-function useChromaBatch(urls: string[]): Map<string, string | null> {
-  // Stable result map — only updated when new URLs finish processing
-  const [resolved, setResolved] = useState<Map<string, string | null>>(() => {
-    const m = new Map<string, string | null>();
-    urls.forEach(u => {
-      const cached = chromaDataUrlCache.get(u);
-      m.set(u, cached ?? null);
-    });
-    return m;
-  });
-
+// ─── Chroma warm-up hook ──────────────────────────────────────────────────────
+// Processes all illustration URLs on mount, populating chromaDataUrlCache.
+// PixiObtainedGrid + PixiGalleryGrid both consume this cache on first render.
+// Returns void — call site doesn't need the map.
+function useChromaBatch(urls: string[]): void {
   const processingRef = useRef(new Set<string>());
 
   useEffect(() => {
-    let changed = false;
-    const updates: [string, string][] = [];
-
     const loadOne = (url: string) => {
       if (!url || processingRef.current.has(url)) return;
-      if (chromaDataUrlCache.has(url)) return; // already cached, no work
+      if (chromaDataUrlCache.has(url)) return; // already warmed
       processingRef.current.add(url);
 
       const img = new Image();
@@ -129,8 +35,7 @@ function useChromaBatch(urls: string[]): Map<string, string | null> {
         if (!ctx) return;
         ctx.drawImage(img, 0, 0);
         const id = ctx.getImageData(0, 0, off.width, off.height);
-        // applyChromaKey inline (avoid import cycle)
-        const d = id.data;
+        const d  = id.data;
         for (let i = 0; i < d.length; i += 4) {
           const r = d[i], g = d[i+1], b = d[i+2];
           const diff = g - Math.max(r, b);
@@ -142,36 +47,13 @@ function useChromaBatch(urls: string[]): Map<string, string | null> {
           }
         }
         ctx.putImageData(id, 0, 0);
-        const dataUrl = off.toDataURL('image/png');
-        keepChromaUrl(url, dataUrl);
-        updates.push([url, dataUrl]);
-        // Batch React updates — schedule a single flush after the current microtask queue
-        if (!changed) {
-          changed = true;
-          // Use setTimeout(0) to let ALL parallel loads complete before one setState
-          setTimeout(() => {
-            setResolved(prev => {
-              const next = new Map(prev);
-              updates.forEach(([k, v]) => next.set(k, v));
-              return next;
-            });
-            updates.length = 0;
-            changed = false;
-          }, 0);
-        }
-      };
-      img.onerror = () => {
-        // fallback: use raw url
-        updates.push([url, url]);
+        keepChromaUrl(url, off.toDataURL('image/png'));
       };
       img.src = url;
     };
-
     urls.forEach(loadOne);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // run once on mount — urls are stable (derived from ownedHeroes)
-
-  return resolved;
+  }, []); // stable — runs once on mount
 }
 
 // ─── Asset helpers ────────────────────────────────────────────────────────────
@@ -190,15 +72,6 @@ function normRarity(r: string): string {
   return map[r] ?? 'common';
 }
 
-// Gallery roster — static, derived once
-const GALLERY_ROSTER = HERO_GALLERY.map(h => ({
-  name:     h.name,
-  rarity:   h.rarity,
-  heroType: h.heroType,
-  ilust:    h.ilust ?? undefined,
-  level:    1,
-}));
-
 // ─── Detail state type ────────────────────────────────────────────────────────
 interface DetailHero {
   heroId: string; name: string; rarity: string; rarityLabel: string;
@@ -207,95 +80,33 @@ interface DetailHero {
   stats: { hp:number; pAtk:number; mAtk:number; pDef:number; mDef:number; speed:number; expCurrent:number; expMax:number };
 }
 
-// ─── ObtainedCard — single card in the obtained grid ─────────────────────────
-// Memo'd: only re-renders when its own props change.
-interface ObtainedCardProps {
-  heroId: string; name: string; rarity: string; heroType: string;
-  level: number; stars: number; resolvedSrc: string | null;
-  rarityColor: string;
-  onClick: () => void;
-}
-const ObtainedCard = memo(function ObtainedCard({
-  heroId, name, rarity, heroType, level, stars, resolvedSrc, rarityColor, onClick,
-}: ObtainedCardProps) {
-  return (
-    <div
-      style={{
-        width: 'calc(25% - 6px)',
-        aspectRatio: '250/400',
-        flexShrink: 0,
-        cursor: 'pointer',
-        // content-visibility: auto → browser skips layout/paint when off-screen
-        contentVisibility: 'auto',
-        containIntrinsicSize: 'auto 1px',
-      } as React.CSSProperties}
-      onClick={onClick}
-    >
-      <CardShell rarityColor={rarityColor}>
-        <HeroCard
-          name={name}
-          rarity={rarity}
-          level={level}
-          ilust={''}
-          heroType={heroType}
-          stars={stars}
-          uid={heroId}
-          resolvedSrc={resolvedSrc}
-        />
-      </CardShell>
-    </div>
-  );
-});
-
-// ─── GalleryCard — single card in the gallery tab ────────────────────────────
-const GalleryCard = memo(function GalleryCard({
-  name, rarity, heroType, ilust, level, onClick, cfg,
-}: {
-  name: string; rarity: string; heroType: string;
-  ilust?: string; level: number; cfg: typeof HERO_RARITIES[number];
-  onClick: () => void;
-}) {
-  // Each gallery card does its own chroma key (smaller count, full animation fine)
-  return (
-    <div
-      style={{ width: 186, height: Math.round(186 * 400 / 250), flexShrink: 0, cursor: 'pointer' }}
-      onClick={onClick}
-    >
-      <HeroCardWithAnimation rarityColor={cfg.fill}>
-        {ilust ? (
-          <HeroCard name={name} rarity={rarity} level={level} ilust={ilust} heroType={heroType} />
-        ) : (
-          <LockedHeroCard name={name} rarity={rarity} heroType={heroType} />
-        )}
-      </HeroCardWithAnimation>
-    </div>
-  );
-});
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function HeroPage() {
-  const [tab, setTab]                   = useState<'obtained' | 'gallery'>('obtained');
-  // Gallery lazy-mount: only renders after first time user opens gallery tab.
-  // Once true, stays true — CSS display:none handles hide/show with no remount.
-  const galleryMountedRef = useRef(false);
-  if (tab === 'gallery') galleryMountedRef.current = true;
-  const galleryMounted = galleryMountedRef.current;
-  const [detailOpen, setDetailOpen]     = useState(false);
-  const [emmaOpen,   setEmmaOpen]       = useState(false);
-  const [detailHero, setDetailHero]     = useState<DetailHero | null>(null);
-  const [previewHero, setPreviewHero]   = useState<{ name: string; rarity: string; heroType: string; ilust?: string } | null>(null);
-  const { t } = useLanguage();
+  const [tab, setTab] = useState<'obtained' | 'gallery'>('obtained');
+
+  // galleryActivated: lazy-init stays false until user first visits gallery tab.
+  // Prevents 30+ GL card objects being created before user ever opens gallery.
+  const [galleryActivated, setGalleryActivated] = useState(false);
+  useEffect(() => {
+    if (tab === 'gallery' && !galleryActivated) setGalleryActivated(true);
+  }, [tab, galleryActivated]);
+
+  const [detailOpen,  setDetailOpen]  = useState(false);
+  const [emmaOpen,    setEmmaOpen]    = useState(false);
+  const [detailHero,  setDetailHero]  = useState<DetailHero | null>(null);
+  const [previewHero, setPreviewHero] = useState<{ name: string; rarity: string; heroType: string; ilust?: string } | null>(null);
+
+  const { t }           = useLanguage();
   const { ownedHeroes } = useHero();
 
-  // ── Pre-batch all owned hero illustration chroma keys ─────────────────────
-  // Runs once on mount. Cache-hits return synchronously → zero async work if
-  // LoadingPage already warmed everything.
+  // ── Warm chromaDataUrlCache for all owned illustrations ───────────────────
+  // Zero-cost if LoadingPage already warmed them (cache-hit early returns).
   const illustUrls = useMemo(
     () => ownedHeroes.map(oh => getIlust(oh.playerHero.hero_id)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [], // intentionally stable: ownedHeroes list doesn't change within session
   );
-  const chromaMap = useChromaBatch(illustUrls);
+  useChromaBatch(illustUrls);
 
   // ── Live DB stats ─────────────────────────────────────────────────────────
   const lucasDB = ownedHeroes.find(o => o.playerHero.hero_id === 'lucas');
@@ -337,16 +148,14 @@ export default function HeroPage() {
 
   const lucasCfg = HERO_RARITIES.find(r => r.id === LUCAS.rarity) ?? HERO_RARITIES[3];
   const emmaCfg  = HERO_RARITIES.find(r => r.id === EMMA.rarity)  ?? HERO_RARITIES[3];
-
   const pageTitle = tab === 'obtained' ? t('hero.obtained_title') : t('hero.gallery_title');
 
-  // ── Stable click handlers for obtained cards ──────────────────────────────
-  // Using a factory memoised by heroId so ObtainedCard memo stays effective
+  // ── Click handlers: obtained cards → open detail/emma view ───────────────
   const openDetailCallbacks = useMemo(() => {
     const map = new Map<string, () => void>();
     for (const oh of ownedHeroes) {
-      const hid = oh.playerHero.hero_id;
-      const rar = normRarity(oh.def.rarity);
+      const hid     = oh.playerHero.hero_id;
+      const rar     = normRarity(oh.def.rarity);
       const heroCfg = HERO_RARITIES.find(r => r.id === rar) ?? HERO_RARITIES[4];
       map.set(hid, () => {
         playBtnSound();
@@ -377,9 +186,9 @@ export default function HeroPage() {
     }
     return map;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // stable — hero list doesn't change within session
+  }, []); // stable within session
 
-  // ── PixiJS hero data + click handler ──────────────────────────────────────
+  // ── PixiJS: Obtained grid data ────────────────────────────────────────────
   const pixiHeroes = useMemo<PixiHeroData[]>(() => ownedHeroes.map(oh => {
     const hid     = oh.playerHero.hero_id;
     const rar     = normRarity(oh.def.rarity);
@@ -400,6 +209,53 @@ export default function HeroPage() {
     if (handler) handler();
   }, [openDetailCallbacks]);
 
+  // ── PixiJS: Gallery grid data (lazy — builds only after first gallery visit) ─
+  const galleryHeroes = useMemo<GalleryHeroData[]>(() => {
+    if (!galleryActivated) return [];
+    const ownedIds = new Set(ownedHeroes.map(oh => oh.playerHero.hero_id));
+    return HERO_GALLERY.map(h => {
+      // isLocked = card shows padlock visual.
+      // OLD behaviour (preserved): heroes WITH an ilust URL show their
+      // illustration regardless of ownership. Only heroes WITHOUT ilust show locked.
+      const hasIllust   = !!(h.ilust && h.ilust.trim().length > 0);
+      const isLocked    = !hasIllust;
+      const owned       = ownedHeroes.find(oh => oh.playerHero.hero_id === h.heroId);
+      const rar         = normRarity(h.rarity);
+      const effectiveRar = h.heroId === 'lucas' ? normRarity(lucasDB?.def.rarity ?? rar)
+                         : h.heroId === 'emma'  ? normRarity(emmaDB?.def.rarity  ?? rar)
+                         : rar;
+      const heroCfg = HERO_RARITIES.find(r => r.id === effectiveRar) ?? HERO_RARITIES[4];
+      // For illustration URL: use h.ilust directly (same source as old GalleryCard)
+      const illustUrl = isLocked ? ''
+                      : h.heroId === 'lucas' ? (LUCAS_ILUST || h.ilust || '')
+                      : h.heroId === 'emma'  ? (EMMA_ILUST  || h.ilust || '')
+                      : (h.ilust ?? '');
+      return {
+        heroId:   h.heroId,
+        name:     h.name,
+        rarity:   effectiveRar,
+        heroType: h.heroType,
+        level:    owned?.playerHero.level ?? 1,
+        stars:    owned?.playerHero.stars ?? heroCfg.stars,
+        illustUrl,
+        isLocked,
+      };
+    });
+  }, [galleryActivated, ownedHeroes]);
+
+  const handleGalleryCardClick = useCallback((heroId: string) => {
+    const hero = HERO_GALLERY.find(h => h.heroId === heroId);
+    if (!hero) return;
+    playBtnSound();
+    setPreviewHero({
+      name:      hero.name,
+      rarity:    normRarity(hero.rarity),
+      heroType:  hero.heroType,
+      ilust:     getIlust(heroId) ?? undefined,
+    });
+  }, []);
+
+  // ─────────────────────────────────────────────────────────────────────────────
   return (
     <div style={{ position: 'relative', width: '100%', height: '100dvh', background: '#1a0535', overflow: 'hidden' }}>
 
@@ -467,8 +323,6 @@ export default function HeroPage() {
 
       {/* ══════════════════════════════════════════════════════════════════════
           OBTAINED GRID — PixiJS WebGL renderer.
-          GPU chroma key, single Ticker loop, momentum scroll.
-          Handles 60–200+ cards at 60fps with full animation.
       ════════════════════════════════════════════════════════════════════════ */}
       <PixiObtainedGrid
         heroes={pixiHeroes}
@@ -477,44 +331,14 @@ export default function HeroPage() {
       />
 
       {/* ══════════════════════════════════════════════════════════════════════
-          GALLERY GRID — lazy-mounted on first visit, then CSS-toggled.
-          HeroCardWithAnimation used here (full visual fidelity, fewer cards).
+          GALLERY GRID — PixiJS WebGL renderer. Lazy-activated on first visit.
+          Unlocked cards: full hero illustration. Locked cards: padlock visual.
       ════════════════════════════════════════════════════════════════════════ */}
-      <div
-        style={{
-          position: 'absolute', top: '20.5%', bottom: '9%', left: 0, right: 0,
-          zIndex: 10,
-          overflowY: 'auto', overflowX: 'hidden',
-          padding: '10px 10px 0 10px',
-          display: tab === 'gallery' ? 'flex' : 'none',
-          flexWrap: 'wrap',
-          alignContent: 'flex-start', alignItems: 'flex-start', justifyContent: 'flex-start',
-          gap: '8px',
-          contain: 'paint layout',
-          WebkitOverflowScrolling: 'touch',
-        } as React.CSSProperties}
-      >
-        {galleryMounted && GALLERY_ROSTER.map(hero => {
-          const heroCfg = HERO_RARITIES.find(r => r.id === hero.rarity) ?? HERO_RARITIES[4];
-          const cfg     = hero.name === 'Lucas' ? lucasCfg : hero.name === 'Emma' ? emmaCfg : heroCfg;
-          const ilust   = hero.name === 'Lucas' ? LUCAS_ILUST : hero.name === 'Emma' ? EMMA_ILUST : hero.ilust;
-          return (
-            <GalleryCard
-              key={hero.name}
-              name={hero.name}
-              rarity={hero.rarity}
-              heroType={hero.heroType}
-              ilust={ilust}
-              level={hero.level ?? 1}
-              cfg={cfg}
-              onClick={() => {
-                playBtnSound();
-                setPreviewHero({ name: hero.name, rarity: hero.rarity, heroType: hero.heroType, ilust });
-              }}
-            />
-          );
-        })}
-      </div>
+      <PixiGalleryGrid
+        heroes={galleryHeroes}
+        visible={tab === 'gallery'}
+        onCardClick={handleGalleryCardClick}
+      />
 
       {/* ── Shared UI overlay ── */}
       <GamePageLayout activeTab="hero" hidePlayerInfo/>
