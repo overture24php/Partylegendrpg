@@ -3,6 +3,7 @@
  * Used by HeroPage (gallery + obtained grid) and TavernPage (gacha result).
  * This is the canonical card rendering — update here to change design everywhere.
  */
+import { memo } from 'react';
 import { useChromaKeyDataUrl } from '../utils/chromaKey';
 import { HeroCardAnimated } from './HeroCardAnimated';
 
@@ -40,7 +41,7 @@ interface HeroCardProps {
 }
 
 /** Raw SVG card — no animated wrapper. Wrap in HeroCardAnimated yourself if needed. */
-export function HeroCard({ name, rarity, level, ilust, heroType, stars, uid }: HeroCardProps) {
+export const HeroCard = memo(function HeroCard({ name, rarity, level, ilust, heroType, stars, uid }: HeroCardProps) {
   const cfg      = HERO_RARITIES.find(r => r.id === rarity) ?? HERO_RARITIES[4];
   const safeId   = uid ?? name.replace(/\s+/g, '-');
   const clipId   = `hc-clip-${safeId}`;
@@ -87,18 +88,17 @@ export function HeroCard({ name, rarity, level, ilust, heroType, stars, uid }: H
       <rect x="3" y="3" width="244" height="394" rx="10" ry="10" fill={cfg.fill}/>
       <rect x="3" y="3" width="244" height="394" rx="10" ry="10" fill="none" stroke="rgba(0,0,0,0.35)" strokeWidth="2"/>
 
+      {/* ── Illustration: SVG <image> avoids foreignObject flickering on mobile ── */}
       <g clipPath={`url(#${clipId})`}>
         <g style={{ transform: 'translateX(var(--hci-x, 0px)) translateY(var(--hci-y, 0px))' }}>
           <g className="hca-ilust-anim">
-            <foreignObject x="3" y="3" width="244" height="394">
-              <img
-                src={chromaUrl ?? ''}
-                draggable={false}
-                onDragStart={e => e.preventDefault()}
-                onMouseDown={e => e.preventDefault()}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center bottom', display: 'block', userSelect: 'none', pointerEvents: 'none' }}
+            {chromaUrl ? (
+              <image
+                href={chromaUrl}
+                x="3" y="3" width="244" height="394"
+                preserveAspectRatio="xMidYMax slice"
               />
-            </foreignObject>
+            ) : null}
           </g>
         </g>
       </g>
@@ -157,7 +157,7 @@ export function HeroCard({ name, rarity, level, ilust, heroType, stars, uid }: H
       <rect x="1" y="1" width="248" height="398" rx="11" ry="11" fill="none" stroke={cfg.shine} strokeWidth="1" strokeOpacity="0.4"/>
     </svg>
   );
-}
+});
 
 /** HeroCard wrapped in the animated 3D-tilt container. Use in gallery/obtained grids. */
 export function HeroCardWithAnimation({ children, rarityColor }: { children: React.ReactNode; rarityColor: string }) {

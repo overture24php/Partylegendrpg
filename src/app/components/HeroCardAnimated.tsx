@@ -4,7 +4,12 @@
  *   • Character illustration (inside SVG): float+breath via .hca-ilust-anim CSS class,
  *     smooth 2D parallax displacement via --hci-x / --hci-y CSS vars (RAF lerp, no re-renders)
  *
- * The card frame/border stays completely static — only the illustration moves.
+ * Performance optimisations (mobile):
+ *   • IntersectionObserver pauses ALL CSS animations + cancels RAF when off-screen.
+ *   • RAF is lazy: only starts on mouse-enter, self-terminates when back at neutral.
+ *   • On pure-touch devices the RAF never fires at all.
+ *   • `will-change: transform` on the card promotes it to its own compositor layer.
+ *   • `contain: layout style paint` isolates each card's layout calculations.
  */
 
 import { useRef, useCallback, useMemo, useEffect } from 'react';
@@ -87,25 +92,76 @@ export function HeroCardAnimated({
   const target       = useRef({ x: 0, y: 0 });
   const current      = useRef({ x: 0, y: 0 });
   const rafId        = useRef(0);
+  const isHovered    = useRef(false);
   const particles    = useMemo(() => genParticles(14, rarityColor), [rarityColor]);
 
-  // ── RAF loop: lerp current → target, write CSS vars ────────────────────────
+  // ── IntersectionObserver: pause every animated child when off-screen ────────
+  // This is pure DOM mutation — zero React re-renders.
   useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const io = new IntersectionObserver(([entry]) => {
+      const play = entry.isIntersecting ? 'running' : 'paused';
+
+      // Pause/resume all tagged HTML animation elements
+      el.querySelectorAll<HTMLElement>('[data-hca-anim]').forEach(ae => {
+        ae.style.animationPlayState = play;
+      });
+
+      // Pause/resume the SVG float animation on the illustration group
+      const svgG = el.querySelector('.hca-ilust-anim') as HTMLElement | null;
+      if (svgG) svgG.style.animationPlayState = play;
+
+      // Cancel RAF when going off-screen
+      if (!entry.isIntersecting && rafId.current) {
+        cancelAnimationFrame(rafId.current);
+        rafId.current = 0;
+      }
+    }, {
+      // Start pausing slightly before the card fully leaves, resume a bit before it enters
+      rootMargin: '120px',
+      threshold:  0,
+    });
+
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  // ── Lazy RAF: self-starts on hover, self-terminates when at neutral ─────────
+  const startRaf = useCallback(() => {
+    if (rafId.current) return; // already running
+
     const tick = () => {
-      const c = current.current;
-      const t = target.current;
+      const c  = current.current;
+      const t  = target.current;
       c.x += (t.x - c.x) * 0.1;
       c.y += (t.y - c.y) * 0.1;
+
       const el = containerRef.current;
       if (el) {
         el.style.setProperty('--hci-x', `${c.x.toFixed(2)}px`);
         el.style.setProperty('--hci-y', `${c.y.toFixed(2)}px`);
       }
+
+      // Self-terminate once close enough to 0,0 and no longer hovered
+      if (!isHovered.current && Math.abs(c.x) < 0.05 && Math.abs(c.y) < 0.05) {
+        el?.style.setProperty('--hci-x', '0px');
+        el?.style.setProperty('--hci-y', '0px');
+        rafId.current = 0;
+        return;
+      }
+
       rafId.current = requestAnimationFrame(tick);
     };
+
     rafId.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId.current);
   }, []);
+
+  const handleMouseEnter = useCallback(() => {
+    isHovered.current = true;
+    startRaf();
+  }, [startRaf]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const el = containerRef.current;
@@ -117,15 +173,29 @@ export function HeroCardAnimated({
   }, [maxParallax]);
 
   const handleMouseLeave = useCallback(() => {
-    target.current = { x: 0, y: 0 };
-  }, []);
+    isHovered.current = false;
+    target.current    = { x: 0, y: 0 };
+    startRaf(); // let RAF wind down naturally to 0,0 then self-terminate
+  }, [startRaf]);
+
+  // Cleanup on unmount
+  useEffect(() => () => { cancelAnimationFrame(rafId.current); }, []);
 
   return (
     <div
       ref={containerRef}
+      onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      style={{ position: 'relative', width: '100%', height: '100%' }}
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        // GPU layer hint — prevents card from being re-composited on each scroll tick
+        willChange: 'transform',
+        // Isolate layout/style/paint from sibling cards — reduces reflow scope
+        contain: 'layout style paint',
+      }}
     >
       {/* Card content (SVG) — card frame stays static */}
       {children}
@@ -136,43 +206,53 @@ export function HeroCardAnimated({
         borderRadius: '12px', overflow: 'hidden',
         pointerEvents: 'none',
       }}>
-        <div style={{
-          position: 'absolute',
-          top: '-60%', height: '220%', width: '52%',
-          background: 'linear-gradient(102deg, transparent 30%, rgba(255,255,255,0.28) 50%, transparent 70%)',
-          animation: 'hcaSweep 4.8s ease-in-out infinite',
-          pointerEvents: 'none',
-        }}/>
+        <div
+          data-hca-anim
+          style={{
+            position: 'absolute',
+            top: '-60%', height: '220%', width: '52%',
+            background: 'linear-gradient(102deg, transparent 30%, rgba(255,255,255,0.28) 50%, transparent 70%)',
+            animation: 'hcaSweep 4.8s ease-in-out infinite',
+            pointerEvents: 'none',
+          }}
+        />
       </div>
 
       {/* ── Holographic foil overlay (color-burn rainbow) ── */}
-      <div style={{
-        position: 'absolute', inset: 0,
-        borderRadius: '10px',
-        background: 'linear-gradient(125deg, #ff006655, #ff990055, #00ff8855, #0099ff55, #cc00ff55, #ff006655)',
-        backgroundSize: '320% 320%',
-        mixBlendMode: 'color-burn',
-        opacity: 0.15,
-        animation: 'hcaHolo 8s linear infinite',
-        pointerEvents: 'none',
-      }}/>
+      <div
+        data-hca-anim
+        style={{
+          position: 'absolute', inset: 0,
+          borderRadius: '10px',
+          background: 'linear-gradient(125deg, #ff006655, #ff990055, #00ff8855, #0099ff55, #cc00ff55, #ff006655)',
+          backgroundSize: '320% 320%',
+          mixBlendMode: 'color-burn',
+          opacity: 0.15,
+          animation: 'hcaHolo 8s linear infinite',
+          pointerEvents: 'none',
+        }}
+      />
 
       {/* ── Ambient bokeh particles ── */}
       {particles.map(p => (
-        <div key={p.id} style={{
-          position: 'absolute',
-          left:   `${p.x}%`,
-          bottom: `${p.y}%`,
-          width:  `${p.size}px`,
-          height: `${p.size}px`,
-          borderRadius: '50%',
-          background: p.color,
-          boxShadow: `0 0 ${(p.size * 2.8).toFixed(1)}px ${p.color}, 0 0 ${(p.size * 1.4).toFixed(1)}px rgba(255,255,255,0.4)`,
-          animation: `hcaParticle ${p.duration}s ${p.delay}s ease-out infinite`,
-          ['--vx' as string]: p.vx,
-          ['--vy' as string]: p.vy,
-          pointerEvents: 'none',
-        } as React.CSSProperties}/>
+        <div
+          key={p.id}
+          data-hca-anim
+          style={{
+            position: 'absolute',
+            left:   `${p.x}%`,
+            bottom: `${p.y}%`,
+            width:  `${p.size}px`,
+            height: `${p.size}px`,
+            borderRadius: '50%',
+            background: p.color,
+            boxShadow: `0 0 ${(p.size * 2.8).toFixed(1)}px ${p.color}, 0 0 ${(p.size * 1.4).toFixed(1)}px rgba(255,255,255,0.4)`,
+            animation: `hcaParticle ${p.duration}s ${p.delay}s ease-out infinite`,
+            ['--vx' as string]: p.vx,
+            ['--vy' as string]: p.vy,
+            pointerEvents: 'none',
+          } as React.CSSProperties}
+        />
       ))}
     </div>
   );

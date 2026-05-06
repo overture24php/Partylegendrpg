@@ -186,7 +186,13 @@ export default function HeroPage() {
         display: 'flex', flexWrap: 'wrap',
         alignContent: 'flex-start', alignItems: 'flex-start', justifyContent: 'flex-start',
         gap: '8px',
-      }}>
+        // Isolate scroll container from the rest of the page layout
+        contain: 'strict',
+        // Hint to browser: this is a scroll surface — promote to own layer
+        willChange: 'scroll-position',
+        // Smooth scroll on iOS
+        WebkitOverflowScrolling: 'touch',
+      } as React.CSSProperties}>
         {tab === 'obtained' ? (
           <>
             {ownedHeroes.map(oh => {

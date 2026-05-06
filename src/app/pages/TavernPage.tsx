@@ -196,7 +196,8 @@ function PullResultOverlay({ items, onClose }: { items: PullItem[]; onClose: () 
         alignItems:'center', justifyContent:'center', gap:8,
         background:'radial-gradient(ellipse at 50% 30%, rgba(16,8,30,.97) 0%, rgba(0,0,0,.98) 100%)',
         overflowY:'auto', padding:'20px 0',
-      }}
+        WebkitOverflowScrolling: 'touch',
+      } as React.CSSProperties}
     >
       {/* Each row of 5 — horizontal scroll on very small screens */}
       {rows.map((row, ri) => (
