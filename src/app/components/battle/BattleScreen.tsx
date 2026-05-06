@@ -120,16 +120,16 @@ const SKILL_ICONS: Record<string, Partial<Record<string, string>>> = {
     ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009488/sk4myk_egyexz.png',
   },
   Fang: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550813/s1lukas_wrrnuo.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002935/sk2craw_hmjjoz.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002946/sk3craw_f6s5e5.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002939/sk4craw_zg73ez.png',
+    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066250/sk1fang_lzaud9.png',
+    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066256/sk2fang_mkmdui.png',
+    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066265/sk3fang_wdo19c.png',
+    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066271/sk4fang_msdipt.png',
   },
   Clover: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550127/s1emma_1d4245.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550505/ChatGPT_Image_Apr_30_2026_06_53_05_PM_s9ssbz.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550512/ChatGPT_Image_Apr_30_2026_ffPM_m405s1.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550533/ultema_vshlxt.png',
+    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066277/sk1clov_pwyu2r.png',
+    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066283/sk2clov_ebrxbb.png',
+    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066288/sk3clov_p4van1.png',
+    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066294/sk4clov_hysri6.png',
   },
 };
 
@@ -287,7 +287,7 @@ const SKILL_NAMES: Record<string,Partial<Record<string,string>>> = {
 @keyframes bs-skill-pop{0%{opacity:0;transform:translateX(-50%)translateY(4px)}14%{opacity:1;transform:translateX(-50%)translateY(0)}74%{opacity:1;transform:translateX(-50%)translateY(0)}100%{opacity:0;transform:translateX(-50%)translateY(-8px)}}
 .bs-skill-lbl{animation:bs-skill-pop 1.1s ease-out forwards;pointer-events:none}
 @keyframes bs-float-up{0%{transform:translateX(-50%)translateY(0);opacity:1}65%{transform:translateX(-50%)translateY(-40px);opacity:.9}100%{transform:translateX(-50%)translateY(-66px);opacity:0}}
-.bs-float-num{position:absolute;top:22px;pointer-events:none;z-index:30;animation:bs-float-up 1.15s ease-out forwards;font-family:'Roboto Condensed',sans-serif;font-weight:900;font-size:13px;letter-spacing:.03em;text-shadow:0 1px 5px rgba(0,0,0,1),0 0 14px rgba(0,0,0,.9);white-space:nowrap}
+.bs-float-num{position:absolute;top:22px;pointer-events:none;z-index:30;animation:bs-float-up 1.15s ease-out forwards;font-family:'Supermercado One',cursive;font-weight:900;font-size:13px;letter-spacing:.03em;text-shadow:0 1px 5px rgba(0,0,0,1),0 0 14px rgba(0,0,0,.9);white-space:nowrap}
 @keyframes bs-cine-ov{0%{opacity:0}16%{opacity:1}84%{opacity:1}100%{opacity:0}}
 .bs-cine-ov{animation:bs-cine-ov 1s ease-out forwards}
 @keyframes bs-cl{0%{transform:translate(calc(-50% - 110vw),-50%);opacity:0}20%{transform:translate(-50%,-50%);opacity:1}78%{transform:translate(-50%,-50%);opacity:1}100%{transform:translate(calc(-50% - 110vw),-50%);opacity:0}}
@@ -477,7 +477,7 @@ function HeroBattleSprite({name,phase,dashOffsetX,dashOffsetY,currentHp,maxHp,sh
   const src=(showAct&&actionSrc)?actionSrc:(idleUrl??undefined);
   const flipCls=phase==='flip-windup'?'bs-flip-wind':phase==='flip-revert'?'bs-flip-rev':'';
   const isDash=phase==='dashing', isRet=phase==='dash-return';
-  const isMykoH=name==='Myko';
+  const isMykoH=name==='Myko'||name==='Fang'||name==='Clover';
   return(
     <div className={phase==='dying'?'bs-dying':''} style={{
       position:'absolute',bottom:-4,left:'50%',
@@ -543,7 +543,7 @@ function EnemyBattleSprite({name,phase,dashOffsetX,dashOffsetY,currentHp,maxHp,s
   const flipCls=phase==='flip-windup'?'bs-flip-wind':phase==='flip-revert'?'bs-flip-rev':'';
   const counterFlip=ENEMY_COUNTERFLIP.has(name);
   const isHumanE=ENEMY_HUMAN_NAMES.has(name);
-  const isMykoE=name==='Myko';
+  const isMykoE=name==='Myko'||name==='Fang'||name==='Clover';
   const isDash=phase==='dashing', isRet=phase==='dash-return';
   return(
     <div className={phase==='dying'?'bs-dying':''} style={{

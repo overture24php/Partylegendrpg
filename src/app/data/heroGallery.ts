@@ -575,10 +575,10 @@ HERO_GALLERY.push({
   heroType: 'Assassin',
   ilust:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058505/ChatGPT_Image_May_6_2026_03_43_11_PM_xagzjf.png',
   skillIcons: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550813/s1lukas_wrrnuo.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002935/sk2craw_hmjjoz.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002946/sk3craw_f6s5e5.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002939/sk4craw_zg73ez.png',
+    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066250/sk1fang_lzaud9.png',
+    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066256/sk2fang_mkmdui.png',
+    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066265/sk3fang_wdo19c.png',
+    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066271/sk4fang_msdipt.png',
   },
   skills: {
     sk1: {
@@ -627,10 +627,10 @@ HERO_GALLERY.push({
   heroType: 'Support',
   ilust:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058786/ChatGPT_Image_May_6_2026_03_55_39_PM_dssunr.png',
   skillIcons: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550127/s1emma_1d4245.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550505/ChatGPT_Image_Apr_30_2026_06_53_05_PM_s9ssbz.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550512/ChatGPT_Image_Apr_30_2026_ffPM_m405s1.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550533/ultema_vshlxt.png',
+    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066277/sk1clov_pwyu2r.png',
+    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066283/sk2clov_ebrxbb.png',
+    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066288/sk3clov_p4van1.png',
+    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066294/sk4clov_hysri6.png',
   },
   skills: {
     sk1: {

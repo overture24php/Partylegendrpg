@@ -136,9 +136,8 @@ export default function GameEnterPage() {
 
   return (
     <div style={{
-      position: 'relative',
-      width: '100%',
-      height: '100dvh',
+      position: 'fixed',
+      inset: 0,
       overflow: 'hidden',
       background: '#04080f',
       fontFamily: "'Playfair Display', Georgia, serif",
@@ -180,7 +179,7 @@ export default function GameEnterPage() {
         {/* Label */}
         <p style={{
           margin: '0 0 10px 0',
-          color: 'rgba(215, 235, 255, 0.82)',
+          color: 'rgba(255, 235, 200, 0.82)',
           fontSize: '13px',
           fontFamily: "'Playfair Display', Georgia, serif",
           fontWeight: 600,
@@ -192,25 +191,23 @@ export default function GameEnterPage() {
           Preparing Your Journey &mdash; Entering the Game
         </p>
 
-        {/* Track */}
+        {/* Track — 11px, same orange as LoadingPage for consistency */}
         <div style={{
           width: '100%',
-          height: '22px',
+          height: '11px',
           background: 'rgba(0, 0, 0, 0.55)',
           borderTop: '1px solid rgba(255,255,255,0.07)',
           position: 'relative',
           overflow: 'hidden',
         }}>
-          {/* Fill */}
           <div style={{
             position: 'absolute',
             top: 0, left: 0, bottom: 0,
             width: `${progress}%`,
-            background: 'linear-gradient(90deg, #001f5c 0%, #1a4db5 45%, #4d88ff 100%)',
+            background: 'linear-gradient(90deg, #b84a00 0%, #f97316 45%, #ffb347 100%)',
             transition: 'width 0.18s linear',
-            boxShadow: '0 0 18px rgba(77,136,255,0.5)',
+            boxShadow: '0 0 14px rgba(249,115,22,0.55)',
           }} />
-          {/* Shimmer sweep */}
           <div style={{
             position: 'absolute',
             top: 0, left: 0, bottom: 0,
@@ -221,13 +218,12 @@ export default function GameEnterPage() {
             animation: 'shimmerBarEnter 1.4s linear infinite',
             pointerEvents: 'none',
           }} />
-          {/* Top shine line */}
           <div style={{
             position: 'absolute',
             top: 0, left: 0,
             width: `${progress}%`,
-            height: '2px',
-            background: 'linear-gradient(90deg, transparent, rgba(150,200,255,0.7) 40%, rgba(150,200,255,0.3) 100%)',
+            height: '1px',
+            background: 'linear-gradient(90deg, transparent, rgba(255,220,150,0.7) 40%, rgba(255,220,150,0.3) 100%)',
           }} />
         </div>
       </div>

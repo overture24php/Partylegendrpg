@@ -880,7 +880,7 @@ function BattleSlotSprite({ heroName }: { heroName: string }) {
   const finalSrc  = cfg?.chromaKey ? chromaUrl : (cfg?.src ?? null);
   // Slimes use compact 150×150 + slime-bounce; humans use tall 180×338 + battle-idle-breathe
   const isSlime   = Boolean(cfg) && !HUMAN_HERO_NAMES.has(heroName);
-  const isMyko    = heroName === 'Myko';
+  const isMyko    = heroName === 'Myko' || heroName === 'Fang' || heroName === 'Clover';
   const w = isSlime ? 150 : isMyko ? MYKO_W : 180;
   const h = isSlime ? 150 : isMyko ? MYKO_H : 338;
 
@@ -934,8 +934,8 @@ function EnemySlotSprite({ enemyName }: { enemyName: string }) {
   // Myko enemy: 50% height, 25% width reduction. Human heroes use battle-idle-breathe.
   const isMyko = enemyName === 'Myko';
   const isHumanEnemy = ['Fang', 'Clover'].includes(enemyName);
-  const w = isMyko ? 135 : 180;
-  const h = isMyko ? 90  : 180;
+  const w = (isMyko || isHumanEnemy) ? 135 : 180;
+  const h = (isMyko || isHumanEnemy) ? 90  : 180;
   const animCls = (isMyko || isHumanEnemy) ? 'battle-idle-breathe' : 'slime-bounce';
   return (
     <div style={{

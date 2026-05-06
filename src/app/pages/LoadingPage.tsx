@@ -5,6 +5,7 @@ import { preloadBgm } from '../components/BgmController';
 import { LUCAS_FRAMES, lucasImgCache, lucasChromaCache } from '../utils/lucasCache';
 import { EMMA_FRAMES, emmaImgCache, emmaChromaCache } from '../utils/emmaCache';
 import { useAuth } from '../context/AuthContext';
+import { ALL_SKILL_ICON_URLS, warmSkillIconCache } from '../utils/skillIconCache';
 
 // ─── Loading Page Art ─────────────────────────────────────────────────────────
 const LOADING_ART = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778095671/ChatGPT_Image_May_7_2026_02_21_36_AM_pluxid.png';
@@ -53,38 +54,8 @@ const ASLIME_CARD = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_
 const WSLIME_CARD = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777545810/ChatGPT_Image_Apr_30_2026_05_40_35_PM_w370l3.png';
 
 // ─── Skill icons ──────────────────────────────────────────────────────────────
-const LUCAS_SK1 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550813/s1lukas_wrrnuo.png';
-const LUCAS_SK2 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550848/ChatGPT_Image_Apr_30_2026_07_02_57_PM_kbtfs3.png';
-const LUCAS_SK3 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550841/psvluk_b0quhw.png';
-const LUCAS_ULT = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550833/ultlukas_jcehyx.png';
-const EMMA_SK1  = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550127/s1emma_1d4245.png';
-const EMMA_SK2  = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550505/ChatGPT_Image_Apr_30_2026_06_53_05_PM_s9ssbz.png';
-const EMMA_SK3  = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550512/ChatGPT_Image_Apr_30_2026_ffPM_m405s1.png';
-const EMMA_ULT  = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550533/ultema_vshlxt.png';
-const RSLIME_SK1 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777565812/s1rlime_hfstrz.png';
-const RSLIME_SK2 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777565820/s2rslime_shjl5b.png';
-const RSLIME_SK3 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777565826/s3rslime_vip7sb.png';
-const RSLIME_ULT = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777565833/s4rslime_duuc2g.png';
-const ASLIME_SK1 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777806549/sk1acd_nqz0x5.png';
-const ASLIME_SK2 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777806563/sk2acd_x4d8qu.png';
-const ASLIME_SK3 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777806571/sk3acd_gh45ki.png';
-const ASLIME_ULT = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777806578/sk4acd_mcmpzu.png';
-const WSLIME_SK1 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777807420/sk1wtr.pg_fbx8a0.png';
-const WSLIME_SK2 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777807428/sk2wtr_vmi777.png';
-const WSLIME_SK3 = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777807444/sk3wtr_fedwpe.png';
-const WSLIME_ULT = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777807456/sk4wtr_fbixax.png';
-const GORR_SK1   = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002904/sk1gor_wkgpaz.png';
-const GORR_SK2   = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002911/sk2gor_grkelh.png';
-const GORR_SK3   = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002917/sk3gor_ppjc9j.png';
-const GORR_ULT   = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002925/sk4gor_axfkc2.png';
-const CRAW_SK1   = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002931/sk1craw_cgwnc7.png';
-const CRAW_SK2   = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002935/sk2craw_hmjjoz.png';
-const CRAW_SK3   = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002946/sk3craw_f6s5e5.png';
-const CRAW_ULT   = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002939/sk4craw_zg73ez.png';
-const MYKO_SK1   = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009427/sk1myk_nr36fc.png';
-const MYKO_SK2   = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009434/sk2myk_nry1oe.png';
-const MYKO_SK3   = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009440/sk3myk_oc94bf.png';
-const MYKO_ULT   = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009488/sk4myk_egyexz.png';
+// (All skill icon URLs are now managed exclusively in skillIconCache.ts)
+// ─────────────────────────────────────────────────────────────────────────────
 
 // ─── Audio ────────────────────────────────────────────────────────────────────
 const BTN_SFX_URL      = 'https://res.cloudinary.com/dhkethrmc/video/upload/f_auto,q_auto/v1777874441/emilianodleon-select-button-ui-395763_zildua.mp3';
@@ -105,14 +76,6 @@ const DEFEAT_SFX_URL   = 'https://res.cloudinary.com/dhkethrmc/video/upload/f_au
 const STATIC_IMGS: string[] = [
   SPLASH_IMG, INTRO_BG, GAME_BG, HERO_DETAIL_BG, LOGIN_BG,
   MAP_URL, GRASS_URL, BATTLE_BG_URL,
-  LUCAS_SK1, LUCAS_SK2, LUCAS_SK3, LUCAS_ULT,
-  EMMA_SK1,  EMMA_SK2,  EMMA_SK3,  EMMA_ULT,
-  RSLIME_SK1, RSLIME_SK2, RSLIME_SK3, RSLIME_ULT,
-  ASLIME_SK1, ASLIME_SK2, ASLIME_SK3, ASLIME_ULT,
-  WSLIME_SK1, WSLIME_SK2, WSLIME_SK3, WSLIME_ULT,
-  GORR_SK1,  GORR_SK2,  GORR_SK3,  GORR_ULT,
-  CRAW_SK1,  CRAW_SK2,  CRAW_SK3,  CRAW_ULT,
-  MYKO_SK1,  MYKO_SK2,  MYKO_SK3,  MYKO_ULT,
   LUCAS_ACTION, RSLIME_IDLE, ASLIME_IDLE, WSLIME_IDLE,
   RSLIME_CARD, ASLIME_CARD, WSLIME_CARD,
 ];
@@ -152,7 +115,8 @@ const TOTAL =
   STATIC_IMGS.length
   + CHROMA_SINGLE.length
   + LUCAS_FRAMES.length + 1
-  + EMMA_FRAMES.length  + 1;
+  + EMMA_FRAMES.length  + 1
+  + ALL_SKILL_ICON_URLS.length;
 
 const MAX_WAIT_MS = 45_000;
 
@@ -308,6 +272,8 @@ export default function LoadingPage() {
       const a = new Audio(url); a.preload = 'auto'; a.load();
     });
 
+    warmSkillIconCache(onSettled);
+
     const safetyTimer = setTimeout(() => {
       if (!navigatedRef.current) {
         assetsReadyRef.current = true;
@@ -321,9 +287,8 @@ export default function LoadingPage() {
 
   return (
     <div style={{
-      position: 'relative',
-      width: '100%',
-      height: '100dvh',
+      position: 'fixed',
+      inset: 0,
       overflow: 'hidden',
       background: '#060409',
       fontFamily: "'Playfair Display', Georgia, serif",
@@ -337,7 +302,7 @@ export default function LoadingPage() {
           position: 'absolute', inset: 0,
           width: '100%', height: '100%',
           objectFit: 'cover',
-          objectPosition: 'center top',
+          objectPosition: 'center center',
           opacity: artLoaded ? 1 : 0,
           transition: 'opacity 0.6s ease',
           userSelect: 'none', pointerEvents: 'none',
@@ -345,7 +310,7 @@ export default function LoadingPage() {
         draggable={false}
       />
 
-      {/* ── Vignette (bottom heavy — makes bar readable) ─────────────────── */}
+      {/* ── Vignette ──────────────────────────────────────────────────────── */}
       <div style={{
         position: 'absolute', inset: 0,
         background: 'linear-gradient(to bottom, rgba(6,4,9,0) 30%, rgba(6,4,9,0.55) 70%, rgba(6,4,9,0.92) 100%)',
@@ -377,25 +342,23 @@ export default function LoadingPage() {
           Loading Game Assets &mdash; First Load May Take Longer
         </p>
 
-        {/* Track */}
+        {/* Track — 11px (50% of original 22px) */}
         <div style={{
           width: '100%',
-          height: '22px',
+          height: '11px',
           background: 'rgba(0, 0, 0, 0.55)',
           borderTop: '1px solid rgba(255,255,255,0.07)',
           position: 'relative',
           overflow: 'hidden',
         }}>
-          {/* Fill */}
           <div style={{
             position: 'absolute',
             top: 0, left: 0, bottom: 0,
             width: `${progress}%`,
             background: 'linear-gradient(90deg, #b84a00 0%, #f97316 45%, #ffb347 100%)',
             transition: 'width 0.18s linear',
-            boxShadow: '0 0 18px rgba(249,115,22,0.55)',
+            boxShadow: '0 0 14px rgba(249,115,22,0.55)',
           }} />
-          {/* Shimmer sweep */}
           <div style={{
             position: 'absolute',
             top: 0, left: 0, bottom: 0,
@@ -406,12 +369,11 @@ export default function LoadingPage() {
             animation: 'shimmerBar 1.4s linear infinite',
             pointerEvents: 'none',
           }} />
-          {/* Top shine line */}
           <div style={{
             position: 'absolute',
             top: 0, left: 0,
             width: `${progress}%`,
-            height: '2px',
+            height: '1px',
             background: 'linear-gradient(90deg, transparent, rgba(255,220,150,0.7) 40%, rgba(255,220,150,0.3) 100%)',
           }} />
         </div>

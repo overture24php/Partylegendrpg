@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { applyChromaKey } from '../utils/chromaKey';
+import { SKILL_ICON_CACHE, detectTrimBounds } from '../utils/skillIconCache';
 import { playBackSound } from '../utils/buttonSound';
 import {
   HERO_TYPE_TO_STAT_ROLE,
@@ -42,21 +43,14 @@ function computeSkillState(heroLv: number, key: string) {
 }
 
 // ─── Canvas void-trim icon renderer (chroma-key aware) ───────────────────────
-interface TrimBounds { sx: number; sy: number; sw: number; sh: number; }
-/** Detect trim bounds from already-processed pixel data (alpha > 15 = content). */
+// Delegates to shared SKILL_ICON_CACHE (pre-warmed by LoadingPage).
+// Alias for local compatibility only — do NOT add local entries.
+const IMG_CACHE = SKILL_ICON_CACHE;
+type TrimBounds = { sx: number; sy: number; sw: number; sh: number };
+/** Thin wrapper kept for call-site compatibility. */
 function detectTrimBoundsFromData(data: Uint8ClampedArray, w: number, h: number): TrimBounds {
-  let minX = w, maxX = 0, minY = h, maxY = 0;
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    if (data[(y * w + x) * 4 + 3] > 15) {
-      if (x < minX) minX = x; if (x > maxX) maxX = x;
-      if (y < minY) minY = y; if (y > maxY) maxY = y;
-    }
-  }
-  if (minX > maxX || minY > maxY) return { sx: 0, sy: 0, sw: w, sh: h };
-  return { sx: minX, sy: minY, sw: maxX - minX + 1, sh: maxY - minY + 1 };
+  return detectTrimBounds(data, w, h);
 }
-/** Cache stores chroma-keyed offscreen canvas + tight bounds (no green bg). */
-const IMG_CACHE = new Map<string, { bounds: TrimBounds; canvas: HTMLCanvasElement }>();
 function SkillIconCanvas({ src, size }: { src: string; size: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -387,28 +381,28 @@ const SD: Record<string, Record<string, PSI>> = {
         { label: 'Dmg per Hit (P.ATK)', values: ['90%', '110%', '135%', '165%'] },
         { label: 'Hits',                values: ['×2',  '×2',   '×2',   '×2'  ] },
       ],
-      iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550813/s1lukas_wrrnuo.png' },
+      iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066250/sk1fang_lzaud9.png' },
     sk2: { name: 'Shadow Sprint',
       description: 'Fang blurs through the entire front row in a single pass, slashing every enemy simultaneously. Fast, wide, and unpredictable.',
       ratioLevels: [
         { label: 'Dmg per Enemy (P.ATK)', values: ['75%', '92%', '112%', '138%'] },
         { label: 'Targets',               values: ['Front Row', 'Front Row', 'Front Row', 'Front Row'] },
       ],
-      iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002935/sk2craw_hmjjoz.png' },
+      iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066256/sk2fang_mkmdui.png' },
     sk3: { name: "Hunter's Mark",
       description: "Passive (self). Whenever Fang lands the killing blow on any enemy, Fang gains a permanent P.ATK stack. Stacks up to 3 times — rewarding aggressive play.",
       ratioLevels: [
         { label: 'P.ATK Bonus/Stack', values: ['+28%', '+36%', '+46%', '+58%'] },
         { label: 'Max Stacks',        values: ['3',    '3',    '3',    '3'   ] },
       ],
-      iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002946/sk3craw_f6s5e5.png' },
+      iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066265/sk3fang_wdo19c.png' },
     ult: { name: 'Death Bound',
       description: "Targets the enemy with the lowest remaining HP. If that target is below 35% HP, this attack's damage is tripled — a near-certain kill.",
       ratioLevels: [
         { label: 'Damage (P.ATK)',             values: ['260%', '320%', '395%', '480%'] },
         { label: 'Bonus × if target < 35% HP', values: ['×3',   '×3',   '×3',   '×3'  ] },
       ],
-      iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002939/sk4craw_zg73ez.png' },
+      iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066271/sk4fang_msdipt.png' },
   },
 
   // ── C Rarity — Clover (Support / Bunny Mage) ────────────────────────────────
@@ -418,21 +412,21 @@ const SD: Record<string, Record<string, PSI>> = {
       ratioLevels: [
         { label: 'Heal (M.ATK)', values: ['130%', '160%', '195%', '240%'] },
       ],
-      iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550127/s1emma_1d4245.png' },
+      iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066277/sk1clov_pwyu2r.png' },
     sk2: { name: 'Lucky Toss',
       description: 'Tosses a clover charm at a random ally. The target recovers HP each turn for 3 turns. Works even during enemy turns — keeps allies alive through sustained punishment.',
       ratioLevels: [
         { label: 'Regen/Turn (M.ATK)', values: ['55%', '68%', '83%', '100%'] },
         { label: 'Duration',           values: ['3T',  '3T',  '3T',  '3T'  ] },
       ],
-      iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550505/ChatGPT_Image_Apr_30_2026_06_53_05_PM_s9ssbz.png' },
+      iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066283/sk2clov_ebrxbb.png' },
     sk3: { name: 'Life Bloom',
       description: "Passive (team). Each time any ally takes a direct hit, 35% chance Clover automatically heals that ally instantly at no cost. A reliable safety net against rapid multi-hit attackers.",
       ratioLevels: [
         { label: 'Passive Heal/Proc (M.ATK)', values: ['40%', '52%', '66%', '82%'] },
         { label: 'Trigger Chance',            values: ['35%', '35%', '35%', '35%'] },
       ],
-      iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550512/ChatGPT_Image_Apr_30_2026_ffPM_m405s1.png' },
+      iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066288/sk3clov_p4van1.png' },
     ult: { name: 'Bloom Cascade',
       description: "Heals ALL allies simultaneously, then applies Lucky Toss regen to every ally for 3 turns. Burst healing + sustained regeneration combined — use when the whole team is hurting.",
       ratioLevels: [
@@ -440,7 +434,7 @@ const SD: Record<string, Record<string, PSI>> = {
         { label: 'Regen/Ally/Turn (M.ATK)',  values: ['38%',  '46%',  '56%',  '68%' ] },
         { label: 'Regen Duration',           values: ['3T',   '3T',   '3T',   '3T'  ] },
       ],
-      iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550533/ultema_vshlxt.png' },
+      iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066294/sk4clov_hysri6.png' },
   },
 };
 

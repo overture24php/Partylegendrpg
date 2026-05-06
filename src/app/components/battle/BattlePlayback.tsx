@@ -183,16 +183,16 @@ const SKILL_ICONS: Record<string, Partial<Record<string, string>>> = {
     ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009488/sk4myk_egyexz.png',
   },
   Fang: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550813/s1lukas_wrrnuo.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002935/sk2craw_hmjjoz.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002946/sk3craw_f6s5e5.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002939/sk4craw_zg73ez.png',
+    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066250/sk1fang_lzaud9.png',
+    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066256/sk2fang_mkmdui.png',
+    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066265/sk3fang_wdo19c.png',
+    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066271/sk4fang_msdipt.png',
   },
   Clover: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550127/s1emma_1d4245.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550505/ChatGPT_Image_Apr_30_2026_06_53_05_PM_s9ssbz.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550512/ChatGPT_Image_Apr_30_2026_ffPM_m405s1.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550533/ultema_vshlxt.png',
+    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066277/sk1clov_pwyu2r.png',
+    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066283/sk2clov_ebrxbb.png',
+    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066288/sk3clov_p4van1.png',
+    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066294/sk4clov_hysri6.png',
   },
 };
 
@@ -232,7 +232,7 @@ const MELEE_TRAIL_ENEMY =
 @keyframes bp-die{0%{opacity:1}8%{opacity:.04}18%{opacity:1}28%{opacity:.04}40%{opacity:1}100%{opacity:0}}
 .bp-dying{animation:bp-die 1.6s ease-in forwards;pointer-events:none}
 @keyframes bp-float-up{0%{transform:translateX(-50%)translateY(0) scale(1.15);opacity:1}55%{transform:translateX(-50%)translateY(-80px) scale(1);opacity:.92}100%{transform:translateX(-50%)translateY(-140px) scale(.85);opacity:0}}
-.bp-float-num{position:absolute;top:-10px;pointer-events:none;z-index:30;animation:bp-float-up 1.25s ease-out forwards;font-family:'Roboto Condensed',sans-serif;font-weight:900;font-size:52px;letter-spacing:.02em;text-shadow:0 2px 8px rgba(0,0,0,1),0 0 24px rgba(0,0,0,.95),0 0 2px rgba(0,0,0,1);white-space:nowrap}
+.bp-float-num{position:absolute;top:-10px;pointer-events:none;z-index:30;animation:bp-float-up 1.25s ease-out forwards;font-family:'Supermercado One',cursive;font-weight:900;font-size:52px;letter-spacing:.02em;text-shadow:0 2px 8px rgba(0,0,0,1),0 0 24px rgba(0,0,0,.95),0 0 2px rgba(0,0,0,1);white-space:nowrap}
 @keyframes bp-cine-ov{0%{opacity:0}16%{opacity:1}84%{opacity:1}100%{opacity:0}}
 .bp-cine-ov{animation:bp-cine-ov 1s ease-out forwards}
 @keyframes bp-cl{0%{transform:translate(calc(-50% - 110vw),-50%);opacity:0}20%{transform:translate(-50%,-50%);opacity:1}78%{transform:translate(-50%,-50%);opacity:1}100%{transform:translate(calc(-50% - 110vw),-50%);opacity:0}}
@@ -448,7 +448,7 @@ function HeroBattleSprite({ unit, floats }: { unit: UnitState; floats: FloatNum[
     : ((showAct && actionSrc) ? actionSrc : (idleUrl ?? undefined));
   const flipCls      = animPhase === 'flip-windup' ? 'bp-flip-wind' : animPhase === 'flip-revert' ? 'bp-flip-rev' : '';
   const isDash       = animPhase === 'dashing', isRet = animPhase === 'dash-return';
-  const isMykoHero   = !isSlime && name === 'Myko';
+  const isMykoHero   = !isSlime && (name === 'Myko' || name === 'Fang' || name === 'Clover');
   const spriteW      = isSlime ? 180 : isMykoHero ? BP_MYKO_HW : 180;
   const spriteH      = isSlime ? 180 : isMykoHero ? BP_MYKO_HH : 338;
   const spriteBottom = isSlime ? 0 : -4;
@@ -475,7 +475,7 @@ function HeroBattleSprite({ unit, floats }: { unit: UnitState; floats: FloatNum[
         {/* ZZZ stun indicator */}
         {statusEffects.some(e => e.isStun) && (
           <div style={{ display:'flex', justifyContent:'center' }}>
-            <span className="bp-zzz" style={{ fontFamily:"'Roboto Condensed',sans-serif", fontSize:11, fontWeight:900, color:'#facc15', letterSpacing:'0.1em', textShadow:'0 0 8px rgba(250,204,21,0.85),0 1px 4px rgba(0,0,0,1)' }}>zzz</span>
+            <span className="bp-zzz" style={{ fontFamily:"'Supermercado One',cursive", fontSize:11, fontWeight:400, color:'#facc15', letterSpacing:'0.1em', textShadow:'0 0 8px rgba(250,204,21,0.85),0 1px 4px rgba(0,0,0,1)' }}>zzz</span>
           </div>
         )}
         {/* Status effect pills — max 3 per row; rows stack upward */}
@@ -520,9 +520,9 @@ function HeroBattleSprite({ unit, floats }: { unit: UnitState; floats: FloatNum[
               style={{ width: 13, height: 13, objectFit: 'contain', display: 'block', flexShrink: 0 }}
             />
             <span style={{
-              fontFamily: "'Roboto Condensed', sans-serif",
+              fontFamily: "'Supermercado One', cursive",
               fontSize: 10,
-              fontWeight: 800,
+              fontWeight: 400,
               color: lucasStacks >= 5 ? '#fbbf24' : '#f59e0b',
               letterSpacing: '0.02em',
               lineHeight: 1,
@@ -568,7 +568,7 @@ function EnemyBattleSprite({ unit, floats }: { unit: UnitState; floats: FloatNum
   const src = needsHumanChroma ? (humanChroma ?? '') : needsChroma ? (chromaUrl ?? '') : rawSrc;
   const flipCls     = animPhase === 'flip-windup' ? 'bp-flip-wind' : animPhase === 'flip-revert' ? 'bp-flip-rev' : '';
   const counterFlip = ENEMY_COUNTERFLIP.has(name);
-  const isMykoE     = name === 'Myko';
+  const isMykoE     = name === 'Myko' || name === 'Fang' || name === 'Clover';
   const isDash  = animPhase === 'dashing', isRet = animPhase === 'dash-return';
   return (
     <div className={animPhase === 'dying' ? 'bp-dying' : ''} style={{
@@ -594,7 +594,7 @@ function EnemyBattleSprite({ unit, floats }: { unit: UnitState; floats: FloatNum
         {/* ZZZ stun indicator */}
         {statusEffects.some(e => e.isStun) && (
           <div style={{ display:'flex', justifyContent:'center' }}>
-            <span className="bp-zzz" style={{ fontFamily:"'Roboto Condensed',sans-serif", fontSize:11, fontWeight:900, color:'#facc15', letterSpacing:'0.1em', textShadow:'0 0 8px rgba(250,204,21,0.85),0 1px 4px rgba(0,0,0,1)' }}>zzz</span>
+            <span className="bp-zzz" style={{ fontFamily:"'Supermercado One',cursive", fontSize:11, fontWeight:400, color:'#facc15', letterSpacing:'0.1em', textShadow:'0 0 8px rgba(250,204,21,0.85),0 1px 4px rgba(0,0,0,1)' }}>zzz</span>
           </div>
         )}
         {/* Status effect pills — max 3 per row; rows stack upward */}
@@ -608,7 +608,7 @@ function EnemyBattleSprite({ unit, floats }: { unit: UnitState; floats: FloatNum
                   {chunk.map(e => (
                     <div key={e.id} className="bp-efx-in" style={{ display:'flex', alignItems:'center', gap:2, background: e.isBuff ? 'rgba(20,12,0,0.82)' : 'rgba(0,0,0,0.82)', border:`1px solid ${e.color}99`, borderRadius:3, padding:'1px 3px 1px 2px', flexShrink:0 }}>
                       <img src={e.iconUrl} alt={e.id} draggable={false} style={{ width:11, height:11, objectFit:'contain', flexShrink:0 }}/>
-                      <span style={{ fontFamily:"'Roboto Condensed',sans-serif", fontSize:9, fontWeight:800, color:e.color, lineHeight:1, letterSpacing:'0.02em', userSelect:'none' }}>{e.turnsLeft}T</span>
+                      <span style={{ fontFamily:"'Supermercado One',cursive", fontSize:9, fontWeight:400, color:e.color, lineHeight:1, letterSpacing:'0.02em', userSelect:'none' }}>{e.turnsLeft}T</span>
                     </div>
                   ))}
                 </div>

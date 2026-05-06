@@ -103,8 +103,7 @@ export default function HeroPage() {
   // Zero-cost if LoadingPage already warmed them (cache-hit early returns).
   const illustUrls = useMemo(
     () => ownedHeroes.map(oh => getIlust(oh.playerHero.hero_id)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [], // intentionally stable: ownedHeroes list doesn't change within session
+    [ownedHeroes], // must update when new heroes obtained via gacha
   );
   useChromaBatch(illustUrls);
 
@@ -185,8 +184,7 @@ export default function HeroPage() {
       });
     }
     return map;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // stable within session
+  }, [ownedHeroes]); // must update so newly-obtained heroes get click handlers
 
   // ── PixiJS: Obtained grid data ────────────────────────────────────────────
   const pixiHeroes = useMemo<PixiHeroData[]>(() => ownedHeroes.map(oh => {
