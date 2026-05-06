@@ -6,7 +6,6 @@ import { BgmController } from './components/BgmController';
 import { OfflineOverlay } from './components/OfflineOverlay';
 import { OrientationGuard } from './components/OrientationGuard';
 import { HeroDbSetupNotice } from './components/HeroDbSetupNotice';
-import { PixiPreloadManager } from './components/PixiPreloadManager';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import LoadingPage from './pages/LoadingPage';
@@ -24,6 +23,7 @@ import EventPage from './pages/EventPage';
 import SvgLibraryPage from './pages/SvgLibraryPage';
 import HeroPage from './pages/HeroPage';
 import LanguageSelectPage from './pages/LanguageSelectPage';
+import GameEnterPage from './pages/GameEnterPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -89,8 +89,6 @@ function RootLayout() {
             <PersistentBgKeeper />
             <OfflineOverlay />
             <HeroDbSetupNotice />
-            {/* Pre-warms all PixiJS Applications + card textures before first navigation */}
-            <PixiPreloadManager />
             <Outlet />
           </OrientationGuard>
         </HeroProvider>
@@ -148,6 +146,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <IntroPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/enter',
+        element: (
+          <ProtectedRoute>
+            <GameEnterPage />
           </ProtectedRoute>
         ),
       },

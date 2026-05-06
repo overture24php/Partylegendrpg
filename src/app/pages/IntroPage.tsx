@@ -21,7 +21,7 @@ export default function IntroPage() {
     startBgm(); // user gesture → unlock & play BGM
     setVisible(false);
     setTimeout(() => {
-      navigate('/game', { replace: true });
+      navigate('/enter', { replace: true });
     }, 500);
   };
 
