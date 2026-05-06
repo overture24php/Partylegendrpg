@@ -3,6 +3,16 @@
 *::before,
 *::after {
   font-family: 'Roboto Condensed', sans-serif !important;
+  /* Eliminate tap highlight on ALL elements — mobile game feel */
+  -webkit-tap-highlight-color: transparent;
+  /* Prevent text selection globally — game-like */
+  -webkit-user-select: none;
+  user-select: none;
+  /* Subpixel render — sharper text on mobile retina */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Consistent box model */
+  box-sizing: border-box;
 }
 
 /* Covers SVG presentation attributes (lower specificity than CSS rules) */
@@ -25,15 +35,25 @@ source {
   -moz-user-select: none !important;
   -ms-user-select: none !important;
   draggable: false;
+  /* Promote images to their own compositor layer */
+  will-change: auto;
 }
 
-/* Prevent ghost image on any drag attempt */
+/* ── GPU layer hints for full-screen game views ───────────────────────── */
+/* Any fixed/absolute element that covers the full screen */
+[data-game-view] {
+  contain: strict;
+  will-change: transform;
+  transform: translateZ(0);     /* force GPU layer */
+  backface-visibility: hidden;  /* prevent unnecessary repaint on flip */
+}
+
+/* ── Touch screen: remove 300ms delay + double-tap zoom everywhere ─────── */
 * {
-  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
-/* ── Touch screen optimization ─────────────────────────────────────────────── */
-/* Prevent double-tap zoom on interactive elements, remove tap delay */
+/* ── Interactive elements — refined touch behavior ──────────────────────── */
 button,
 a,
 [role="button"],
@@ -43,9 +63,10 @@ select,
 textarea,
 label {
   touch-action: manipulation;
+  cursor: pointer;
 }
 
-/* Minimum tap target 44×44px on all buttons/anchors for mobile ergonomics */
+/* ── Minimum tap target 44×44px for mobile ergonomics ──────────────────── */
 button,
 a,
 [role="button"] {
@@ -53,8 +74,45 @@ a,
   min-width: 44px;
 }
 
-/* Smooth momentum scrolling on iOS */
-.scroll-touch {
+/* ── Smooth momentum scrolling on iOS ──────────────────────────────────── */
+.scroll-touch,
+[style*="overflow-y: auto"],
+[style*="overflow-y:auto"],
+[style*="overflow: auto"],
+[style*="overflow:auto"] {
   -webkit-overflow-scrolling: touch;
-  overflow-y: scroll;
+}
+
+/* ── Prevent over-scroll bounce artifacts on game canvases ─────────────── */
+html,
+body {
+  overscroll-behavior: none;
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Disable focus outline (game UI — no keyboard focus visible) ─────────── */
+*:focus {
+  outline: none;
+}
+
+/* ── Smoother CSS transitions on mobile — use transform/opacity only ──── */
+/* Explicit hint to browser: these properties are safe to composite */
+.will-transform {
+  will-change: transform;
+  transform: translateZ(0);
+}
+.will-opacity {
+  will-change: opacity;
+}
+
+/* ── Scrollbar hide globally (game aesthetic) ─────────────────────────── */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+*::-webkit-scrollbar {
+  display: none;
 }

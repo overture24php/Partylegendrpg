@@ -378,6 +378,70 @@ const SD: Record<string, Record<string, PSI>> = {
       ],
       iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009488/sk4myk_egyexz.png' },
   },
+
+  // ── C Rarity — Fang (Assassin / Dual Daggers) ──────────────────────────────
+  Fang: {
+    sk1: { name: 'Twin Slash',
+      description: 'Fang lunges at one enemy and unleashes two rapid dagger strikes in quick succession. The second hit targets a gap in the enemy\'s guard — harder to mitigate.',
+      ratioLevels: [
+        { label: 'Dmg per Hit (P.ATK)', values: ['90%', '110%', '135%', '165%'] },
+        { label: 'Hits',                values: ['×2',  '×2',   '×2',   '×2'  ] },
+      ],
+      iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550813/s1lukas_wrrnuo.png' },
+    sk2: { name: 'Shadow Sprint',
+      description: 'Fang blurs through the entire front row in a single pass, slashing every enemy simultaneously. Fast, wide, and unpredictable.',
+      ratioLevels: [
+        { label: 'Dmg per Enemy (P.ATK)', values: ['75%', '92%', '112%', '138%'] },
+        { label: 'Targets',               values: ['Front Row', 'Front Row', 'Front Row', 'Front Row'] },
+      ],
+      iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002935/sk2craw_hmjjoz.png' },
+    sk3: { name: "Hunter's Mark",
+      description: "Passive (self). Whenever Fang lands the killing blow on any enemy, Fang gains a permanent P.ATK stack. Stacks up to 3 times — rewarding aggressive play.",
+      ratioLevels: [
+        { label: 'P.ATK Bonus/Stack', values: ['+28%', '+36%', '+46%', '+58%'] },
+        { label: 'Max Stacks',        values: ['3',    '3',    '3',    '3'   ] },
+      ],
+      iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002946/sk3craw_f6s5e5.png' },
+    ult: { name: 'Death Bound',
+      description: "Targets the enemy with the lowest remaining HP. If that target is below 35% HP, this attack's damage is tripled — a near-certain kill.",
+      ratioLevels: [
+        { label: 'Damage (P.ATK)',             values: ['260%', '320%', '395%', '480%'] },
+        { label: 'Bonus × if target < 35% HP', values: ['×3',   '×3',   '×3',   '×3'  ] },
+      ],
+      iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002939/sk4craw_zg73ez.png' },
+  },
+
+  // ── C Rarity — Clover (Support / Bunny Mage) ────────────────────────────────
+  Clover: {
+    sk1: { name: 'Healing Herb',
+      description: 'Channels nature magic to heal the ally with the lowest current HP. Quick and efficient — prioritises whoever needs it most.',
+      ratioLevels: [
+        { label: 'Heal (M.ATK)', values: ['130%', '160%', '195%', '240%'] },
+      ],
+      iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550127/s1emma_1d4245.png' },
+    sk2: { name: 'Lucky Toss',
+      description: 'Tosses a clover charm at a random ally. The target recovers HP each turn for 3 turns. Works even during enemy turns — keeps allies alive through sustained punishment.',
+      ratioLevels: [
+        { label: 'Regen/Turn (M.ATK)', values: ['55%', '68%', '83%', '100%'] },
+        { label: 'Duration',           values: ['3T',  '3T',  '3T',  '3T'  ] },
+      ],
+      iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550505/ChatGPT_Image_Apr_30_2026_06_53_05_PM_s9ssbz.png' },
+    sk3: { name: 'Life Bloom',
+      description: "Passive (team). Each time any ally takes a direct hit, 35% chance Clover automatically heals that ally instantly at no cost. A reliable safety net against rapid multi-hit attackers.",
+      ratioLevels: [
+        { label: 'Passive Heal/Proc (M.ATK)', values: ['40%', '52%', '66%', '82%'] },
+        { label: 'Trigger Chance',            values: ['35%', '35%', '35%', '35%'] },
+      ],
+      iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550512/ChatGPT_Image_Apr_30_2026_ffPM_m405s1.png' },
+    ult: { name: 'Bloom Cascade',
+      description: "Heals ALL allies simultaneously, then applies Lucky Toss regen to every ally for 3 turns. Burst healing + sustained regeneration combined — use when the whole team is hurting.",
+      ratioLevels: [
+        { label: 'Burst Heal/Ally (M.ATK)',  values: ['90%',  '112%', '138%', '168%'] },
+        { label: 'Regen/Ally/Turn (M.ATK)',  values: ['38%',  '46%',  '56%',  '68%' ] },
+        { label: 'Regen Duration',           values: ['3T',   '3T',   '3T',   '3T'  ] },
+      ],
+      iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550533/ultema_vshlxt.png' },
+  },
 };
 
 const GENERIC_NAMES: Record<string, string> = {

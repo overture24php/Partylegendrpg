@@ -219,13 +219,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // ── refreshProfile ──────────────────────────────────────────────────────
+  // ── refreshProfile ───────────────────────────────────────────────��──────
   const refreshProfile = useCallback(async () => {
     if (!session) return;
     const dbResult = await fetchProfile(session.user.id);
     if (dbResult.prof) {
-      lsSave(dbResult.prof);
-      setUser(dbResult.prof);
+      // Always cascade level-ups from DB data — prevents "stuck at 99%" on stale XP
+      const ls   = hydrateLevelState(
+        dbResult.prof.level,
+        dbResult.prof.xp,
+        dbResult.prof.maxXp,
+        dbResult.prof.exp_percentage,
+      );
+      const prof = applyLevelState({
+        ...dbResult.prof,
+        vip_level: dbResult.prof.vip_level ?? 0,
+        vip_exp:   dbResult.prof.vip_exp   ?? 0,
+      }, ls);
+      // If cascade fixed stale data, write corrected values back to DB
+      if (ls.level !== dbResult.prof.level || ls.xp !== dbResult.prof.xp) {
+        console.log(`[Profile] ⚡ refreshProfile cascade: lv${dbResult.prof.level}→${ls.level}`);
+        upsertProfile(prof); // fire-and-forget
+      }
+      lsSave(prof);
+      setUser(prof);
       console.log('[Profile] ✓ Refreshed from DB');
     }
   }, [session]);

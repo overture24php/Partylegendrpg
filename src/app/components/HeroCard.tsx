@@ -38,17 +38,23 @@ interface HeroCardProps {
   stars?:   number;
   /** unique id suffix to avoid SVG id collisions when multiple cards render */
   uid?:     string;
+  /** Pre-resolved chroma data URL — skips useChromaKeyDataUrl entirely */
+  resolvedSrc?: string | null;
+  /** Suppress .hca-ilust-anim float animation (for dense grids) */
+  noAnim?: boolean;
 }
 
 /** Raw SVG card — no animated wrapper. Wrap in HeroCardAnimated yourself if needed. */
-export const HeroCard = memo(function HeroCard({ name, rarity, level, ilust, heroType, stars, uid }: HeroCardProps) {
+export const HeroCard = memo(function HeroCard({ name, rarity, level, ilust, heroType, stars, uid, resolvedSrc, noAnim }: HeroCardProps) {
   const cfg      = HERO_RARITIES.find(r => r.id === rarity) ?? HERO_RARITIES[4];
   const safeId   = uid ?? name.replace(/\s+/g, '-');
   const clipId   = `hc-clip-${safeId}`;
   const tgId     = `hc-tg-${safeId}`;
   const barFade  = `hc-bar-${safeId}`;
   const botFade  = `hc-botfade-${safeId}`;
-  const chromaUrl = useChromaKeyDataUrl(ilust);
+  // resolvedSrc=pre-processed by parent → skip hook; pass '' to hook so it no-ops
+  const hookUrl  = useChromaKeyDataUrl(resolvedSrc !== undefined ? '' : (ilust ?? ''));
+  const chromaUrl = resolvedSrc !== undefined ? resolvedSrc : hookUrl;
 
   const sx = cfg.text === 'SS' ? 210 : 218;
   const sy = 321;
@@ -91,7 +97,7 @@ export const HeroCard = memo(function HeroCard({ name, rarity, level, ilust, her
       {/* ── Illustration: SVG <image> avoids foreignObject flickering on mobile ── */}
       <g clipPath={`url(#${clipId})`}>
         <g style={{ transform: 'translateX(var(--hci-x, 0px)) translateY(var(--hci-y, 0px))' }}>
-          <g className="hca-ilust-anim">
+          <g className="hca-ilust-anim" style={noAnim ? { animation: 'none' } : undefined}>
             {chromaUrl ? (
               <image
                 href={chromaUrl}

@@ -33,16 +33,16 @@ function injectStyles() {
       50%     { transform: translateY(-10px) scale(1.018); }
     }
 
-    /* Card overlay effects */
+    /* Sweep: uses transform:translateX only — GPU composited, zero layout cost */
     @keyframes hcaSweep {
-      0%   { left: -110%; }
-      38%  { left: 130%;  }
-      100% { left: 130%;  }
+      0%   { transform: translateX(-220%); }
+      38%  { transform: translateX(280%);  }
+      100% { transform: translateX(280%);  }
     }
+    /* Holo: animate opacity on a fixed gradient — GPU composited, no hue-rotate */
     @keyframes hcaHolo {
-      0%   { background-position: 0%   50%; filter: hue-rotate(0deg);   }
-      50%  { background-position: 100% 50%; filter: hue-rotate(180deg); }
-      100% { background-position: 0%   50%; filter: hue-rotate(360deg); }
+      0%,100% { opacity: 0.08; }
+      50%     { opacity: 0.22; }
     }
     @keyframes hcaParticle {
       0%   { opacity: 0;   transform: translateY(0px)       translateX(0px)       scale(1.0);  }
@@ -93,7 +93,7 @@ export function HeroCardAnimated({
   const current      = useRef({ x: 0, y: 0 });
   const rafId        = useRef(0);
   const isHovered    = useRef(false);
-  const particles    = useMemo(() => genParticles(14, rarityColor), [rarityColor]);
+  const particles    = useMemo(() => genParticles(7, rarityColor), [rarityColor]);
 
   // ── IntersectionObserver: pause every animated child when off-screen ────────
   // This is pure DOM mutation — zero React re-renders.
@@ -210,9 +210,11 @@ export function HeroCardAnimated({
           data-hca-anim
           style={{
             position: 'absolute',
+            left: 0,
             top: '-60%', height: '220%', width: '52%',
             background: 'linear-gradient(102deg, transparent 30%, rgba(255,255,255,0.28) 50%, transparent 70%)',
             animation: 'hcaSweep 4.8s ease-in-out infinite',
+            willChange: 'transform',
             pointerEvents: 'none',
           }}
         />
@@ -225,10 +227,10 @@ export function HeroCardAnimated({
           position: 'absolute', inset: 0,
           borderRadius: '10px',
           background: 'linear-gradient(125deg, #ff006655, #ff990055, #00ff8855, #0099ff55, #cc00ff55, #ff006655)',
-          backgroundSize: '320% 320%',
           mixBlendMode: 'color-burn',
           opacity: 0.15,
           animation: 'hcaHolo 8s linear infinite',
+          willChange: 'opacity',
           pointerEvents: 'none',
         }}
       />

@@ -406,29 +406,19 @@ function StageMapScrollable({
 }
 
 // ─── Battle Button with Canvas Fire ──────────────────────────────────────────
-// 2× size button
+// Button dimensions
 const BTN_W  = 164;
 const BTN_H  = 68;
-const FIRE_X = 48;   // fire canvas extra width each side
-const FIRE_T = 88;   // canvas height above button for flames
-const CW     = BTN_W + FIRE_X * 2;  // 260
-const CH     = BTN_H + FIRE_T;       // 156
 
 // Right-flush panel & button
 const PANEL_R = '0px';
 
-// ─── Star path (for monster cards) ──────────────────────────────────────────
-// ... remove this code ...
-
-function BattleFireCanvas() {
+// ─── Fire canvas removed — replaced with plain styled button ─────────────────
+function _unused() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
+    const canvas = canvasRef.current; if (!canvas) return;
+    const ctx = canvas.getContext('2d'); if (!ctx) return;
     type P = { x: number; y: number; vx: number; vy: number; life: number; max: number; sz: number; wob: number };
     const pool: P[] = [];
 
@@ -465,14 +455,13 @@ function BattleFireCanvas() {
       ctx.clearRect(0, 0, CW, CH);
 
       fc++;
-      // Spawn ~3 particles every frame, cap at 55
-      if (pool.length < 55) {
+      // Cap at 28 particles (was 55) — halves GPU overdraw on mobile
+      if (pool.length < 28) {
         pool.push(spawn());
-        if (Math.random() > 0.4) pool.push(spawn());
-        if (Math.random() > 0.7) pool.push(spawn());
+        if (Math.random() > 0.55) pool.push(spawn());
       }
 
-      ctx.globalCompositeOperation = 'lighter'; // additive — overlapping embers glow hotter
+      ctx.globalCompositeOperation = 'lighter';
 
       for (let i = pool.length - 1; i >= 0; i--) {
         const p = pool[i];
@@ -484,25 +473,21 @@ function BattleFireCanvas() {
 
         if (p.life <= 0) { pool.splice(i, 1); continue; }
 
-        const t     = p.life / p.max;                   // 1=fresh, 0=dead
-        const alpha = Math.sin(t * Math.PI) * 0.68;     // soft fade in/out
+        const t     = p.life / p.max;
+        const alpha = Math.sin(t * Math.PI) * 0.68;
         const sz    = p.sz * (0.5 + t * 0.8);
 
-        // Color: near birth → yellow-white; middle → orange; dying → deep red
+        // Solid circle with additive blend — cheaper than radialGradient per frame
         const g = Math.max(0, Math.floor(t * 210));
         const b = t > 0.72 ? Math.floor((t - 0.72) / 0.28 * 90) : 0;
-
-        const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, sz);
-        grd.addColorStop(0, `rgba(255,${g},${b},${alpha})`);
-        grd.addColorStop(0.5, `rgba(255,${Math.max(0,g-60)},0,${alpha * 0.5})`);
-        grd.addColorStop(1, `rgba(180,0,0,0)`);
-
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle   = `rgb(255,${g},${b})`;
         ctx.beginPath();
         ctx.arc(p.x, p.y, sz, 0, Math.PI * 2);
-        ctx.fillStyle = grd;
         ctx.fill();
       }
 
+      ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
       raf = requestAnimationFrame(draw);
     };
@@ -523,14 +508,13 @@ function BattleFireCanvas() {
 
 function BattleButton({ onToggle, open }: { onToggle: () => void; open: boolean }) {
   return (
-    <div style={{ position: 'relative', width: CW, height: CH }}>
-      <BattleFireCanvas />
+    <div style={{ position: 'relative', width: BTN_W, height: BTN_H }}>
       <button
         onClick={() => { playBtnSound(); onToggle(); }}
         style={{
           position: 'absolute',
           bottom: 0,
-          left: FIRE_X,
+          left: 0,
           width: BTN_W,
           height: BTN_H,
           zIndex: 1,
@@ -825,6 +809,16 @@ const TEAM_SPRITE_CONFIG: Record<string, { src: string; chromaKey: boolean; flip
     src: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778005026/ChatGPT_Image_May_6_2026_01_01_00_AM_bhjzhr.png',
     chromaKey: true, flipX: false,
   },
+  // Fang — killer rabbit assassin, green screen
+  'Fang': {
+    src: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058539/ChatGPT_Image_May_6_2026_03_43_22_PM_ejhf1t.png',
+    chromaKey: true, flipX: false,
+  },
+  // Clover — bunny support mage, green screen
+  'Clover': {
+    src: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058829/ChatGPT_Image_May_6_2026_03_57_38_PM_jwipj1.png',
+    chromaKey: true, flipX: false,
+  },
 };
 
 // (BATTLE_SPRITES merged into TEAM_SPRITE_CONFIG above)
@@ -832,7 +826,10 @@ const TEAM_SPRITE_CONFIG: Record<string, { src: string; chromaKey: boolean; flip
 // ── Human-type heroes: use battle-idle-breathe + tall sprite (180×338) ────────
 // Any hero NOT listed here is treated as a slime → compact 150×150 + slime-bounce.
 // ADD new human heroes here whenever they are introduced.
-const HUMAN_HERO_NAMES = new Set(['Lucas', 'Emma', 'Gorr', 'Craw', 'Myko']);
+const HUMAN_HERO_NAMES = new Set(['Lucas', 'Emma', 'Gorr', 'Craw', 'Myko', 'Fang', 'Clover']);
+// Myko uses reduced sprite size (height −50%, width −25%)
+const MYKO_W = 135; // 180 × 0.75
+const MYKO_H = 169; // 338 × 0.50
 
 // ── Inject battle-idle CSS once into document.head ────────────────────────────
 // ROOT FIX: two separate @keyframes both targeting `transform` = last one
@@ -887,6 +884,9 @@ function BattleSlotSprite({ heroName }: { heroName: string }) {
   const finalSrc  = cfg?.chromaKey ? chromaUrl : (cfg?.src ?? null);
   // Slimes use compact 150×150 + slime-bounce; humans use tall 180×338 + battle-idle-breathe
   const isSlime   = Boolean(cfg) && !HUMAN_HERO_NAMES.has(heroName);
+  const isMyko    = heroName === 'Myko';
+  const w = isSlime ? 150 : isMyko ? MYKO_W : 180;
+  const h = isSlime ? 150 : isMyko ? MYKO_H : 338;
 
   return (
     <div style={{
@@ -894,8 +894,8 @@ function BattleSlotSprite({ heroName }: { heroName: string }) {
       bottom: isSlime ? 0 : -4,
       left: '50%',
       transform: `translateX(-50%)${cfg?.flipX ? ' scaleX(-1)' : ''}`,
-      width: isSlime ? 150 : 180,
-      height: isSlime ? 150 : 338,
+      width: w,
+      height: h,
       pointerEvents: 'none',
       zIndex: 10,
     }}>
@@ -921,6 +921,10 @@ const ENEMY_SPRITES: Record<string, string> = {
   RockSlime:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777634810/Gemini_Generated_Image_c7qsl1c7qsl1c7qs_mekkjz.png',
   AcidSlime:  'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777634782/ChatGPT_Image_May_1_2026_06_25_59_PM_dsoxsd.png',
   WaterSlime: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777907811/7d3947a5-76a6-4422-9dc6-1eb5fd4d29bd.png',
+  // Human heroes on enemy side — same idle URL; CSS scaleX(-1) flips to face left
+  Myko:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778005026/ChatGPT_Image_May_6_2026_01_01_00_AM_bhjzhr.png',
+  Fang:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058539/ChatGPT_Image_May_6_2026_03_43_22_PM_ejhf1t.png',
+  Clover: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058829/ChatGPT_Image_May_6_2026_03_57_38_PM_jwipj1.png',
 };
 // Slimes that use Cloudinary bg-removal instead of client chroma key
 const BGREMOVE_SLIMES = new Set(['AcidSlime']);
@@ -931,15 +935,21 @@ function EnemySlotSprite({ enemyName }: { enemyName: string }) {
   const needsChroma = !BGREMOVE_SLIMES.has(enemyName);
   const chromaUrl = useChromaKeyDataUrl(needsChroma ? rawSrc : '');
   const finalSrc  = needsChroma ? (chromaUrl ?? '') : rawSrc;
+  // Myko enemy: 50% height, 25% width reduction. Human heroes use battle-idle-breathe.
+  const isMyko = enemyName === 'Myko';
+  const isHumanEnemy = ['Fang', 'Clover'].includes(enemyName);
+  const w = isMyko ? 135 : 180;
+  const h = isMyko ? 90  : 180;
+  const animCls = (isMyko || isHumanEnemy) ? 'battle-idle-breathe' : 'slime-bounce';
   return (
     <div style={{
-      position: 'absolute', bottom: 4, left: '50%',
+      position: 'absolute', bottom: isMyko || isHumanEnemy ? -2 : 4, left: '50%',
       transform: 'translateX(-50%) scaleX(-1)',
-      width: 180, height: 180,
+      width: w, height: h,
       pointerEvents: 'none', zIndex: 10,
     }}>
       {finalSrc && (
-        <img src={finalSrc} alt={enemyName} draggable={false} className="slime-bounce"
+        <img src={finalSrc} alt={enemyName} draggable={false} className={animCls}
           style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center bottom' }}
         />
       )}
@@ -1175,13 +1185,16 @@ const HERO_ID_TO_SPRITE: Record<string, string> = {
   rock_slime:  'RockSlime',
   acid_slime:  'AcidSlime',
   water_slime: 'WaterSlime',
+  myko:        'Myko',
+  fang:        'Fang',
+  clover:      'Clover',
 };
 
 function BattleView({ onBack, stageId = '1-1', onStageWin }: {
   onBack: () => void; stageId?: string; onStageWin?: () => void;
 }) {
   const { loadStage, ownedHeroes } = useHero();
-  const { gainExp } = useAuth();
+  const { gainExp, refreshProfile } = useAuth();
   const [phase,              setPhase]             = useState<'formation' | 'simulating' | 'battle'>('formation');
   const [heroSlots,          setHeroSlots]         = useState<(string | null)[]>(Array(6).fill(null));
   const [deployOverlaySlot,  setDeployOverlaySlot] = useState<number | null>(null);
@@ -1419,7 +1432,6 @@ function BattleView({ onBack, stageId = '1-1', onStageWin }: {
             onVictory={async () => {
               // Apply all battle rewards atomically — EXP (with level-up cascade),
               // gold, gems, hero_exp — all in a single awaited upsertProfile call.
-              // No refreshProfile() after: gainExp already updates React state + DB.
               if (battleLog?.rewards) {
                 const r = battleLog.rewards;
                 await gainExp(r.exp, {
@@ -1428,6 +1440,10 @@ function BattleView({ onBack, stageId = '1-1', onStageWin }: {
                   hero_exp: r.hero_exp,
                 });
               }
+              // Sync chapter1_progress from DB (battle RPC already wrote the new value).
+              // Also catches any stale level/xp in DB via hydrateLevelState cascade.
+              // Fire-and-forget: don't block UI transition on network round-trip.
+              refreshProfile();
               onStageWin?.();
               setBattleLog(null);
               setPhase('formation');
@@ -1445,7 +1461,7 @@ function BattleView({ onBack, stageId = '1-1', onStageWin }: {
 // Attack-button sits at bottom: NAV_H from screen bottom.
 // Stage map strip sits at MAP_BOTTOM px from screen bottom (just above fire flames).
 const NAV_H      = 64;   // approx nav-bar height
-const MAP_BOTTOM = BTN_H + FIRE_T + NAV_H + 10; // top of fire + gap → 226 px
+const MAP_BOTTOM = BTN_H + NAV_H + 18; // button + nav + gap → 150 px
 
 function Chapter1View({ onBack }: { onBack: () => void }) {
   const { user } = useAuth();

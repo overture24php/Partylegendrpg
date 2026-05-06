@@ -25,7 +25,7 @@ import { LucasVFX } from './LucasVFX';
 import type { VFXTrigger } from './LucasVFX';
 // Note: LucasVFX no longer needs sceneRef — uses window dimensions directly
 
-const MELEE_TYPES = new Set(['Fighter', 'Tank']);
+const MELEE_TYPES = new Set(['Fighter', 'Tank', 'Assassin']);
 
 // ─── ATB ─────────────────────────────────────────────────────────────────
 const ATB_FINISH  = 1_000;   // finish line
@@ -46,7 +46,9 @@ const IDLE_SPRITES: Record<string, string> = {
   Emma:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777630434/idle_em_p8uxjs.png',
   Gorr:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919607/ChatGPT_Image_May_5_2026_01_23_54_AM_nhkzmq.png',
   Craw:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919783/ChatGPT_Image_May_5_2026_01_26_59_AM_zfdewm.png',
-  Myko:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778005026/ChatGPT_Image_May_6_2026_01_01_00_AM_bhjzhr.png',
+  Myko:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778005026/ChatGPT_Image_May_6_2026_01_01_00_AM_bhjzhr.png',
+  Fang:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058539/ChatGPT_Image_May_6_2026_03_43_22_PM_ejhf1t.png',
+  Clover: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058829/ChatGPT_Image_May_6_2026_03_57_38_PM_jwipj1.png',
 };
 const ACTION_BGREMOVE: Record<string, string> = {
   Lucas: 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777631550/act_luc_mhmivj.png',
@@ -55,12 +57,18 @@ const ACTION_CHROMA: Record<string, string> = {
   Emma: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777630357/act_em_fnrl1t.png',
   Gorr: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919615/ChatGPT_Image_May_5_2026_01_31_48_AM_m65s2g.png',
   Craw: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919799/ChatGPT_Image_May_5_2026_01_27_08_AM_p8yjub.png',
-  Myko: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778005040/ChatGPT_Image_May_6_2026_01_03_49_AM_sirb54.png',
+  Myko:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778005040/ChatGPT_Image_May_6_2026_01_03_49_AM_sirb54.png',
+  Fang:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058739/ChatGPT_Image_May_6_2026_03_45_46_PM_plgice.png',
+  Clover: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058887/ChatGPT_Image_May_6_2026_04_00_04_PM_fattkj.png',
 };
 const ENEMY_IDLE: Record<string, string> = {
-  RockSlime: 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777634810/Gemini_Generated_Image_c7qsl1c7qsl1c7qs_mekkjz.png',
-  AcidSlime: 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777634782/ChatGPT_Image_May_1_2026_06_25_59_PM_dsoxsd.png',
-  WaterSlime:'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777545810/ChatGPT_Image_Apr_30_2026_05_40_35_PM_w370l3.png',
+  RockSlime:  'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777634810/Gemini_Generated_Image_c7qsl1c7qsl1c7qs_mekkjz.png',
+  AcidSlime:  'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777634782/ChatGPT_Image_May_1_2026_06_25_59_PM_dsoxsd.png',
+  WaterSlime: 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777545810/ChatGPT_Image_Apr_30_2026_05_40_35_PM_w370l3.png',
+  // Human heroes on enemy side — green screen, chroma key needed, scaleX(-1) via container
+  Myko:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778005026/ChatGPT_Image_May_6_2026_01_01_00_AM_bhjzhr.png',
+  Fang:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058539/ChatGPT_Image_May_6_2026_03_43_22_PM_ejhf1t.png',
+  Clover: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058829/ChatGPT_Image_May_6_2026_03_57_38_PM_jwipj1.png',
 };
 const SKILL_ICONS: Record<string, Partial<Record<string, string>>> = {
   Lucas: {
@@ -111,6 +119,18 @@ const SKILL_ICONS: Record<string, Partial<Record<string, string>>> = {
     sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009440/sk3myk_oc94bf.png',
     ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009488/sk4myk_egyexz.png',
   },
+  Fang: {
+    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550813/s1lukas_wrrnuo.png',
+    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002935/sk2craw_hmjjoz.png',
+    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002946/sk3craw_f6s5e5.png',
+    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002939/sk4craw_zg73ez.png',
+  },
+  Clover: {
+    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550127/s1emma_1d4245.png',
+    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550505/ChatGPT_Image_Apr_30_2026_06_53_05_PM_s9ssbz.png',
+    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550512/ChatGPT_Image_Apr_30_2026_ffPM_m405s1.png',
+    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550533/ultema_vshlxt.png',
+  },
 };
 
 // ─── Trail colors ─────────────────────────────────────────────────────────────
@@ -132,6 +152,11 @@ const trail = (map: Record<string, TrailRgb>, def: TrailRgb) => (n: string) => {
 };
 const heroTrail  = trail(HERO_TRAIL,  HERO_TRAIL_DEF);
 const enemyTrail = trail(ENEMY_TRAIL, ENEMY_TRAIL.RockSlime);
+// Enemy sprites that need client chroma key (human heroes on enemy side)
+const ENEMY_HUMAN_CHROMA = new Set(['Myko', 'Fang', 'Clover']);
+const ENEMY_HUMAN_NAMES  = new Set(['Myko', 'Fang', 'Clover']);
+// Myko reduced dims: height −50%, width −25%
+const MYKO_HERO_W=135, MYKO_HERO_H=169, MYKO_ENEMY_W=135, MYKO_ENEMY_H=90;
 // Enemies whose sprite image natively faces LEFT — outer scaleX(-1) would flip them
 // to face RIGHT, so we apply a counterflip scaleX(-1) on the img to restore LEFT facing.
 const ENEMY_COUNTERFLIP = new Set(['WaterSlime']);
@@ -181,37 +206,62 @@ function getSkillLv(lv:number,key:string) {
   let sl=1; for(let i=1;i<t.length;i++){if(lv>=t[i])sl=i+1;else break;} return sl;
 }
 const SKILL_MULT: Record<string,Partial<Record<string,number[]>>> = {
-  // Lucas ult: PER-HIT ratio (×3 hits in local fallback)
   Lucas:     {sk1:[1.65,2.00,2.40,2.90], sk2:[1.80,2.15,2.58,3.10], ult:[1.00,1.25,1.55,1.95]},
   Emma:      {sk1:[1.70,2.10,2.60,3.20], sk2:[1.40,1.75,2.15,2.65], ult:[1.20,1.50,1.88,2.35]},
-  // Rock Shell (sk2): ratio applied to own MaxHP; Spike Eruption (ult): front_aoe
   RockSlime: {sk1:[1.00,1.22,1.48,1.80], sk2:[0.12,0.15,0.19,0.24], ult:[0.55,0.70,0.88,1.10]},
-  // Corrosive Splash (sk2): 2 random front-row; Acid Flood (ult): all enemies
   AcidSlime: {sk1:[1.05,1.28,1.55,1.88], sk2:[0.68,0.84,1.02,1.24], ult:[0.78,0.96,1.18,1.44]},
-  // Water Jet (sk1): fastest enemy; Tidal Surge (sk2): 2 front-row highest MaxHP; Deluge Wave (ult): all enemies
   WaterSlime:{sk1:[0.82,1.00,1.22,1.48], sk2:[0.58,0.72,0.88,1.08], ult:[0.72,0.88,1.08,1.32]},
+  Gorr:      {sk1:[1.40,1.70,2.05,2.50], sk2:[1.58,1.92,2.32,2.82], ult:[0.88,1.08,1.32,1.60]},
+  Craw:      {sk1:[1.15,1.40,1.70,2.05], sk2:[1.30,1.58,1.92,2.32], ult:[0.72,0.88,1.08,1.30]},
+  Myko:      {sk1:[0.12,0.16,0.20,0.25], sk2:[0.90,1.10,1.35,1.65], ult:[0.85,1.05,1.30,1.60]},
+  // Fang: sk1=PER-HIT (×2 hits); sk2=front AoE; ult=execute single (×3 bonus if <35% HP)
+  Fang:      {sk1:[0.90,1.10,1.35,1.65], sk2:[0.75,0.92,1.12,1.38], ult:[2.60,3.20,3.95,4.80]},
+  // Clover: all M.ATK-based heals; sk2=regen simplified as 1-tick in local fallback
+  Clover:    {sk1:[1.30,1.60,1.95,2.40], sk2:[0.55,0.68,0.83,1.00], ult:[0.90,1.12,1.38,1.68]},
 };
 const getMult=(n:string,s:string,lv:number)=>SKILL_MULT[n]?.[s]?.[Math.max(0,Math.min(3,lv-1))]??1.0;
-const HEAL_SKILLS          = new Set(['Emma:sk1','Emma:ult']);
-const SHIELD_SKILLS        = new Set(['Emma:sk2','RockSlime:sk2']); // Emma=mAtk×ratio; Rock Shell=MaxHP×ratio
-const ROCK_SHELL_KEY       = 'RockSlime:sk2';                      // shield value uses own MaxHP, not mAtk
-const FRONT_AOE_SKILLS     = new Set(['Lucas:ult','RockSlime:ult']); // all front-row enemies
-const ALL_ENEMY_AOE_SKILLS = new Set(['AcidSlime:ult','WaterSlime:ult']); // every alive enemy
-const BACK_SINGLE_SKILLS   = new Set(['AcidSlime:sk1']); // back-row single — skill only; basic attacks always front-row
-const TWO_FRONT_RND_SKILLS = new Set(['AcidSlime:sk2']);               // 2 random front-row enemies
-const HIGHEST_SPD_SKILLS   = new Set(['WaterSlime:sk1']);              // enemy with highest speed
-const TWO_FRONT_HP_SKILLS  = new Set(['WaterSlime:sk2']);              // 2 front-row enemies by MaxHP desc
-const MAGIC_DMG_HEROES     = new Set(['WaterSlime']);                  // use mAtk for damage (not atk)
-const PDEF_SHRED_SKILLS    = new Set(['Lucas:sk2']);                   // apply P.DEF shred before damage
-const PDEF_SHRED_VALS      = [80,100,125,150];                        // shred amount per skill Lv 1-4
-const WARLORDS_EDGE_BONUS  = [0.08,0.14,0.20,0.28];                  // Lucas sk3 passive P.ATK bonus per Lv 1-4
-const PDEF_K = 500; // P.DEF mitigation constant: dmg × 500/(pDef+500)
+
+// Heal skills — pri=null so hero doesn't dash at enemies; targeting handled below
+const HEAL_SKILLS = new Set([
+  'Emma:sk1','Emma:ult',
+  'Clover:sk1','Clover:sk2','Clover:ult',
+]);
+const SHIELD_SKILLS        = new Set(['Emma:sk2','RockSlime:sk2','Myko:sk1']);
+const ROCK_SHELL_KEY       = 'RockSlime:sk2';
+const MYKO_IRON_CASING_KEY = 'Myko:sk1';
+
+// Damage targeting sets
+const FRONT_AOE_SKILLS     = new Set(['Lucas:ult','RockSlime:ult','Gorr:ult','Craw:sk2','Fang:sk2']);
+const ALL_ENEMY_AOE_SKILLS = new Set(['AcidSlime:ult','WaterSlime:ult','Myko:ult','Craw:ult']);
+const BACK_SINGLE_SKILLS   = new Set(['AcidSlime:sk1']);
+const TWO_FRONT_RND_SKILLS = new Set(['AcidSlime:sk2']);
+const HIGHEST_SPD_SKILLS   = new Set(['WaterSlime:sk1']);
+const TWO_FRONT_HP_SKILLS  = new Set(['WaterSlime:sk2']);
+const LOWEST_HP_SKILLS     = new Set(['Gorr:sk1']);
+// Fang:sk1 Twin Slash — 2 consecutive hits on the same single target
+const FANG_TWIN_SLASH      = new Set(['Fang:sk1']);
+// Fang:ult Death Bound — base dmg × 3 if target is below 35% HP
+const FANG_DEATH_BOUND     = new Set(['Fang:ult']);
+// Clover:ult Bloom Cascade — heal all alive allies
+const CLOVER_BLOOM_CASCADE = new Set(['Clover:ult']);
+
+const MAGIC_DMG_HEROES     = new Set(['WaterSlime','Myko']);
+const PDEF_SHRED_SKILLS    = new Set(['Lucas:sk2']);
+const PDEF_SHRED_VALS      = [80,100,125,150];
+const WARLORDS_EDGE_BONUS  = [0.08,0.14,0.20,0.28];
+const PDEF_K = 500;
+
 const SKILL_NAMES: Record<string,Partial<Record<string,string>>> = {
-  Lucas:     {sk1:'Iron Cleave',   sk2:'Armor Rend',       ult:'Rampage Surge'},
-  Emma:      {sk1:'Mending Touch', sk2:'Bulwark Veil',     ult:'Sacred Bloom'},
-  RockSlime: {sk1:'Boulder Dash',  sk2:'Rock Shell',       ult:'Spike Eruption'},
-  AcidSlime: {sk1:'Acid Spit',     sk2:'Corrosive Splash', ult:'Acid Flood'},
-  WaterSlime:{sk1:'Water Jet',     sk2:'Tidal Surge',      ult:'Deluge Wave'},
+  Lucas:     {sk1:'Iron Cleave',      sk2:'Armor Rend',        sk3:"Warlord's Edge",   ult:'Rampage Surge'},
+  Emma:      {sk1:'Mending Touch',    sk2:'Bulwark Veil',      sk3:'Blessed Ward',      ult:'Sacred Bloom'},
+  RockSlime: {sk1:'Boulder Dash',     sk2:'Rock Shell',        sk3:'Mineral Density',   ult:'Spike Eruption'},
+  AcidSlime: {sk1:'Acid Spit',        sk2:'Corrosive Splash',  sk3:'Acidic Membrane',   ult:'Acid Flood'},
+  WaterSlime:{sk1:'Water Jet',        sk2:'Tidal Surge',       sk3:'Soaking Field',     ult:'Deluge Wave'},
+  Gorr:      {sk1:'Cleaver Rush',     sk2:'Intimidating Slam', sk3:'Bloodlust',          ult:'Reaping Arc'},
+  Craw:      {sk1:'Crude Shot',       sk2:'Blind Arrow',       sk3:'Cornered Rat',      ult:'Skypiercer Volley'},
+  Myko:      {sk1:'Iron Casing',      sk2:'Spore Slam',        sk3:'Fungal Resilience', ult:'Spore Eruption'},
+  Fang:      {sk1:'Twin Slash',       sk2:'Shadow Sprint',     sk3:"Hunter's Mark",     ult:'Death Bound'},
+  Clover:    {sk1:'Healing Herb',     sk2:'Lucky Toss',        sk3:'Life Bloom',        ult:'Bloom Cascade'},
 };
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
@@ -427,12 +477,13 @@ function HeroBattleSprite({name,phase,dashOffsetX,dashOffsetY,currentHp,maxHp,sh
   const src=(showAct&&actionSrc)?actionSrc:(idleUrl??undefined);
   const flipCls=phase==='flip-windup'?'bs-flip-wind':phase==='flip-revert'?'bs-flip-rev':'';
   const isDash=phase==='dashing', isRet=phase==='dash-return';
+  const isMykoH=name==='Myko';
   return(
     <div className={phase==='dying'?'bs-dying':''} style={{
       position:'absolute',bottom:-4,left:'50%',
       transform:`translateX(calc(-50% + ${dashOffsetX}px)) translateY(${dashOffsetY}px)`,
       transition:isDash?'transform .15s cubic-bezier(.04,0,.08,1)':isRet?'transform .22s ease-out':'none',
-      width:180,height:338,pointerEvents:'none',zIndex:10,
+      width:isMykoH?MYKO_HERO_W:180,height:isMykoH?MYKO_HERO_H:338,pointerEvents:'none',zIndex:10,
       filter:isDash?heroTrail(name):'',willChange:'transform,filter',
     }}>
       {/* Silhouette shadow — duplicate of the character image rendered solid black
@@ -485,19 +536,21 @@ function EnemyBattleSprite({name,phase,dashOffsetX,dashOffsetY,currentHp,maxHp,s
   name:string;phase:AnimPhase;dashOffsetX:number;dashOffsetY:number;
   currentHp:number;maxHp:number;shield:number;rage:number;skillLabel:string;skillLabelKey:number;floats:FloatNum[];
 }){
-  const src=ENEMY_IDLE[name]??'';
+  const rawEnemySrc=ENEMY_IDLE[name]??'';
+  const needsEnemyChroma=ENEMY_HUMAN_CHROMA.has(name);
+  const enemyChromaUrl=useChromaKeyDataUrl(needsEnemyChroma?rawEnemySrc:'');
+  const src=needsEnemyChroma?(enemyChromaUrl??''):rawEnemySrc;
   const flipCls=phase==='flip-windup'?'bs-flip-wind':phase==='flip-revert'?'bs-flip-rev':'';
-  // WaterSlime image natively faces LEFT; outer container applies scaleX(-1) which would
-  // flip it to face RIGHT. counterFlip adds scaleX(-1) on the img itself so the net
-  // transform = outer(-1) × img(-1) = +1, restoring the original LEFT-facing direction.
   const counterFlip=ENEMY_COUNTERFLIP.has(name);
+  const isHumanE=ENEMY_HUMAN_NAMES.has(name);
+  const isMykoE=name==='Myko';
   const isDash=phase==='dashing', isRet=phase==='dash-return';
   return(
     <div className={phase==='dying'?'bs-dying':''} style={{
       position:'absolute',bottom:4,left:'50%',
       transform:`translateX(calc(-50% + ${dashOffsetX}px)) translateY(${dashOffsetY}px) scaleX(-1)`,
       transition:isDash?'transform .15s cubic-bezier(.04,0,.08,1)':isRet?'transform .22s ease-out':'none',
-      width:180,height:180,pointerEvents:'none',zIndex:10,
+      width:isMykoE?MYKO_ENEMY_W:180,height:isMykoE?MYKO_ENEMY_H:180,pointerEvents:'none',zIndex:10,
       filter:isDash?enemyTrail(name):'',willChange:'transform,filter',
     }}>
       {/* Silhouette shadow — same technique as hero.
@@ -534,7 +587,7 @@ function EnemyBattleSprite({name,phase,dashOffsetX,dashOffsetY,currentHp,maxHp,s
       </div>
       <div className={flipCls} style={{width:'100%',height:'100%',transformOrigin:'center',position:'relative',zIndex:1}}>
         <img src={src} alt={name} draggable={false}
-          className={phase==='idle'?(counterFlip?'bs-slime-cfl':'bs-slime'):phase==='hurt'?'bs-hurt':''}
+          className={phase==='idle'?(isHumanE?'bs-idle':counterFlip?'bs-slime-cfl':'bs-slime'):phase==='hurt'?'bs-hurt':''}
           style={{
             width:'100%',height:'100%',objectFit:'contain',objectPosition:'center bottom',display:'block',
             // counterFlip: scaleX(-1) on img so net = outer(-1)×img(-1) = +1 (LEFT-facing preserved).
@@ -985,14 +1038,25 @@ export function BattleScreen({units:initUnits,onVictory,onDefeat,sessionId}:{
           const mult=slot==='basic'?(0.88+Math.random()*0.24):getMult(att.name,slot,skillLv);
           // skillKey already defined in outer scope — reuse it
           if(isHeal){
-            // Emma:sk1 Mending Touch → 1 ally lowest HP; Emma:ult Sacred Bloom → 3 allies
-            const n=att.name==='Emma'&&slot==='ult'?3:1;
-            [...stateRef.current.filter(u=>u.side===att.side&&u.currentHp>0)]
-              .sort((a,b)=>(a.currentHp/a.hp)-(b.currentHp/b.hp)).slice(0,n)
-              .forEach(t=>applyHeal(att,t.uid,mult));
+            if(CLOVER_BLOOM_CASCADE.has(skillKey)){
+              // Clover:ult Bloom Cascade → heal ALL alive allies
+              stateRef.current.filter(u=>u.side===att.side&&u.currentHp>0)
+                .forEach(t=>applyHeal(att,t.uid,mult));
+            }else if(att.name==='Clover'&&slot==='sk2'){
+              // Clover:sk2 Lucky Toss → regen 1 random ally (simplified as instant heal)
+              const pool=stateRef.current.filter(u=>u.side===att.side&&u.currentHp>0);
+              const t=pool[Math.floor(Math.random()*pool.length)];
+              if(t)applyHeal(att,t.uid,mult);
+            }else{
+              // Emma:sk1 / Clover:sk1 → lowest HP ally (1); Emma:ult → 3 allies
+              const n=att.name==='Emma'&&slot==='ult'?3:1;
+              [...stateRef.current.filter(u=>u.side===att.side&&u.currentHp>0)]
+                .sort((a,b)=>(a.currentHp/a.hp)-(b.currentHp/b.hp)).slice(0,n)
+                .forEach(t=>applyHeal(att,t.uid,mult));
+            }
           }else if(isShield){
-            if(skillKey===ROCK_SHELL_KEY){
-              // Rock Shell: shield = mult × own MaxHP (NOT mAtk)
+            if(skillKey===ROCK_SHELL_KEY||skillKey===MYKO_IRON_CASING_KEY){
+              // Shield = mult × own MaxHP (Iron Casing / Rock Shell)
               const self=stateRef.current.find(u=>u.uid===att.uid);
               if(self){
                 const shVal=Math.max(1,Math.round(self.hp*mult));
@@ -1004,6 +1068,24 @@ export function BattleScreen({units:initUnits,onVictory,onDefeat,sessionId}:{
               const t=[...stateRef.current.filter(u=>u.side===att.side&&u.currentHp>0)].sort((a,b)=>b.hp-a.hp)[0];
               if(t)applyShield(att,t.uid,mult);
             }
+          }else if(FANG_TWIN_SLASH.has(skillKey)){
+            // Fang:sk1 Twin Slash — 2 consecutive hits on single front-row target
+            if(pri){ applyDmg(att,pri.uid,mult); applyDmg(att,pri.uid,mult); }
+          }else if(FANG_DEATH_BOUND.has(skillKey)){
+            // Fang:ult Death Bound — lowest current-HP% enemy; ×3 if <35%
+            const tS=att.side==='hero'?'enemy':'hero';
+            const alive=stateRef.current.filter(u=>u.side===tS&&u.currentHp>0);
+            const lowestTgt=[...alive].sort((a,b)=>(a.currentHp/a.hp)-(b.currentHp/b.hp))[0];
+            if(lowestTgt){
+              const hpRatio=lowestTgt.currentHp/lowestTgt.hp;
+              applyDmg(att,lowestTgt.uid,hpRatio<0.35?mult*3:mult);
+            }
+          }else if(LOWEST_HP_SKILLS.has(skillKey)){
+            // Gorr:sk1 Cleaver Rush — target enemy with lowest current HP %
+            const tS=att.side==='hero'?'enemy':'hero';
+            const alive=stateRef.current.filter(u=>u.side===tS&&u.currentHp>0);
+            const lowestTgt=[...alive].sort((a,b)=>(a.currentHp/a.hp)-(b.currentHp/b.hp))[0];
+            if(lowestTgt) applyDmg(att,lowestTgt.uid,mult);
           }else if(PDEF_SHRED_SKILLS.has(skillKey)){
             // Lucas:sk2 Armor Rend — rend P.DEF then deal damage to single front-row target
             if(pri){

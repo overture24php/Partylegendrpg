@@ -41,7 +41,7 @@ const HERO_ID_TO_NAME: Record<string, string> = {
 };
 
 // Case-insensitive: DB may return 'Tank' or 'tank', 'Fighter' or 'fighter'
-const MELEE_IDS = ['fighter', 'tank'];
+const MELEE_IDS = ['fighter', 'tank', 'assassin'];
 
 // ─── Per-hero-per-slot action definitions (AUTHORITATIVE ENGINE) ──────────────
 // When a new hero is added: fill in their heroId entry here.
@@ -66,6 +66,18 @@ const HERO_SKILL_ACTIONS: Record<string, Record<number, SkillAction>> = {
   craw:       { 0:{move:'ranged_place',        sfx:'bullet'},1:{move:'ranged_place',        sfx:'bullet'},2:{move:'ranged_place',sfx:'bullet'},3:{move:'passive',  sfx:'none'},   4:{move:'ranged_place',    sfx:'bullet'} },
   // Myko: shield Tank mushroom — melee bash. SK1 = self buff. SK2/ULT = AoE lunge.
   myko:       { 0:{move:'melee_dash',          sfx:'punch'}, 1:{move:'self_only',           sfx:'shield'},2:{move:'melee_aoe_center',sfx:'punch'},3:{move:'passive',sfx:'none'},   4:{move:'melee_aoe_center',sfx:'punch'} },
+  // Fang: dual-dagger Assassin — all attacks are melee dashes.
+  //   SK1 Twin Slash   = dash to single target (2 hits handled server-side)
+  //   SK2 Shadow Sprint = lunge through the front row (AoE center)
+  //   SK3 Hunter's Mark = passive proc (no movement)
+  //   ULT Death Bound   = heavy dash to lowest-HP target
+  fang:       { 0:{move:'melee_dash',          sfx:'punch'}, 1:{move:'melee_dash',          sfx:'punch'}, 2:{move:'melee_aoe_center',sfx:'punch'}, 3:{move:'passive',sfx:'none'}, 4:{move:'melee_dash',       sfx:'lucas'} },
+  // Clover: bunny support mage — always stays in place, casts from range.
+  //   SK1 Healing Herb  = stationary heal (ranged_place, heal sfx)
+  //   SK2 Lucky Toss    = toss regen charm (ranged_place, heal sfx)
+  //   SK3 Life Bloom    = passive proc (no movement)
+  //   ULT Bloom Cascade = AoE team heal (ranged_place, heal sfx)
+  clover:     { 0:{move:'ranged_place',         sfx:'bullet'},1:{move:'ranged_place',         sfx:'heal'}, 2:{move:'ranged_place',    sfx:'heal'},  3:{move:'passive',sfx:'none'}, 4:{move:'ranged_place',     sfx:'heal'} },
 };
 
 // ─── Formation layout ��────────────────────────────────────────────────────────
@@ -83,7 +95,9 @@ const IDLE_SPRITES: Record<string, string> = {
   Emma:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777630434/idle_em_p8uxjs.png',
   Gorr:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919607/ChatGPT_Image_May_5_2026_01_23_54_AM_nhkzmq.png',
   Craw:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919783/ChatGPT_Image_May_5_2026_01_26_59_AM_zfdewm.png',
-  Myko:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778005026/ChatGPT_Image_May_6_2026_01_01_00_AM_bhjzhr.png',
+  Myko:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778005026/ChatGPT_Image_May_6_2026_01_01_00_AM_bhjzhr.png',
+  Fang:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058539/ChatGPT_Image_May_6_2026_03_43_22_PM_ejhf1t.png',
+  Clover: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058829/ChatGPT_Image_May_6_2026_03_57_38_PM_jwipj1.png',
 };
 const ACTION_BGREMOVE: Record<string, string> = {
   Lucas: 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777631550/act_luc_mhmivj.png',
@@ -92,7 +106,9 @@ const ACTION_CHROMA: Record<string, string> = {
   Emma: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777630357/act_em_fnrl1t.png',
   Gorr: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919615/ChatGPT_Image_May_5_2026_01_31_48_AM_m65s2g.png',
   Craw: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919799/ChatGPT_Image_May_5_2026_01_27_08_AM_p8yjub.png',
-  Myko: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778005040/ChatGPT_Image_May_6_2026_01_03_49_AM_sirb54.png',
+  Myko:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778005040/ChatGPT_Image_May_6_2026_01_03_49_AM_sirb54.png',
+  Fang:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058739/ChatGPT_Image_May_6_2026_03_45_46_PM_plgice.png',
+  Clover: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058887/ChatGPT_Image_May_6_2026_04_00_04_PM_fattkj.png',
 };
 // ─── Enemy / team slime sprites ───────────────────────────────────────────────
 // Rock/Water = green screen → chroma key client-side (chromaKey: true)
@@ -101,11 +117,20 @@ const ENEMY_IDLE: Record<string, string> = {
   RockSlime:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777634810/Gemini_Generated_Image_c7qsl1c7qsl1c7qs_mekkjz.png',
   AcidSlime:  'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777634782/ChatGPT_Image_May_1_2026_06_25_59_PM_dsoxsd.png',
   WaterSlime: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777907811/7d3947a5-76a6-4422-9dc6-1eb5fd4d29bd.png',
+  // Human heroes on enemy side — same idle URL; scaleX(-1) applied by container
+  Myko:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778005026/ChatGPT_Image_May_6_2026_01_01_00_AM_bhjzhr.png',
+  Fang:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058539/ChatGPT_Image_May_6_2026_03_43_22_PM_ejhf1t.png',
+  Clover: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058829/ChatGPT_Image_May_6_2026_03_57_38_PM_jwipj1.png',
 };
 // Team-side slime sprites (same assets — they face RIGHT, so no flip for hero side)
 const TEAM_SLIME_IDLE = ENEMY_IDLE; // same source; direction handled by render
 // Slimes that use Cloudinary bg-removal (skip chroma key for these)
 const BP_BGREMOVE_SLIMES = new Set(['AcidSlime']);
+// Human heroes on enemy side need chroma key (green screen sprites)
+const BP_ENEMY_HUMAN_CHROMA = new Set(['Myko', 'Fang', 'Clover']);
+const BP_ENEMY_HUMAN_NAMES  = new Set(['Myko', 'Fang', 'Clover']);
+// Myko reduced dims: height −50%, width −25%
+const BP_MYKO_HW=135, BP_MYKO_HH=169, BP_MYKO_EW=135, BP_MYKO_EH=90;
 // All new slime images face RIGHT — enemy side flips scaleX(-1) to face LEFT.
 const ENEMY_COUNTERFLIP = new Set<string>([]);
 const SKILL_ICONS: Record<string, Partial<Record<string, string>>> = {
@@ -156,6 +181,18 @@ const SKILL_ICONS: Record<string, Partial<Record<string, string>>> = {
     sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009434/sk2myk_nry1oe.png',
     sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009440/sk3myk_oc94bf.png',
     ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009488/sk4myk_egyexz.png',
+  },
+  Fang: {
+    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550813/s1lukas_wrrnuo.png',
+    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002935/sk2craw_hmjjoz.png',
+    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002946/sk3craw_f6s5e5.png',
+    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002939/sk4craw_zg73ez.png',
+  },
+  Clover: {
+    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550127/s1emma_1d4245.png',
+    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550505/ChatGPT_Image_Apr_30_2026_06_53_05_PM_s9ssbz.png',
+    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550512/ChatGPT_Image_Apr_30_2026_ffPM_m405s1.png',
+    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550533/ultema_vshlxt.png',
   },
 };
 
@@ -411,8 +448,9 @@ function HeroBattleSprite({ unit, floats }: { unit: UnitState; floats: FloatNum[
     : ((showAct && actionSrc) ? actionSrc : (idleUrl ?? undefined));
   const flipCls      = animPhase === 'flip-windup' ? 'bp-flip-wind' : animPhase === 'flip-revert' ? 'bp-flip-rev' : '';
   const isDash       = animPhase === 'dashing', isRet = animPhase === 'dash-return';
-  const spriteW      = isSlime ? 180 : 180;
-  const spriteH      = isSlime ? 180 : 338;
+  const isMykoHero   = !isSlime && name === 'Myko';
+  const spriteW      = isSlime ? 180 : isMykoHero ? BP_MYKO_HW : 180;
+  const spriteH      = isSlime ? 180 : isMykoHero ? BP_MYKO_HH : 338;
   const spriteBottom = isSlime ? 0 : -4;
   return (
     <div className={animPhase === 'dying' ? 'bp-dying' : ''} style={{
@@ -520,27 +558,24 @@ function HeroBattleSprite({ unit, floats }: { unit: UnitState; floats: FloatNum[
 
 function EnemyBattleSprite({ unit, floats }: { unit: UnitState; floats: FloatNum[] }) {
   const { name, animPhase, dashOffsetX, dashOffsetY, currentHp, maxHp, shield, rage, statusEffects } = unit;
-  const rawSrc      = ENEMY_IDLE[name] ?? '';
-  const needsChroma = !BP_BGREMOVE_SLIMES.has(name);
-  const chromaUrl   = useChromaKeyDataUrl(needsChroma ? rawSrc : '');
-  const src         = needsChroma ? (chromaUrl ?? '') : rawSrc;
+  const rawSrc       = ENEMY_IDLE[name] ?? '';
+  // Human enemies (Myko/Fang/Clover) are green-screen → client chroma key
+  const isHumanEnemy = BP_ENEMY_HUMAN_NAMES.has(name);
+  const needsChroma  = !BP_BGREMOVE_SLIMES.has(name) && !isHumanEnemy;
+  const needsHumanChroma = BP_ENEMY_HUMAN_CHROMA.has(name);
+  const chromaUrl    = useChromaKeyDataUrl(needsChroma ? rawSrc : '');
+  const humanChroma  = useChromaKeyDataUrl(needsHumanChroma ? rawSrc : '');
+  const src = needsHumanChroma ? (humanChroma ?? '') : needsChroma ? (chromaUrl ?? '') : rawSrc;
   const flipCls     = animPhase === 'flip-windup' ? 'bp-flip-wind' : animPhase === 'flip-revert' ? 'bp-flip-rev' : '';
-  // WaterSlime sprite natively faces LEFT — scaleX(-1) would wrongly flip it RIGHT.
-  // counterFlip=true → use scaleX(1) (no flip) + bp-slime-cfl animation (positive scaleX).
-  // Net transforms (counterFlip=true):
-  //   idle:   flipCls(1)  × img(1) = +1 → LEFT ✓
-  //   windup: flipCls(-1) × img(1) = -1 → RIGHT ✓ (windup kick-back)
-  //   revert: flipCls(1)  × img(1) = +1 → LEFT ✓
   const counterFlip = ENEMY_COUNTERFLIP.has(name);
+  const isMykoE     = name === 'Myko';
   const isDash  = animPhase === 'dashing', isRet = animPhase === 'dash-return';
   return (
     <div className={animPhase === 'dying' ? 'bp-dying' : ''} style={{
       position: 'absolute', bottom: 4, left: '50%',
-      // Outer container has NO scaleX(-1) — flip lives on the inner-flip div so browser
-      // GPU compositing (will-change:transform) cannot strip it from any sprite variant
       transform: `translateX(calc(-50% + ${dashOffsetX}px)) translateY(${dashOffsetY}px)`,
       transition: isDash ? 'transform .15s cubic-bezier(.04,0,.08,1)' : isRet ? 'transform .22s ease-out' : 'none',
-      width: 180, height: 180, pointerEvents: 'none', zIndex: 10,
+      width: isMykoE ? BP_MYKO_EW : 180, height: isMykoE ? BP_MYKO_EH : 180, pointerEvents: 'none', zIndex: 10,
       filter: isDash ? MELEE_TRAIL_ENEMY : '', willChange: 'transform,filter',
     }}>
       {src && (
@@ -602,7 +637,7 @@ function EnemyBattleSprite({ unit, floats }: { unit: UnitState; floats: FloatNum
         <img src={src} alt={name} draggable={false}
           className={
             animPhase === 'idle'
-              ? (counterFlip ? 'bp-slime-cfl' : 'bp-slime-e')
+              ? (isHumanEnemy ? 'bp-idle' : counterFlip ? 'bp-slime-cfl' : 'bp-slime-e')
               : animPhase === 'hurt' ? 'bp-hurt' : ''
           }
           style={{
@@ -610,8 +645,7 @@ function EnemyBattleSprite({ unit, floats }: { unit: UnitState; floats: FloatNum
             display: 'block',
             // Normal enemy: scaleX(-1) faces LEFT (flips right-facing sprite).
             // counterFlip (WaterSlime): scaleX(1) — already LEFT-facing, no flip needed.
-            // bp-hurt only animates opacity+filter — this inline transform is preserved.
-            // bp-slime-e / bp-slime-cfl keyframes agree with this value so there's no conflict.
+            // Human enemies (Myko/Fang/Clover): bp-idle animation, scaleX(-1) to face left.
             transform: counterFlip ? 'scaleX(1)' : 'scaleX(-1)',
           }}/>
       </div>

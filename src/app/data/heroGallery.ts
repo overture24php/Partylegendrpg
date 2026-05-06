@@ -62,7 +62,7 @@ const UNKNOWN_SKILLS: HeroSkillSet  = {
   sk1: UNKNOWN_SKILL, sk2: UNKNOWN_SKILL, sk3: UNKNOWN_SKILL, ult: UNKNOWN_SKILL,
 };
 
-// ═════════════════════════════════���══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
 //  HERO REGISTRY
 //  Order: SS (Mythic) → S (Legendary) → A (Epic) → B (Rare) → C (Common)
 // ════════════════════════════════════════════════════════════════════════════════
@@ -366,13 +366,13 @@ export const HERO_GALLERY: HeroGalleryEntry[] = [
     },
   },
 
-  // Gorr — Fighter (C Common)  ─────────────────────────────────────────────────
+  // Gorr — Fighter (C Common)
   {
     heroId:   'gorr',
     name:     'Gorr',
     rarity:   'common',
     heroType: 'Fighter',
-    ilust:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777918499/ChatGPT_Image_May_5_2026_01_13_20_AM_eyckzn.png',
+    ilust:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058398/ChatGPT_Image_May_6_2026_03_41_03_PM_hxymbk.png',
     skillIcons: {
       sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002904/sk1gor_wkgpaz.png',
       sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002911/sk2gor_grkelh.png',
@@ -415,13 +415,13 @@ export const HERO_GALLERY: HeroGalleryEntry[] = [
     },
   },
 
-  // Craw — Ranged (C Common)  ──────────────────────────────────────────────────
+  // Craw — Ranged (C Common)
   {
     heroId:   'craw',
     name:     'Craw',
     rarity:   'common',
     heroType: 'Ranged',
-    ilust:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919641/ChatGPT_Image_May_5_2026_01_27_29_AM_axdemu.png',
+    ilust:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058474/ChatGPT_Image_May_6_2026_03_43_04_PM_u0dyy5.png',
     skillIcons: {
       sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002931/sk1craw_cgwnc7.png',
       sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002935/sk2craw_hmjjoz.png',
@@ -515,15 +515,13 @@ export const HERO_GALLERY: HeroGalleryEntry[] = [
     },
   },
 
-  // Myko — Tank (C Common) ─────────────────────────────────────────────────
-  // Mushroom guardian with shield + decorative spear. All actions use shield.
-  // Unique: SK2 and ULT scale with P.DEF, not P.ATK.
+  // Myko — Tank (C Common)
   {
     heroId:   'myko',
     name:     'Myko',
     rarity:   'common',
     heroType: 'Tank',
-    ilust:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778005010/ChatGPT_Image_May_6_2026_12_58_49_AM_wgnb4t.png',
+    ilust:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058438/ChatGPT_Image_May_6_2026_03_42_51_PM_o43yt7.png',
     skillIcons: {
       sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009427/sk1myk_nr36fc.png',
       sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009434/sk2myk_nry1oe.png',
@@ -564,6 +562,111 @@ export const HERO_GALLERY: HeroGalleryEntry[] = [
     },
   },
 ];
+
+// ─── NEW HEROES ───────────────────────────────────────────────────────────────
+
+// Fang — Assassin (C Common) ─────────────────────────────────────────────────
+// Killer rabbit wielding twin short daggers. Lightning-fast single-target damage
+// and execute potential. Unique passive: kill streaks stack permanent P.ATK boosts.
+HERO_GALLERY.push({
+  heroId:   'fang',
+  name:     'Fang',
+  rarity:   'common',
+  heroType: 'Assassin',
+  ilust:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058505/ChatGPT_Image_May_6_2026_03_43_11_PM_xagzjf.png',
+  skillIcons: {
+    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550813/s1lukas_wrrnuo.png',
+    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002935/sk2craw_hmjjoz.png',
+    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002946/sk3craw_f6s5e5.png',
+    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002939/sk4craw_zg73ez.png',
+  },
+  skills: {
+    sk1: {
+      name:        'Twin Slash',
+      description: 'Fang lunges at a single enemy and unleashes two rapid dagger strikes in quick succession. The second hit targets a gap in the enemy\'s guard, making it harder to mitigate. Consistent damage against any target with no cooldown penalty.',
+      ratioLevels: [
+        { label: 'Damage per Hit (P.ATK)', values: ['90%', '110%', '135%', '165%'] },
+        { label: 'Hits',                   values: ['×2',  '×2',   '×2',   '×2'  ] },
+      ],
+    },
+    sk2: {
+      name:        'Shadow Sprint',
+      description: 'Fang blurs through the entire front row in a single pass, slashing every enemy in the line simultaneously. Fast, wide, and unpredictable — ideal for clearing out multiple threats before they act.',
+      ratioLevels: [
+        { label: 'Damage per Enemy (P.ATK)', values: ['75%', '92%', '112%', '138%'] },
+        { label: 'Targets',                  values: ['Front Row', 'Front Row', 'Front Row', 'Front Row'] },
+      ],
+    },
+    sk3: {
+      name:        "Hunter's Mark",
+      description: "Passive (self, permanent). Whenever Fang lands the killing blow on any enemy, it triggers a surge of bloodlust — Fang gains a permanent P.ATK stack. These stacks do not expire and can accumulate up to 3 times over the course of a battle, rewarding aggressive play.",
+      ratioLevels: [
+        { label: 'P.ATK Bonus per Kill Stack', values: ['+28%', '+36%', '+46%', '+58%'] },
+        { label: 'Max Stacks',                  values: ['3',    '3',    '3',    '3'   ] },
+      ],
+    },
+    ult: {
+      name:        'Death Bound',
+      description: "Fang locks onto the enemy with the lowest remaining HP and delivers one devastating strike. If the target's HP is already below 35%, the raw force of this blow triples in power — an almost certain kill. Best used to finish weakened enemies before they recover.",
+      ratioLevels: [
+        { label: 'Damage (P.ATK)',             values: ['260%', '320%', '395%', '480%'] },
+        { label: 'Bonus × if target < 35% HP', values: ['×3',   '×3',   '×3',   '×3'  ] },
+      ],
+    },
+  },
+});
+
+// Clover — Support (C Common) ─────────────────────────────────────────────────
+// Bunny mage in a flowing robe. Specialises in sustained healing and regeneration
+// over time. Counter to bleed/damage-over-time strategies. Passive random heals
+// keep the team surprisingly resilient without draining skill turns.
+HERO_GALLERY.push({
+  heroId:   'clover',
+  name:     'Clover',
+  rarity:   'common',
+  heroType: 'Support',
+  ilust:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058786/ChatGPT_Image_May_6_2026_03_55_39_PM_dssunr.png',
+  skillIcons: {
+    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550127/s1emma_1d4245.png',
+    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550505/ChatGPT_Image_Apr_30_2026_06_53_05_PM_s9ssbz.png',
+    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550512/ChatGPT_Image_Apr_30_2026_ffPM_m405s1.png',
+    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550533/ultema_vshlxt.png',
+  },
+  skills: {
+    sk1: {
+      name:        'Healing Herb',
+      description: "Clover draws on nature magic to channel a burst of restorative energy into the ally with the lowest current HP. Quick and efficient — prioritises whoever needs help most.",
+      ratioLevels: [
+        { label: 'Heal (M.ATK)', values: ['130%', '160%', '195%', '240%'] },
+      ],
+    },
+    sk2: {
+      name:        'Lucky Toss',
+      description: "Clover flicks a glowing clover charm at a random ally, infusing them with a Regeneration aura. The chosen ally recovers HP each turn for 3 turns. Unlike burst healing, this aura works even during enemy turns — keeping allies alive through sustained punishment.",
+      ratioLevels: [
+        { label: 'Regen per Turn (M.ATK)', values: ['55%', '68%', '83%', '100%'] },
+        { label: 'Duration',               values: ['3T',  '3T',  '3T',  '3T'  ] },
+      ],
+    },
+    sk3: {
+      name:        'Life Bloom',
+      description: "Passive (team, permanent). Clover's magical presence permeates the battlefield. Each time any ally takes a direct hit, there is a 35% chance that Clover automatically channels a small burst of healing energy toward that ally — instantly and at no cost. Works as a reliable safety net against rapid multi-hit attackers.",
+      ratioLevels: [
+        { label: 'Passive Heal per Proc (M.ATK)', values: ['40%', '52%', '66%', '82%'] },
+        { label: 'Trigger Chance',                values: ['35%', '35%', '35%', '35%'] },
+      ],
+    },
+    ult: {
+      name:        'Bloom Cascade',
+      description: "Clover releases a wave of pure rejuvenating energy across the entire team. Every ally is healed simultaneously, and each also receives a Lucky Toss regen aura that heals them each turn for 3 more turns. The combination of burst healing plus sustained regeneration makes this the ultimate recovery skill — use it when the whole team is hurting.",
+      ratioLevels: [
+        { label: 'Burst Heal per Ally (M.ATK)', values: ['90%',  '112%', '138%', '168%'] },
+        { label: 'Regen per Ally/Turn (M.ATK)', values: ['38%',  '46%',  '56%',  '68%' ] },
+        { label: 'Regen Duration',              values: ['3T',   '3T',   '3T',   '3T'  ] },
+      ],
+    },
+  },
+});
 
 // ─── Lookup helpers ────────────────────────────────────────────────────────────
 
