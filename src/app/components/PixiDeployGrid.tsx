@@ -11,7 +11,7 @@
  *     destroying the Application (two-effect pattern)
  */
 
-import React, { useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   Application,
   Container,
@@ -365,6 +365,17 @@ interface DeplCardNode {
   update: (t: number, dt: number) => void;
 }
 
+// ─── Persistent Application state ────────────────────────────────────────────
+// Never destroyed — canvas detaches/reattaches each time overlay opens/closes.
+let _dApp:       Application       | null = null;
+let _dCanvas:    HTMLCanvasElement | null = null;
+let _dGrid:      Container         | null = null;
+let _dCards:     DeplCardNode[]          = [];
+let _dScroll                             = { y: 0, vel: 0, max: 0 };
+let _dHeroesKey: string                  = '';
+let _dClickCb:   ((id: string) => void)  | null = null;
+let _dRo:        ResizeObserver    | null = null;
+
 function createDeplCard(
   data:      DeployHeroData,
   cfg:       RCfg,
@@ -463,158 +474,154 @@ function createDeplCard(
   return { root, ovSpr, data, cfg, update };
 }
 
-// ─── React component ──────────────────────────────────────────────────────────
-export function PixiDeployGrid({ heroes, onCardClick }: Props) {
-  const mountRef  = useRef<HTMLDivElement>(null);
-  const appRef    = useRef<Application | null>(null);
-  const gridRef   = useRef<Container | null>(null);
-  const cardsRef  = useRef<DeplCardNode[]>([]);
-  const scrollRef = useRef({ y: 0, vel: 0, max: 0 });
-  const clickRef  = useRef(onCardClick);
-  clickRef.current = onCardClick;
+function initDeployApp(mountEl: HTMLElement) {
+  const w = mountEl.clientWidth  || window.innerWidth  || 390;
+  const h = mountEl.clientHeight || window.innerHeight || 600;
 
-  // ── Application init (once on mount) ─────────────────────────────────────
-  useLayoutEffect(() => {
+  const app = new Application({
+    width: w, height: h,
+    backgroundAlpha: 0, antialias: false,
+    resolution: Math.min(window.devicePixelRatio || 1, 2),
+    autoDensity: true,
+  });
+
+  const canvas = app.view as HTMLCanvasElement;
+  canvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;touch-action:none;';
+  mountEl.appendChild(canvas);
+
+  app.stage.eventMode = 'static';
+  app.stage.hitArea   = app.screen;
+
+  const grid = new Container();
+  app.stage.addChild(grid);
+
+  const sc = _dScroll;
+  const onWheel=(e:WheelEvent)=>{ e.preventDefault(); sc.vel=0; sc.y=Math.max(0,Math.min(sc.max,sc.y+e.deltaY*0.7)); };
+  let tY=0,tT=0,tVel=0;
+  const onTS=(e:TouchEvent)=>{ tY=e.touches[0].clientY; tT=performance.now(); tVel=sc.vel=0; };
+  const onTM=(e:TouchEvent)=>{ e.preventDefault(); const ny=e.touches[0].clientY,nt=performance.now(),dy=tY-ny,dt=Math.max(1,nt-tT); tVel=(dy/dt)*16; tY=ny;tT=nt; sc.y=Math.max(0,Math.min(sc.max,sc.y+dy)); };
+  const onTE=()=>{ sc.vel=tVel; };
+  canvas.addEventListener('wheel',      onWheel, { passive: false });
+  canvas.addEventListener('touchstart', onTS,    { passive: true  });
+  canvas.addEventListener('touchmove',  onTM,    { passive: false });
+  canvas.addEventListener('touchend',   onTE,    { passive: true  });
+
+  let totalTime = 0;
+  app.ticker.add((delta: number) => {
+    const dt = delta / 60; totalTime += dt;
+    if (Math.abs(sc.vel) > 0.1) {
+      sc.y = Math.max(0, Math.min(sc.max, sc.y + sc.vel));
+      sc.vel *= 0.92;
+      if (Math.abs(sc.vel) < 0.1) sc.vel = 0;
+    }
+    grid.y = -Math.round(sc.y);
+    for (const card of _dCards) card.update(totalTime, dt);
+  });
+
+  _dApp    = app;
+  _dCanvas = canvas;
+  _dGrid   = grid;
+}
+
+export function PixiDeployGrid({ heroes, onCardClick }: Props) {
+  const mountRef = useRef<HTMLDivElement>(null);
+
+  // Keep module-level click callback current
+  useEffect(() => {
+    _dClickCb = onCardClick;
+    return () => { if (_dClickCb === onCardClick) _dClickCb = null; };
+  }, [onCardClick]);
+
+  // Mount: create or reattach canvas; unmount: detach (don't destroy)
+  useEffect(() => {
     const mountEl = mountRef.current;
     if (!mountEl) return;
 
-    const w = mountEl.clientWidth  || 390;
-    const h = mountEl.clientHeight || 500;
+    if (!_dApp) {
+      initDeployApp(mountEl);
+    } else {
+      // Reattach — reset scroll to top on each overlay open
+      mountEl.appendChild(_dCanvas!);
+      _dScroll.y = 0; _dScroll.vel = 0;
+      if (_dGrid) _dGrid.y = 0;
+      _dApp.ticker.start();
+    }
 
-    const app = new Application({
-      width:           w,
-      height:          h,
-      backgroundAlpha: 0,
-      antialias:       false,
-      resolution:      Math.min(window.devicePixelRatio || 1, 2),
-      autoDensity:     true,
-    });
-
-    const canvas = app.view as HTMLCanvasElement;
-    canvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;touch-action:none;';
-    mountEl.appendChild(canvas);
-    appRef.current = app;
-
-    app.stage.eventMode = 'static';
-    app.stage.hitArea   = app.screen;
-
-    const grid = new Container();
-    app.stage.addChild(grid);
-    gridRef.current = grid;
-
-    // Scroll: wheel
-    const sc = scrollRef.current;
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      sc.vel = 0;
-      sc.y   = Math.max(0, Math.min(sc.max, sc.y + e.deltaY * 0.7));
-    };
-
-    // Scroll: touch with momentum
-    let tY=0, tT=0, tVel=0;
-    const onTS=(e:TouchEvent)=>{ tY=e.touches[0].clientY; tT=performance.now(); tVel=sc.vel=0; };
-    const onTM=(e:TouchEvent)=>{
-      e.preventDefault();
-      const ny=e.touches[0].clientY,nt=performance.now(),dy=tY-ny,dt=Math.max(1,nt-tT);
-      tVel=(dy/dt)*16; tY=ny; tT=nt;
-      sc.y=Math.max(0,Math.min(sc.max,sc.y+dy));
-    };
-    const onTE=()=>{ sc.vel=tVel; };
-
-    canvas.addEventListener('wheel',      onWheel, { passive: false });
-    canvas.addEventListener('touchstart', onTS,    { passive: true  });
-    canvas.addEventListener('touchmove',  onTM,    { passive: false });
-    canvas.addEventListener('touchend',   onTE,    { passive: true  });
-
-    // Ticker
-    let totalTime = 0;
-    app.ticker.add((delta: number) => {
-      const dt = delta / 60;
-      totalTime += dt;
-      if (Math.abs(sc.vel) > 0.1) {
-        sc.y    = Math.max(0, Math.min(sc.max, sc.y + sc.vel));
-        sc.vel *= 0.92;
-        if (Math.abs(sc.vel) < 0.1) sc.vel = 0;
+    _dRo?.disconnect();
+    _dRo = new ResizeObserver(entries => {
+      const { width, height } = entries[0].contentRect;
+      if (width > 10 && height > 10) {
+        _dApp?.renderer.resize(width, height);
+        if (_dApp) _dApp.stage.hitArea = _dApp.screen;
       }
-      grid.y = -Math.round(sc.y);
-      for (const card of cardsRef.current) card.update(totalTime, dt);
     });
+    _dRo.observe(mountEl);
 
     return () => {
-      canvas.removeEventListener('wheel', onWheel);
-      canvas.removeEventListener('touchstart', onTS);
-      canvas.removeEventListener('touchmove', onTM);
-      canvas.removeEventListener('touchend', onTE);
-      app.destroy(true, { children: true, texture: false });
-      appRef.current  = null;
-      gridRef.current = null;
+      _dRo?.disconnect(); _dRo = null;
+      _dCanvas?.parentElement?.removeChild(_dCanvas);
+      _dApp?.ticker.stop();
     };
-  }, []); // runs once on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // ── Grid rebuild on heroes change ────────────────────────────────────────
+  // Cards rebuild — skip when hero data + deployed flags unchanged
   useEffect(() => {
-    const app  = appRef.current;
-    const grid = gridRef.current;
+    const app  = _dApp;
+    const grid = _dGrid;
     if (!app || !grid) return;
+
+    // Key includes deployed flag so re-deploy changes are detected
+    const key = heroes.map(h => `${h.heroId}:${h.stars}:${h.level}:${h.deployed?1:0}`).join('|');
+    if (key === _dHeroesKey && grid.children.length > 0) return;
+    _dHeroesKey = key;
+
     let cancelled = false;
 
-    // Clear previous cards
-    grid.removeChildren();
-    cardsRef.current = [];
+    // Destroy old card nodes
+    for (const c of _dCards) { grid.removeChild(c.root); c.root.destroy({ children: true, texture: false }); }
+    _dCards = [];
 
-    // Reset scroll
-    const sc = scrollRef.current;
-    sc.y = 0; sc.vel = 0;
+    if (!heroes.length) { _dScroll.max = 0; _dScroll.y = 0; return () => { cancelled = true; }; }
 
-    if (!heroes.length) return;
-
-    // Compute card size from screen width
     const appW  = app.screen.width;
     const cardW = Math.floor((appW - H_PAD * 2 - GAP * (COLS - 1)) / COLS);
     const cardH = Math.round(cardW * 400 / 250);
 
-    // Compute total content height
     const rows = Math.ceil(heroes.length / COLS);
-    sc.max = Math.max(0, rows * (cardH + GAP) - V_PAD - app.screen.height);
+    _dScroll.max = Math.max(0, V_PAD + rows * (cardH + GAP) + V_PAD - app.screen.height);
+    _dScroll.y   = 0;
 
     const { sweep: sweepTex, holo: holoTex } = getDeplSharedFx(cardW, cardH);
     const dimTex = getDeployedDimTex(cardW, cardH);
 
-    const nodes: DeplCardNode[] = [];
-
+    const newCards: DeplCardNode[] = [];
     heroes.forEach((hero, idx) => {
-      const cfg    = HERO_RARITIES.find(r => r.id === hero.rarity) ?? HERO_RARITIES[4];
-      const bgTex  = getDeplBgTex(cfg, cardW, cardH);
-      const col    = idx % COLS;
-      const row    = Math.floor(idx / COLS);
-      const x      = H_PAD + col * (cardW + GAP) + cardW / 2;
-      const y      = V_PAD + row * (cardH + GAP) + cardH / 2;
-
+      const cfg   = HERO_RARITIES.find(r => r.id === hero.rarity) ?? HERO_RARITIES[4];
+      const bgTex = getDeplBgTex(cfg, cardW, cardH);
+      const col = idx % COLS, row = Math.floor(idx / COLS);
       const node = createDeplCard(
         hero, cfg, cardW, cardH, bgTex, sweepTex, holoTex, dimTex,
-        () => clickRef.current(hero.heroId),
-        idx,
+        () => _dClickCb?.(hero.heroId), idx,
       );
-      node.root.x = x;
-      node.root.y = y;
+      node.root.x = H_PAD + col * (cardW + GAP) + cardW / 2;
+      node.root.y = V_PAD + row * (cardH + GAP) + cardH / 2;
       grid.addChild(node.root);
-      nodes.push(node);
+      newCards.push(node);
     });
+    _dCards = newCards;
 
-    cardsRef.current = nodes;
-
-    // Stagger overlay creation — 2 per rAF, after fonts ready
+    // Stagger overlay creation: 2 per rAF after fonts ready
     document.fonts.ready.then(() => {
       if (cancelled) return;
-      const queue = [...nodes];
+      const queue = [...newCards];
       const processNext = () => {
         if (cancelled || !queue.length) return;
         for (let i = 0; i < 2 && queue.length > 0; i++) {
-          const node = queue.shift()!;
-          const ov   = createDeplOverlay(node.data, node.cfg, cardW, cardH);
-          node.ovSpr.texture = Texture.from(ov);
-          node.ovSpr.width   = cardW;
-          node.ovSpr.height  = cardH;
+          const card = queue.shift()!;
+          const ov   = createDeplOverlay(card.data, card.cfg, cardW, cardH);
+          card.ovSpr.texture = Texture.from(ov);
+          card.ovSpr.width = cardW; card.ovSpr.height = cardH;
         }
         if (queue.length) requestAnimationFrame(processNext);
       };

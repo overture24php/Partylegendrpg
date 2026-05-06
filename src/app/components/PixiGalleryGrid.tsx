@@ -605,10 +605,7 @@ function createGalleryCard(
 
 // ─── React component ──────────────────────────────────────────────────────────
 // ── One-time Application bootstrap ────────────────────────────────────────────
-function initGalleryApp(mountEl: HTMLElement) {
-  const w = mountEl.clientWidth  || 390;
-  const h = mountEl.clientHeight || 500;
-
+function initGalleryApp(w: number, h: number) {
   const app = new Application({
     width: w, height: h,
     backgroundAlpha: 0, antialias: false,
@@ -618,7 +615,7 @@ function initGalleryApp(mountEl: HTMLElement) {
 
   const canvas = app.view as HTMLCanvasElement;
   canvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;touch-action:none;';
-  mountEl.appendChild(canvas);
+  // canvas NOT appended here — caller attaches it
 
   app.stage.eventMode = 'static';
   app.stage.hitArea   = app.screen;
@@ -654,6 +651,61 @@ function initGalleryApp(mountEl: HTMLElement) {
   _gGrid   = grid;
 }
 
+// ── Imperative pre-warm ───────────────────────────────────────────────────────
+export function prewarmGallery(heroes: GalleryHeroData[]) {
+  if (_gApp) return;
+
+  const w = window.innerWidth  || 390;
+  const h = Math.round((window.innerHeight || 800) * 0.705);
+
+  initGalleryApp(w, h);
+  _gApp!.ticker.stop();
+
+  if (!heroes.length) return;
+
+  const appW  = _gApp!.screen.width;
+  const cardW = Math.floor((appW - H_PAD * 2 - GAP * (GALLERY_COLS - 1)) / GALLERY_COLS);
+  const cardH = Math.round(cardW * (400 / 250));
+  const { sweep: sweepTex, holo: holoTex } = getSharedTextures(cardW, cardH);
+
+  const newCards: GCardNode[] = [];
+  heroes.forEach((hero, idx) => {
+    const col = idx % GALLERY_COLS, row = Math.floor(idx / GALLERY_COLS);
+    const cfg   = HERO_RARITIES.find(r => r.id === hero.rarity) ?? HERO_RARITIES[4];
+    const bgTex = hero.isLocked ? getLockedBg(cfg, cardW, cardH) : getUnlockedBg(cfg, cardW, cardH);
+    const card  = createGalleryCard(hero, cfg, cardW, cardH, bgTex, sweepTex, holoTex,
+      () => _gClickCb?.(hero.heroId), idx);
+    card.root.x = H_PAD + col * (cardW + GAP) + cardW / 2;
+    card.root.y = V_PAD + row * (cardH + GAP) + cardH / 2;
+    _gGrid!.addChild(card.root);
+    newCards.push(card);
+  });
+  _gNodes     = newCards;
+  _gHeroesKey = heroes.map(h => `${h.heroId}:${h.stars}:${h.level}:${h.isLocked?1:0}`).join('|');
+
+  const rows = Math.ceil(heroes.length / GALLERY_COLS);
+  _gScroll.max = Math.max(0, V_PAD + rows * (cardH + GAP) + V_PAD - h);
+
+  const app = _gApp!;
+  document.fonts.ready.then(() => {
+    const queue = [...newCards];
+    const processNext = () => {
+      if (!queue.length) return;
+      for (let i = 0; i < 2 && queue.length > 0; i++) {
+        const card = queue.shift()!;
+        const ov   = card.data.isLocked
+          ? createLockedOverlay(card.data, card.cfg, cardW, cardH)
+          : createUnlockedOverlay(card.data, card.cfg, cardW, cardH);
+        card.ovSpr.texture = Texture.from(ov);
+        card.ovSpr.width = cardW; card.ovSpr.height = cardH;
+      }
+      app.renderer.render(app.stage); // GPU upload each batch
+      if (queue.length) requestAnimationFrame(processNext);
+    };
+    requestAnimationFrame(processNext);
+  });
+}
+
 export function PixiGalleryGrid({ heroes, visible, onCardClick }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
 
@@ -676,7 +728,10 @@ export function PixiGalleryGrid({ heroes, visible, onCardClick }: Props) {
     if (!mountEl) return;
 
     if (!_gApp) {
-      initGalleryApp(mountEl);
+      const w = mountEl.clientWidth  || 390;
+      const h = mountEl.clientHeight || 500;
+      initGalleryApp(w, h);
+      mountEl.appendChild(_gCanvas!);
       if (!visible) _gApp!.ticker.stop();
     } else {
       mountEl.appendChild(_gCanvas!);
@@ -731,10 +786,8 @@ export function PixiGalleryGrid({ heroes, visible, onCardClick }: Props) {
       const col = idx % GALLERY_COLS, row = Math.floor(idx / GALLERY_COLS);
       const cfg  = HERO_RARITIES.find(r => r.id === hero.rarity) ?? HERO_RARITIES[4];
       const bgTex = hero.isLocked ? getLockedBg(cfg, cardW, cardH) : getUnlockedBg(cfg, cardW, cardH);
-      const card  = createGalleryCard(
-        hero, cfg, cardW, cardH, bgTex, sweepTex, holoTex,
-        () => _gClickCb?.(hero.heroId), idx,
-      );
+      const card  = createGalleryCard(hero, cfg, cardW, cardH, bgTex, sweepTex, holoTex,
+        () => _gClickCb?.(hero.heroId), idx);
       card.root.x = H_PAD + col * (cardW + GAP) + cardW / 2;
       card.root.y = V_PAD + row * (cardH + GAP) + cardH / 2;
       grid.addChild(card.root);

@@ -6,6 +6,7 @@ import { BgmController } from './components/BgmController';
 import { OfflineOverlay } from './components/OfflineOverlay';
 import { OrientationGuard } from './components/OrientationGuard';
 import { HeroDbSetupNotice } from './components/HeroDbSetupNotice';
+import { PixiPreloadManager } from './components/PixiPreloadManager';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import LoadingPage from './pages/LoadingPage';
@@ -88,6 +89,8 @@ function RootLayout() {
             <PersistentBgKeeper />
             <OfflineOverlay />
             <HeroDbSetupNotice />
+            {/* Pre-warms all PixiJS Applications + card textures before first navigation */}
+            <PixiPreloadManager />
             <Outlet />
           </OrientationGuard>
         </HeroProvider>

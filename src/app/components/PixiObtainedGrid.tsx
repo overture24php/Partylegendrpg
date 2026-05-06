@@ -33,7 +33,7 @@ import {
 } from '../utils/chromaKey';
 import { HERO_RARITIES } from './HeroCard';
 
-// ─── Public data shape ───────────────────────────────────────────────────────
+// ─── Public data shape ──────────────────────────────────────────────────────
 export interface HeroData {
   heroId:    string;
   name:      string;
@@ -633,10 +633,7 @@ function createCard(
 
 // ─── React component ──────────────────────────────────────────────────────────
 // ── One-time Application bootstrap (called on first-ever mount) ───────────────
-function initObtainedApp(mountEl: HTMLElement) {
-  const w = mountEl.clientWidth  || 390;
-  const h = mountEl.clientHeight || 500;
-
+function initObtainedApp(w: number, h: number) {
   const app = new Application({
     width: w, height: h,
     backgroundAlpha: 0,
@@ -647,7 +644,7 @@ function initObtainedApp(mountEl: HTMLElement) {
 
   const canvas = app.view as HTMLCanvasElement;
   canvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;touch-action:none;';
-  mountEl.appendChild(canvas);
+  // canvas is NOT appended here — caller decides where to put it
 
   app.stage.eventMode = 'static';
   app.stage.hitArea   = app.screen;
@@ -697,6 +694,66 @@ function initObtainedApp(mountEl: HTMLElement) {
   _grid   = grid;
 }
 
+// ── Imperative pre-warm: called from PixiPreloadManager during loading phase ──
+// Creates the Application + builds all cards + staggers GPU overlay uploads.
+// Result: when HeroPage first mounts, it just reattaches the canvas — zero init.
+export function prewarmObtained(heroes: HeroData[]) {
+  if (_app) return; // already warmed
+
+  const w = window.innerWidth  || 390;
+  const h = Math.round((window.innerHeight || 800) * 0.705); // ~70.5% = grid area
+
+  initObtainedApp(w, h);
+  _app!.ticker.stop(); // don't run until canvas is in DOM
+
+  if (!heroes.length) return;
+
+  const appW  = _app!.screen.width;
+  const cardW = Math.floor((appW - H_PAD * 2 - GAP * (COLS - 1)) / COLS);
+  const cardH = Math.round(cardW * (400 / 250));
+  const { sweep: sweepTex, holo: holoTex } = getSharedTextures(cardW, cardH);
+
+  const newCards: CardNode[] = [];
+  heroes.forEach((hero, idx) => {
+    const col = idx % COLS, row = Math.floor(idx / COLS);
+    const cfg = HERO_RARITIES.find(r => r.id === hero.rarity) ?? HERO_RARITIES[4];
+    const bg  = getBgTexture(cfg, cardW, cardH);
+    const card = createCard(hero, cfg, cardW, cardH, bg, sweepTex, holoTex,
+      () => _clickCb?.(hero.heroId), idx);
+    card.root.x = H_PAD + col * (cardW + GAP) + cardW / 2;
+    card.root.y = V_PAD + row * (cardH + GAP) + cardH / 2;
+    _grid!.addChild(card.root);
+    newCards.push(card);
+  });
+  _cards     = newCards;
+  _heroesKey = heroes.map(h => `${h.heroId}:${h.stars}:${h.level}`).join('|');
+
+  const rows   = Math.ceil(heroes.length / COLS);
+  const totalH = V_PAD + rows * (cardH + GAP) + V_PAD;
+  _scroll.max  = Math.max(0, totalH - h);
+
+  // Stagger overlays; force renderer.render() each batch → textures GPU-uploaded now.
+  // By the time HeroPage opens, all textures are already on GPU — zero first-frame stutter.
+  const app = _app!;
+  document.fonts.ready.then(() => {
+    const queue = [...newCards];
+    const processNext = () => {
+      if (!queue.length) return;
+      for (let i = 0; i < 2 && queue.length > 0; i++) {
+        const card = queue.shift()!;
+        const ov   = createOverlayCanvas(card.data, card.cfg, cardW, cardH);
+        card.ovSpr.texture = Texture.from(ov);
+        card.ovSpr.width   = cardW;
+        card.ovSpr.height  = cardH;
+      }
+      // Force offscreen render → uploads this batch to GPU immediately
+      app.renderer.render(app.stage);
+      if (queue.length) requestAnimationFrame(processNext);
+    };
+    requestAnimationFrame(processNext);
+  });
+}
+
 export function PixiObtainedGrid({ heroes, visible, onCardClick }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
 
@@ -719,11 +776,14 @@ export function PixiObtainedGrid({ heroes, visible, onCardClick }: Props) {
     if (!mountEl) return;
 
     if (!_app) {
-      // First-ever mount — WebGL context created here (only happens once)
-      initObtainedApp(mountEl);
+      // First-ever mount — create Application with real DOM dimensions
+      const w = mountEl.clientWidth  || 390;
+      const h = mountEl.clientHeight || 500;
+      initObtainedApp(w, h);
+      mountEl.appendChild(_canvas!);
       if (!visible) _app!.ticker.stop();
     } else {
-      // Returning from another tab — reattach existing canvas, reset scroll
+      // Reattach existing canvas (created by prewarm or previous mount)
       mountEl.appendChild(_canvas!);
       _scroll.y = 0; _scroll.vel = 0;
       if (_grid) _grid.y = 0;
@@ -731,7 +791,7 @@ export function PixiObtainedGrid({ heroes, visible, onCardClick }: Props) {
       else         _app.ticker.stop();
     }
 
-    // ResizeObserver: always observe the current (possibly new) mountEl
+    // ResizeObserver: always observe the current mountEl
     _ro?.disconnect();
     _ro = new ResizeObserver(entries => {
       const { width, height } = entries[0].contentRect;
@@ -743,7 +803,7 @@ export function PixiObtainedGrid({ heroes, visible, onCardClick }: Props) {
     _ro.observe(mountEl);
 
     return () => {
-      // Unmount: detach canvas from DOM — do NOT destroy the Application
+      // Unmount: detach canvas — do NOT destroy the Application
       _ro?.disconnect();
       _ro = null;
       _canvas?.parentElement?.removeChild(_canvas);
@@ -758,14 +818,12 @@ export function PixiObtainedGrid({ heroes, visible, onCardClick }: Props) {
     const grid = _grid;
     if (!app || !grid) return;
 
-    // Content key: only rebuild when stars/levels/roster change
     const key = heroes.map(h => `${h.heroId}:${h.stars}:${h.level}`).join('|');
     if (key === _heroesKey && grid.children.length > 0) return;
     _heroesKey = key;
 
     let cancelled = false;
 
-    // Remove old card nodes
     for (const card of _cards) {
       grid.removeChild(card.root);
       card.root.destroy({ children: true, texture: false });
@@ -799,7 +857,6 @@ export function PixiObtainedGrid({ heroes, visible, onCardClick }: Props) {
     });
     _cards = newCards;
 
-    // Stagger overlay creation: 2 per rAF after fonts ready
     document.fonts.ready.then(() => {
       if (cancelled) return;
       const queue = [...newCards];
