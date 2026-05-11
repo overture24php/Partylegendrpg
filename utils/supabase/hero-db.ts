@@ -191,7 +191,7 @@ export async function fetchPlayerHeroes(userId: string): Promise<PlayerHero[]> {
   } catch { return []; }
 }
 
-// ─── fetchPlayerHeroSkills ───────���─────────────────────────────────────────
+// ─── fetchPlayerHeroSkills ────────────────────────────────────────────────
 export async function fetchPlayerHeroSkills(userId: string): Promise<PlayerHeroSkill[]> {
   try {
     const r = await fetch(
@@ -225,7 +225,7 @@ export async function upsertPlayerHero(ph: Omit<PlayerHero, 'id' | 'obtained_at'
 // ─── upsertPlayerHeroSkill ──────────────────────────────────────────────────
 export async function upsertPlayerHeroSkill(ps: Omit<PlayerHeroSkill, 'id' | 'unlocked_at'>): Promise<{ err?: string }> {
   try {
-    const r = await fetch(`${REST}/player_hero_skills`, {
+    const r = await fetch(`${REST}/player_hero_skills?on_conflict=user_id,skill_id`, {
       method: 'POST',
       headers: { ...ADMIN, Prefer: 'resolution=merge-duplicates,return=minimal' },
       body: JSON.stringify({

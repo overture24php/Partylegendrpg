@@ -1,12 +1,9 @@
 import { Hono } from "npm:hono";
 import { cors } from "npm:hono/cors";
-import { logger } from "npm:hono/logger";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import * as kv from "./kv_store.tsx";
 
 const app = new Hono();
-
-app.use('*', logger(console.log));
 
 app.use(
   "/*",
@@ -38,12 +35,10 @@ async function getAuthUserId(authHeader: string | null): Promise<string | null> 
   const token = authHeader.split(" ")[1];
   if (!token) return null;
   try {
-    // Decode JWT payload (base64url) — no signature check needed server-side
     const payloadB64 = token.split(".")[1];
     if (!payloadB64) return null;
     const json = atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/"));
     const payload = JSON.parse(json);
-    // Reject expired tokens
     if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
       console.warn("[Auth] Token expired");
       return null;
@@ -72,7 +67,6 @@ app.post("/make-server-516bfa70/auth/signup", async (c) => {
 
     const supabase = getAdminClient();
 
-    // Create auth user (email_confirm auto)
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
       password,
@@ -82,8 +76,10 @@ app.post("/make-server-516bfa70/auth/signup", async (c) => {
 
     if (authError) {
       console.log("Signup auth error:", authError);
-      if (authError.message?.toLowerCase().includes("already registered") ||
-          authError.message?.toLowerCase().includes("already exists")) {
+      if (
+        authError.message?.toLowerCase().includes("already registered") ||
+        authError.message?.toLowerCase().includes("already exists")
+      ) {
         return c.json({ error: "Email sudah terdaftar. Silakan login." }, 409);
       }
       return c.json({ error: `Gagal membuat akun: ${authError.message}` }, 400);
@@ -91,7 +87,6 @@ app.post("/make-server-516bfa70/auth/signup", async (c) => {
 
     const userId = authData.user.id;
 
-    // Create initial profile in KV store
     const profile = {
       id: userId,
       email,
@@ -105,7 +100,6 @@ app.post("/make-server-516bfa70/auth/signup", async (c) => {
     };
 
     await kv.set(`profile:${userId}`, profile);
-
     return c.json({ success: true, profile });
   } catch (err) {
     console.log("Signup unexpected error:", err);
@@ -119,7 +113,6 @@ app.post("/make-server-516bfa70/auth/lookup-username", async (c) => {
     const { username } = await c.req.json();
     if (!username) return c.json({ error: "Username wajib diisi." }, 400);
 
-    // Scan KV for matching username
     const profiles = await kv.getByPrefix("profile:");
     const match = profiles.find((p: any) => p?.username === username);
     if (!match) return c.json({ error: "Username tidak ditemukan." }, 404);
@@ -142,9 +135,7 @@ app.get("/make-server-516bfa70/profile", async (c) => {
 
     let profile = await kv.get(`profile:${userId}`);
 
-    // ── Auto-create profile if missing ──────────────────────────────────────
     if (!profile) {
-      // Retrieve user metadata via admin API (service role, no ES256 issue)
       const supabase = getAdminClient();
       const { data: userData } = await supabase.auth.admin.getUserById(userId);
       const authUser = userData?.user;
@@ -186,13 +177,11 @@ app.put("/make-server-516bfa70/profile", async (c) => {
     }
 
     const updates = await c.req.json();
-
     const existing = await kv.get(`profile:${userId}`);
     if (!existing) {
       return c.json({ error: "Profil tidak ditemukan." }, 404);
     }
 
-    // Merge updates (prevent overwriting id/email)
     const updated = {
       ...existing,
       ...updates,

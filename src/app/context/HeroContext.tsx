@@ -16,7 +16,6 @@ import {
   fetchPlayerHeroSkills,
   fetchStageDef,
   fetchStageEnemies,
-  upsertPlayerHero,
   seedStarterHeroes,
   setupHeroDatabase,
   type HeroDef,
@@ -27,7 +26,6 @@ import {
   type StageEnemy,
   HERO_SQL_SCHEMA,
 } from '/utils/supabase/hero-db';
-import { computeStarBonus, computeFinalStats } from '../constants/balanceEngine';
 import { getSupabase } from '../../lib/supabase';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -195,7 +193,7 @@ export function HeroProvider({ children }: { children: ReactNode }) {
     const owned = ownedHeroes.find(o => o.playerHero.hero_id === heroId);
     if (!owned) return { err: 'Hero not owned' };
 
-    // ── Server-side RPC: validates resources, deducts costs, increments level ──
+    // ── Server-side RPC: validates resources, deducts costs, updates level + ALL stats ──
     const supabase = getSupabase();
     const { data, error } = await supabase.rpc('rpc_level_up_hero', {
       p_hero_id:       heroId,
@@ -215,43 +213,15 @@ export function HeroProvider({ children }: { children: ReactNode }) {
 
     const newLevel = Number(res.new_level ?? owned.playerHero.level + levelsToGain);
 
-    // ── FinalStat = (base + level × growth) × StarBonus — balanceEngine formula ─
-    const d  = owned.def;
-    const s  = computeFinalStats(d, newLevel, owned.playerHero.stars);
-    const power = Math.round((s.hp/10) + (s.pAtk*3) + (s.mAtk*2) + (s.pDef*2) + (s.mDef*2) + (s.speed*2));
-    const stats = { hp: s.hp, p_atk: s.pAtk, m_atk: s.mAtk, p_def: s.pDef, m_def: s.mDef, speed: s.speed, power };
-
-    // ── Write updated stats back to player_heroes DB ──────────────────────────
-    // Critical: rpc_start_battle reads ph.hp/p_atk/m_atk/p_def/m_def directly.
-    // rpc_level_up_hero only updates the level column, so we must resync the
-    // computed stat columns here — otherwise battle always uses stale Lv1 stats.
-    const { err: syncErr } = await upsertPlayerHero({
-      user_id: user.id,
-      hero_id: heroId,
-      stars:   owned.playerHero.stars,
-      level:   newLevel,
-      xp:      0,
-      ...stats,
-    });
-    if (syncErr) console.warn('[HeroDB] stat-sync after level up failed:', syncErr);
-
-    // ── Sync hero stats locally ──────────────────────────────────────────────
-    setOwnedHeroes(prev => prev.map(o =>
-      o.playerHero.hero_id === heroId
-        ? { ...o, playerHero: { ...o.playerHero, level: newLevel, xp: 0, ...stats } }
-        : o
-    ));
-
-    // ── Sync profile resources locally (optimistic, server is authoritative) ─
+    // ── Sync profile resources optimistically (server already deducted — this keeps UI in sync) ──
     await updateProfile({
-      hero_exp:           Math.max(0, (user.hero_exp)            - Number(res.exp_spent   ?? 0)),
-      gold:               Math.max(0, (user.gold)                - Number(res.gold_spent  ?? 0)),
+      hero_exp:            Math.max(0, (user.hero_exp)            - Number(res.exp_spent   ?? 0)),
+      gold:                Math.max(0, (user.gold)                - Number(res.gold_spent  ?? 0)),
       breakthrough_stones: Math.max(0, (user.breakthrough_stones ?? 0) - Number(res.stones_spent ?? 0)),
     });
 
-    // ── Force DB sync: ensures UI always reflects authoritative DB state ──────
-    // Critical: after rpc_level_up_hero + upsertPlayerHero, DB has correct
-    // level + stats. Reload so reset panel / battle always read fresh values.
+    // ── Reload heroes from DB — server has already written the correct stats ──
+    // No client-side stat computation. Server is the single source of truth.
     await loadPlayerHeroes(user.id);
 
     return { newLevel };

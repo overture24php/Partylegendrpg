@@ -109,6 +109,34 @@ const CHROMA_SINGLE: [string, string][] = [
    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058829/ChatGPT_Image_May_6_2026_03_57_38_PM_jwipj1.png'],
   ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058887/ChatGPT_Image_May_6_2026_04_00_04_PM_fattkj.png',
    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058887/ChatGPT_Image_May_6_2026_04_00_04_PM_fattkj.png'],
+  // ── Bolo card + battle sprites ────────────────────────────────────────────
+  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778231010/ChatGPT_Image_May_8_2026_03_58_18_PM_bchzp9.png',
+   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778231010/ChatGPT_Image_May_8_2026_03_58_18_PM_bchzp9.png'],
+  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778231187/ChatGPT_Image_May_8_2026_04_06_08_PM_kvuuqu.png',
+   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778231187/ChatGPT_Image_May_8_2026_04_06_08_PM_kvuuqu.png'],
+  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778231197/ChatGPT_Image_May_8_2026_04_05_59_PM_ezsxxp.png',
+   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778231197/ChatGPT_Image_May_8_2026_04_05_59_PM_ezsxxp.png'],
+  // ── Quill card + battle sprites ────────────────────────────────────────────
+  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778238897/ChatGPT_Image_May_8_2026_06_13_09_PM_vnblpy.png',
+   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778238897/ChatGPT_Image_May_8_2026_06_13_09_PM_vnblpy.png'],
+  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778239096/ChatGPT_Image_May_8_2026_06_13_01_PM_qnx2nw.png',
+   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778239096/ChatGPT_Image_May_8_2026_06_13_01_PM_qnx2nw.png'],
+  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778239114/ChatGPT_Image_May_8_2026_06_12_47_PM_gke8kr.png',
+   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778239114/ChatGPT_Image_May_8_2026_06_12_47_PM_gke8kr.png'],
+  // ── Brennan card + battle sprites ────────────────────────────────────────
+  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778243229/ChatGPT_Image_May_8_2026_07_24_30_PM_t5y2zh.png',
+   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778243229/ChatGPT_Image_May_8_2026_07_24_30_PM_t5y2zh.png'],
+  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778243245/ChatGPT_Image_May_8_2026_07_24_39_PM_mhzv50.png',
+   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778243245/ChatGPT_Image_May_8_2026_07_24_39_PM_mhzv50.png'],
+  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778243251/ChatGPT_Image_May_8_2026_07_24_56_PM_s0psbk.png',
+   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778243251/ChatGPT_Image_May_8_2026_07_24_56_PM_s0psbk.png'],
+  // ── Sylvie card + battle sprites ─────────────────────────────────────────
+  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778253528/ChatGPT_Image_May_8_2026_10_17_57_PM_bxj16w.png',
+   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778253528/ChatGPT_Image_May_8_2026_10_17_57_PM_bxj16w.png'],
+  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778253581/ChatGPT_Image_May_8_2026_10_15_54_PM_pk4782.png',
+   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778253581/ChatGPT_Image_May_8_2026_10_15_54_PM_pk4782.png'],
+  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778253798/ChatGPT_Image_May_8_2026_10_16_05_PM_miwleg.png',
+   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778253798/ChatGPT_Image_May_8_2026_10_16_05_PM_miwleg.png'],
 ];
 
 const TOTAL =

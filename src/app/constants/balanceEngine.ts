@@ -18,7 +18,7 @@
  * ┌────────────────────────────────────────────────────────────────────────┐
  * │ DB SYNC RULE:                                                          │
  * │ hero_definitions.base_X  = computeHeroBaseStats(heroId, role, rarity) │
- * │ hero_definitions.growth_X = base_X × GROWTH_RATE[rarity]  (rounded)  ���
+ * │ hero_definitions.growth_X = base_X × GROWTH_RATE[rarity]  (rounded)  
  * │ Any new hero MUST be added to HERO_VARIANTS (or use {} for defaults). │
  * └────────────────────────────────────────────────────────────────────────┘
  */
@@ -100,7 +100,7 @@ export const STAR_BOOST_PER_EXTRA: Record<string, number> = {
   mythic:    0.40,   // +40%
 };
 
-// ─── Individual hero personality variants ──────────────���──────────────────────
+// ─── Individual hero personality variants ────────────────────────────────────
 // Applied as MULTIPLIERS to individual stats BEFORE growth is computed.
 // Values must stay within ±15% of 1.0 to preserve rarity/role balance.
 // Empty entry ({}) = use clean engine defaults.
@@ -121,6 +121,49 @@ export const HERO_VARIANTS: Record<string, Partial<Record<keyof StatBlock, numbe
   craw:       { hp: 0.92, pAtk: 1.10, mAtk: 0.90, speed: 1.12 },
   // Myko — shield Tank mushroom: high P.DEF, low P.ATK and speed (heavy shell)
   myko:       { pAtk: 0.85, pDef: 1.15, speed: 0.90 },
+  // Fang — nimble Assassin: high P.ATK, less HP (glass cannon)
+  fang:       { hp: 0.85, pAtk: 1.08, speed: 1.15 },
+  // Clover — Support healer: extra M.ATK for heals, less P.ATK
+  clover:     { pAtk: 0.75, mAtk: 1.10, mDef: 1.05 },
+  // Bolo — fat brawler Fighter: extra HP + P.DEF (built to be hit), harder punches, slower
+  bolo:       { hp: 1.10, pAtk: 1.08, mAtk: 0.75, pDef: 1.08, speed: 0.85 },
+  // Quill — hedgehog Assassin: tougher spine armor (P.DEF+), harder spines (P.ATK+),
+  //         less M.ATK (pure physical), slightly less HP and speed than baseline Assassin
+  quill:      { hp: 0.90, pAtk: 1.10, mAtk: 0.80, pDef: 1.10, speed: 1.08 },
+  // Brennan — burly blonde Guardian: extreme HP + P.DEF (wooden shield wall),
+  //           negligible P.ATK and M.ATK (not an attacker at all), very slow
+  brennan:    { hp: 1.10, pAtk: 0.60, mAtk: 0.50, pDef: 1.15, speed: 0.80 },
+  // Sylvie — acrobatic Ranged crossbow: glass cannon, precision shooter.
+  //          High P.ATK (crossbow expertise), lower HP (lightly armored), lower M.ATK (pure physical).
+  //          Natural speed from Ranged role already high — no speed variant (passive handles that).
+  sylvie:     { hp: 0.88, pAtk: 1.12, mAtk: 0.80 },
+
+  // ── B Rare — new heroes ───────────────────────────────────────────────────
+  // Vrak — stocky dwarf berserker Fighter: high P.ATK (dual axes), slightly lower HP (compact build),
+  //        low M.ATK (purely physical), a bit faster than typical fighter (berserker aggression)
+  vrak:   { hp: 0.92, pAtk: 1.12, mAtk: 0.78, speed: 1.05 },
+  // Crael — turtle-folk Tank: extreme HP + P.DEF (shell), negligible P.ATK and M.ATK,
+  //         very slow (shell weight) — the most defensive unit at B rarity
+  crael:  { hp: 1.15, pAtk: 0.75, mAtk: 0.55, pDef: 1.20, speed: 0.75 },
+  // Lyss — dark fairy Support: fragile body (low HP), high M.ATK for heals/debuffs,
+  //         extra M.DEF (fairy magic resistance), faster than typical support
+  lyss:   { hp: 0.82, pAtk: 0.65, mAtk: 1.18, mDef: 1.08, speed: 1.10 },
+  // Szara — naga Ranged: high M.ATK (venom magic), lower P.ATK, moderate speed,
+  //         slightly less HP (unarmored upper body)
+  szara:  { hp: 0.88, pAtk: 0.82, mAtk: 1.18, speed: 1.05 },
+  // Vex — dark elf Mage: maximum M.ATK (arcane mastery), very fragile HP,
+  //        low P.ATK (glass cannon spellcaster), slightly faster than baseline mage
+  vex:    { hp: 0.80, pAtk: 0.65, mAtk: 1.20, speed: 1.08 },
+  // Naris — phantasm Mage: extreme M.ATK (otherworldly power), lowest HP in tier
+  //          (intangible form = fragile), low P.ATK, low M.DEF paradoxically (unstable form),
+  //          fastest mage (ghost can phase through terrain)
+  naris:  { hp: 0.78, pAtk: 0.60, mAtk: 1.22, mDef: 0.90, speed: 1.12 },
+  // Arix — arachne Assassin: high P.ATK (spider fang), lower HP (agile not armored),
+  //         fast (spider reflexes), low M.ATK (pure physical predator)
+  arix:   { hp: 0.88, pAtk: 1.10, mAtk: 0.75, speed: 1.12 },
+  // Zyl — chameleon Assassin: highest P.ATK of B assassins (precision strike),
+  //        lowest HP (no armor, pure speed), fastest in tier (chameleon burst dash)
+  zyl:    { hp: 0.82, pAtk: 1.15, mAtk: 0.75, speed: 1.18 },
 };
 
 // ─── Level-up cost ────────────────────────────────────────────────────────────
@@ -290,4 +333,10 @@ export const SHIPPED_HERO_DB_STATS: Record<string, { role: string; rarity: strin
   gorr:       { role: 'Fighter', rarity: 'common' },
   craw:       { role: 'Ranged',  rarity: 'common' },
   myko:       { role: 'Tank',    rarity: 'common' },
+  fang:       { role: 'Assassin',rarity: 'common' },
+  clover:     { role: 'Support', rarity: 'common' },
+  bolo:       { role: 'Fighter', rarity: 'common' },
+  quill:      { role: 'Assassin', rarity: 'common' },
+  brennan:    { role: 'Tank',    rarity: 'rare'   },
+  sylvie:     { role: 'Ranged',  rarity: 'rare'   },
 };

@@ -4,6 +4,7 @@
  * This bypasses RLS completely — no GoTrueClient involved.
  */
 import { projectId, serviceRoleKey } from './info';
+import { generateStageData } from '../../src/app/data/stageData';
 
 const REST = `https://${projectId}.supabase.co/rest/v1`;
 
@@ -198,6 +199,145 @@ export async function fetchProfile(userId: string): Promise<{
   }
 }
 
+// ─── seedStageData ─────────────────────────────────────────────────────────
+// Ensures `stage_enemies` and `stage_definitions` have CORRECT data for ALL
+// 5 × 40 = 200 stages.
+//
+// Root-cause history:
+//   • Old DB had stages 1-1→1-19 seeded (correct) but 1-20→5-40 missing.
+//   • Old "already seeded" guard checked ANY row → skipped re-seed → bug.
+//   • stage 1-20 had wrong (stale) enemies because old seed used different
+//     algorithm; client info-panel and battle showed different heroes.
+//
+// Strategy: count stage_definitions rows.
+//   - If count === 200 AND stage_enemies count reasonable: skip (fast path).
+//   - Otherwise: DELETE everything and INSERT fresh from generateStageData().
+
+let _stageSeeded = false;
+
+// Single source of truth: generateStageData() drives info panel AND DB enemies.
+function buildAllStageRows() {
+  type EnemyRow = {
+    stage_id: string; enemy_hero_id: string;
+    slot_position: number; enemy_level: number; order_index: number;
+  };
+  type DefRow = {
+    stage_id: string;
+    gold_reward: number; gem_reward: number;
+    exp_reward: number; hero_exp_reward: number;
+  };
+
+  const enemyRows: EnemyRow[] = [];
+  const defRows:   DefRow[]   = [];
+
+  for (let ch = 1; ch <= 5; ch++) {
+    for (let st = 1; st <= 40; st++) {
+      const stageId    = `${ch}-${st}`;
+      const data       = generateStageData(ch, st);
+      const baseLevel  = (ch - 1) * 40;
+      const enemyLevel = Math.max(1, baseLevel + Math.floor((st - 1) * 0.85) + (data.isBoss ? 8 : 0));
+
+      data.enemySlots.forEach((heroId, slotIdx) => {
+        if (heroId) {
+          enemyRows.push({
+            stage_id:      stageId,
+            enemy_hero_id: heroId,
+            slot_position: slotIdx,
+            enemy_level:   enemyLevel,
+            order_index:   slotIdx,
+          });
+        }
+      });
+
+      defRows.push({
+        stage_id:        stageId,
+        gold_reward:     data.rewards.gold,
+        gem_reward:      data.rewards.gems,
+        exp_reward:      data.rewards.exp,
+        hero_exp_reward: data.rewards.heroExp,
+      });
+    }
+  }
+
+  return { enemyRows, defRows };
+}
+
+export async function seedStageData(): Promise<void> {
+  if (_stageSeeded) return;
+
+  // ── Count rows via HEAD (no body data transferred) ─────────────────────────
+  let defCount = 0;
+  try {
+    const head = await fetch(`${REST}/stage_definitions?select=stage_id`, {
+      method: 'HEAD',
+      headers: { ...ADMIN_HEADERS, Prefer: 'count=exact' },
+    });
+    const range = head.headers.get('content-range'); // "0-199/200"
+    defCount = range ? parseInt(range.split('/')[1] ?? '0', 10) : 0;
+  } catch { /* defCount stays 0 → triggers re-seed */ }
+
+  let enemyCount = 0;
+  try {
+    const head = await fetch(`${REST}/stage_enemies?select=stage_id`, {
+      method: 'HEAD',
+      headers: { ...ADMIN_HEADERS, Prefer: 'count=exact' },
+    });
+    const range = head.headers.get('content-range');
+    enemyCount = range ? parseInt(range.split('/')[1] ?? '0', 10) : 0;
+  } catch { /* enemyCount stays 0 → triggers re-seed */ }
+
+  // ── Fast path: all 200 defs + at least 400 enemy rows ─────────────────────
+  if (defCount >= 200 && enemyCount >= 400) {
+    _stageSeeded = true;
+    console.log(`[StageData] ✓ Already complete (defs=${defCount}, enemies=${enemyCount})`);
+    return;
+  }
+
+  console.log(`[StageData] Re-seeding… (defs=${defCount}/200, enemies=${enemyCount})`);
+
+  // ── DELETE all stale data first (prevents duplicate rows) ─────────────────
+  // PostgREST requires a filter; "not.is.null" matches all non-null rows.
+  try {
+    await fetch(`${REST}/stage_enemies?stage_id=not.is.null`, {
+      method: 'DELETE', headers: ADMIN_HEADERS,
+    });
+  } catch { /* best-effort */ }
+  try {
+    await fetch(`${REST}/stage_definitions?stage_id=not.is.null`, {
+      method: 'DELETE', headers: ADMIN_HEADERS,
+    });
+  } catch { /* best-effort */ }
+
+  // ── Build and INSERT fresh data in batches ─────────────────────────────────
+  const { enemyRows, defRows } = buildAllStageRows();
+  const BATCH = 80;
+
+  for (let i = 0; i < defRows.length; i += BATCH) {
+    try {
+      const res = await fetch(`${REST}/stage_definitions`, {
+        method: 'POST',
+        headers: { ...ADMIN_HEADERS, Prefer: 'return=minimal' },
+        body: JSON.stringify(defRows.slice(i, i + BATCH)),
+      });
+      if (!res.ok) console.warn('[StageData] def insert error:', res.status, await res.text().catch(() => ''));
+    } catch (e) { console.warn('[StageData] def exception:', e); }
+  }
+
+  for (let i = 0; i < enemyRows.length; i += BATCH) {
+    try {
+      const res = await fetch(`${REST}/stage_enemies`, {
+        method: 'POST',
+        headers: { ...ADMIN_HEADERS, Prefer: 'return=minimal' },
+        body: JSON.stringify(enemyRows.slice(i, i + BATCH)),
+      });
+      if (!res.ok) console.warn('[StageData] enemy insert error:', res.status, await res.text().catch(() => ''));
+    } catch (e) { console.warn('[StageData] enemy exception:', e); }
+  }
+
+  _stageSeeded = true;
+  console.log(`[StageData] ✓ Seeded ${defRows.length} defs + ${enemyRows.length} enemy rows`);
+}
+
 // ─── findEmailByUsername ───────────────────────────────────────────────────
 export async function findEmailByUsername(username: string): Promise<string | null> {
   try {
@@ -213,9 +353,9 @@ export async function findEmailByUsername(username: string): Promise<string | nu
   }
 }
 
-// ─── SQL Schema (for manual fallback) ──────────────────────────────────────
+// ─── SQL Schema (for manual fallback) ─────────────────────────────────────
 const SQL_SCHEMA = `
--- ╔══════════════════════════════════════════════════════════════════╗
+-- ╔═════════════════════════════════��════════════════════════════════╗
 -- ║  RPG Game — Profiles Table Setup                                 ║
 -- ║  Run once in: Supabase Dashboard → SQL Editor                   ║
 -- ╚══════════════════════════════════════════════════════════════════╝

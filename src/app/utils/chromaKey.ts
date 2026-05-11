@@ -107,3 +107,85 @@ export function useChromaKeyDataUrl(src: string): string | null {
 
   return dataUrl;
 }
+
+// ── Content bounds ─────────────────────────────────────────────────────────────
+// Scans post-chroma pixel data to find the tightest non-transparent bounding box.
+// Use this to strip transparent padding before sizing / drawing sprites.
+export function getContentBounds(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+  alphaThreshold = 8,
+): { x: number; y: number; w: number; h: number } | null {
+  let minX = width, maxX = -1, minY = height, maxY = -1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (data[(y * width + x) * 4 + 3] > alphaThreshold) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < 0 || maxY < 0) return null;
+  return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+}
+
+// ── Cropped chroma data URL cache ─────────────────────────────────────────────
+// Separate from chromaDataUrlCache — stores content-cropped versions.
+export const chromaCroppedUrlCache = new Map<string, string>();
+
+/**
+ * Like useChromaKeyDataUrl but ALSO crops the result to the content bounding
+ * box (strips transparent padding). Use this for all battle action sprites so
+ * objectFit:contain always fills the container with the actual character body,
+ * regardless of how much transparent padding the source image has.
+ */
+export function useChromaKeyCroppedDataUrl(src: string): string | null {
+  const [dataUrl, setDataUrl] = useState<string | null>(() =>
+    chromaCroppedUrlCache.get(src) ?? null,
+  );
+
+  useEffect(() => {
+    if (!src) return;
+    const cached = chromaCroppedUrlCache.get(src);
+    if (cached) { setDataUrl(cached); return; }
+
+    setDataUrl(null);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const off = document.createElement('canvas');
+      off.width  = img.naturalWidth;
+      off.height = img.naturalHeight;
+      const ctx  = off.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, off.width, off.height);
+      applyChromaKey(imageData.data);
+      ctx.putImageData(imageData, 0, 0);
+
+      // Crop to content bounds
+      const bounds = getContentBounds(imageData.data, off.width, off.height);
+      let url: string;
+      if (bounds) {
+        const crop = document.createElement('canvas');
+        crop.width  = bounds.w;
+        crop.height = bounds.h;
+        const cctx  = crop.getContext('2d')!;
+        cctx.drawImage(off, bounds.x, bounds.y, bounds.w, bounds.h, 0, 0, bounds.w, bounds.h);
+        url = crop.toDataURL('image/png');
+      } else {
+        url = off.toDataURL('image/png');
+      }
+
+      chromaCroppedUrlCache.set(src, url);
+      setDataUrl(url);
+    };
+    img.onerror = () => setDataUrl(src);
+    img.src = src;
+  }, [src]);
+
+  return dataUrl;
+}

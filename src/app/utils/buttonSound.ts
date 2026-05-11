@@ -14,7 +14,7 @@ const BACK_URL = 'https://res.cloudinary.com/dhkethrmc/video/upload/f_auto,q_aut
 // ── Start Battle (sword slice) ────────────────────────────────────────────────
 const START_BATTLE_URL = 'https://res.cloudinary.com/dhkethrmc/video/upload/v1777824497/dragon-studio-sword-slice-2-393845_xq3npe.mp3';
 
-// ── Lucas attack (basic/sk1/sk2/ult per-hit) ─────────────────────────────────
+// ── Lucas attack (basic/sk1/sk2/ult per-hit) ─────────────────��───────────────
 const LUCAS_ATTACK_URL = 'https://res.cloudinary.com/dhkethrmc/video/upload/v1777817667/freesound_community-hit-swing-sword-small-2-95566_ewoib0.mp3';
 
 // ── Skill SFX: bullet (ranged basic) ─────────────────────────────────────────
@@ -41,6 +41,9 @@ const VICTORY_URL = 'https://res.cloudinary.com/dhkethrmc/video/upload/f_auto,q_
 // ── Defeat jingle ─────────────────────────────────────────────────────────────
 const DEFEAT_URL = 'https://res.cloudinary.com/dhkethrmc/video/upload/f_auto,q_auto/v1777872778/universfield-marimba-lose-250960_s2ocax.mp3';
 
+// ── Craw arrow swish ─────────────────────────────────────────────────────────
+const CRAW_ARROW_URL = 'https://res.cloudinary.com/dhkethrmc/video/upload/f_auto,q_auto/v1778004343/djartmusic-arrow-swish_03-306040_l1k0lo.mp3';
+
 // ── Singleton refs ────────────────────────────────────────────────────────────
 const _btnRef        = { current: null as HTMLAudioElement | null };
 const _cardRef       = { current: null as HTMLAudioElement | null };
@@ -55,8 +58,9 @@ const _punchRef      = { current: null as HTMLAudioElement | null };
 const _battleBgmRef  = { current: null as HTMLAudioElement | null };
 const _victoryRef    = { current: null as HTMLAudioElement | null };
 const _defeatRef     = { current: null as HTMLAudioElement | null };
+const _crawArrowRef  = { current: null as HTMLAudioElement | null };
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────���────────────────────────────────────────────
 function _play(ref: { current: HTMLAudioElement | null }, url: string, vol = 0.62) {
   try {
     if (!ref.current) { ref.current = new Audio(url); ref.current.volume = vol; }
@@ -94,6 +98,9 @@ export function playWaterSfx():   void { _clonePlay(_waterRef, WATER_URL, 0.60);
 export function playShieldSfx():  void { _play(_shieldRef, SHIELD_URL, 0.62); }
 /** RockSlime basic + SK1. */
 export function playPunchSfx():   void { _clonePlay(_punchRef, PUNCH_URL, 0.65); }
+
+/** Craw arrow swish — cloned so rapid multi-shots can overlap. */
+export function playCrawArrowSfx(): void { _clonePlay(_crawArrowRef, CRAW_ARROW_URL, 0.62); }
 
 // ── Battle BGM ────────────────────────────────────────────────────────────────
 const BGM_VOL = 0.38;

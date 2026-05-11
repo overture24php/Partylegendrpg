@@ -62,7 +62,7 @@ interface Props {
 
 export function GamePageLayout({ children, activeTab, hidePlayerInfo, hideNav, hideDropdown }: Props) {
   const navigate  = useNavigate();
-  const { user }  = useAuth();
+  const { user, logout } = useAuth();
   const { t }     = useLanguage();
 
   const [serverTime,   setServerTime]   = useState(getSGT);
@@ -570,6 +570,27 @@ export function GamePageLayout({ children, activeTab, hidePlayerInfo, hideNav, h
             </svg>
             <span style={{ color:'rgba(255,255,255,0.5)', fontFamily:"'Playfair Display',serif", fontSize:'clamp(6px,1.1vw,10px)', fontWeight:600, letterSpacing:'0.12em', flex:1 }}>SFX</span>
             <span style={{ color:'rgba(255,255,255,0.3)', fontFamily:"'Playfair Display',serif", fontSize:'clamp(5px,0.85vw,8px)', fontStyle:'italic' }}>{t('ui.coming_soon')}</span>
+          </div>
+          {/* Logout button */}
+          <div style={{ position:'absolute', top:'80%', left:'16%', right:'16%', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <div
+              onClick={async () => { setSettingsOpen(false); await logout(); navigate('/login', { replace: true }); }}
+              style={{
+                display:'flex', alignItems:'center', gap:'6px',
+                background:'linear-gradient(135deg,rgba(180,20,20,0.85),rgba(100,10,10,0.9))',
+                border:'1px solid rgba(255,80,80,0.55)', borderRadius:'6px',
+                padding:'clamp(3px,0.6vw,6px) clamp(10px,2vw,20px)',
+                cursor:'pointer', userSelect:'none',
+                boxShadow:'0 2px 8px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,120,120,0.25)',
+              }}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,180,180,1)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+              <span style={{ color:'rgba(255,200,200,1)', fontFamily:"'Playfair Display',serif", fontSize:'clamp(6px,1.1vw,10px)', fontWeight:700, letterSpacing:'0.1em', textShadow:'0 1px 4px rgba(0,0,0,0.9)', lineHeight:1 }}>LOGOUT</span>
+            </div>
           </div>
           {/* Close button */}
           <div onClick={() => setSettingsOpen(false)} style={{ position:'absolute', top:0, right:0, transform:'translate(38%,-38%)', width:'clamp(16px,3.2vw,28px)', aspectRatio:'1/1', cursor:'pointer', zIndex:3 }}>

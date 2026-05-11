@@ -1,15 +1,28 @@
 /**
- * EmmaVFX — HTML5 Canvas VFX for all of Emma's skills.
+ * EmmaVFX v2 — Image-based VFX for Emma's skills.
  *
- *  emma_basic   → 4-pointed Gemini-star projectile (silver, spinning) flies from
- *                 Emma to each target enemy.
- *  emma_sk1     → Cluster of bright-green plus signs rising upward at heal target.
- *  emma_sk2     → Large sky-blue shield descends from above onto the shield target.
- *  emma_passive → Same shield animation applied to every shielded hero (staggered).
- *  emma_ult     → Same rising plus-sign cluster on each of the 3 heal targets.
+ *  emma_basic   → 4-pointed Gemini-star projectile (unchanged — canvas drawn)
+ *  emma_sk1     → Heal image flies from Emma → target (green-screen asset, chroma-keyed)
+ *  emma_sk2     → Shield image appears on target, scale-up + fade (green-screen asset)
+ *  emma_passive → Same shield image, one per shielded ally (staggered 90ms)
+ *  emma_ult     → Same heal image as SK1, one flying instance per target (up to 3)
+ *
+ * Both image assets use getContentBounds() to find actual content region after
+ * chroma key, ensuring correct aspect ratio and full-size rendering independent
+ * of transparent padding in the source image.
+ *
+ * Size reference: HERO_SPRITE_H = 280px  (≈ Lucas/Emma visible body height).
  */
 
 import { useEffect, useRef } from 'react';
+import { applyChromaKey, getContentBounds } from '../../utils/chromaKey';
+import { getSpriteSize } from '../../data/spriteConfig';
+
+// ── Asset URLs ─────────────────────────────────────────────────────────────────
+const HEAL_URL =
+  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778176231/ChatGPT_Image_May_8_2026_12_44_40_AM_d2unfb.png';
+const SHIELD_URL =
+  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778176246/ChatGPT_Image_May_8_2026_12_46_59_AM_lv7xxy.png';
 
 // ── Layout constants (mirror BattlePlayback) ──────────────────────────────────
 const GRID_W = 368;
@@ -19,6 +32,12 @@ const ROW_DATA = [
   { slotW:  86, slotH:  86, col0X:  17, col1X: 265, y:  82 },
   { slotW: 120, slotH: 120, col0X:   0, col1X: 248, y: 190 },
 ] as const;
+
+// Per-row lift so effects land on upper body, not feet
+const ROW_BODY_LIFT = [70, 95, 110] as const;
+
+/** Reference "full human character" height in screen-px (matches Lucas/Emma sprite container). */
+const HERO_SPRITE_H = 280;
 
 // ── Public trigger type ───────────────────────────────────────────────────────
 export type EmmaVFXTrigger = {
@@ -37,60 +56,104 @@ function slotPos(side: 'hero' | 'enemy', slot: number) {
   const gl   = side === 'hero' ? 12 : window.innerWidth - 12 - GRID_W;
   return {
     x:     gl + (col === 0 ? row.col0X : row.col1X) + row.slotW / 2,
-    y:     window.innerHeight - GRID_H + row.y + row.slotH / 2,
+    y:     window.innerHeight - GRID_H + row.y + row.slotH / 2 - ROW_BODY_LIFT[ri],
     slotH: row.slotH,
   };
 }
 
 const c01 = (x: number) => Math.max(0, Math.min(1, x));
+const eio = (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Asset loader helpers — load once, chroma-key, detect content bounds
+// ─────────────────────────────────────────────────────────────────────────────
+
+type AssetState = {
+  canvas:  HTMLCanvasElement | null;
+  bounds:  { x: number; y: number; w: number; h: number } | null;
+  aspect:  number;
+  cbs:     Array<() => void>;
+};
+
+function makeAsset(): AssetState {
+  return { canvas: null, bounds: null, aspect: 1, cbs: [] };
+}
+
+function ensureAsset(url: string, state: AssetState, cb: () => void) {
+  if (state.canvas) { cb(); return; }
+  state.cbs.push(cb);
+  if (state.cbs.length > 1) return;
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    const c   = document.createElement('canvas');
+    c.width   = img.naturalWidth;
+    c.height  = img.naturalHeight;
+    const ctx = c.getContext('2d', { willReadFrequently: true })!;
+    ctx.drawImage(img, 0, 0);
+    const d   = ctx.getImageData(0, 0, c.width, c.height);
+    applyChromaKey(d.data);
+    ctx.putImageData(d, 0, 0);
+    const b = getContentBounds(d.data, c.width, c.height);
+    state.bounds = b ?? { x: 0, y: 0, w: c.width, h: c.height };
+    state.aspect = state.bounds.w / Math.max(1, state.bounds.h);
+    state.canvas = c;
+    state.cbs.forEach(f => f());
+    state.cbs.length = 0;
+  };
+  img.onerror = () => { state.cbs.length = 0; };
+  img.src = url;
+}
+
+const healAsset   = makeAsset();
+const shieldAsset = makeAsset();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Particle pool types
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Gemini-star projectile */
+/** Gemini-star projectile (basic attack — canvas drawn) */
 type GeminiProj = {
-  sx: number; sy: number;   // start
-  ex: number; ey: number;   // end
+  sx: number; sy: number;
+  ex: number; ey: number;
   spawnMs:  number;
   travelMs: number;
   holdMs:   number;
   fadeMs:   number;
   size:     number;
-  angle:    number;         // travel direction (radians) — used for orientation
+  angle:    number;
 };
 
-/** Single rising plus/cross */
-type PlusParticle = {
-  cx:     number;           // target anchor
+/** Image flying from Emma to heal target (SK1 / ULT) */
+type HealProj = {
+  sx: number; sy: number;
+  ex: number; ey: number;
+  startH: number; endH: number;
+  startW: number; endW: number;
+  angle:    number;
+  startMs:  number;
+  travelMs: number;
+  fadeMs:   number;
+};
+
+/** Shield image appearing on target (SK2 / passive) */
+type ShieldOverlay = {
+  cx:     number;
   cy:     number;
-  ox:     number;           // random cluster offset X
-  oy:     number;           // random cluster offset Y
-  size:   number;           // arm half-length
-  thick:  number;           // arm thickness
-  spawnMs: number;
-  delay:  number;           // stagger delay ms
-  riseMs: number;           // total animation duration
-  fadeIn: number;           // fade-in portion ms
-};
-
-/** Shield particle */
-type ShieldPart = {
-  cx:      number;
-  anchorY: number;          // final resting center-Y
-  w:       number;
-  h:       number;
-  spawnMs: number;
-  delay:   number;          // stagger for passive multi-shield
-  dropMs:  number;
+  startH: number; endH: number;
+  startW: number; endW: number;
+  startMs: number;
+  delay:   number;
+  growMs:  number;
   holdMs:  number;
   fadeMs:  number;
 };
 
-// Module-level pools (shared across all instances; only one EmmaVFX renders)
-const projPool:   GeminiProj[]   = [];
-const plusPool:   PlusParticle[] = [];
-const shieldPool: ShieldPart[]   = [];
+// Module-level pools
+const projPool:        GeminiProj[]    = [];
+const healPool:        HealProj[]      = [];   // unused after SK1/ULT change, kept for safety
+const healOverlayPool: ShieldOverlay[] = [];   // instant heal at target (SK1 / ULT)
+const shieldPool:      ShieldOverlay[] = [];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Spawners
@@ -100,87 +163,111 @@ function spawnProj(actorSlot: number, actorSide: 'hero' | 'enemy',
                    tSlot: number, tSide: 'hero' | 'enemy') {
   const from = slotPos(actorSide, actorSlot);
   const to   = slotPos(tSide, tSlot);
-  // Aim at upper-body of target (not feet)
-  const sy   = from.y - from.slotH * 0.28;
-  const ey   = to.y   - to.slotH   * 0.28;
+  const sy   = from.y;
+  const ey   = to.y;
   projPool.push({
     sx: from.x, sy,
     ex: to.x,   ey,
     spawnMs:  performance.now(),
-    travelMs: 185,
-    holdMs:   30,
-    fadeMs:   70,
-    size:     72,              // ×4 from original 18
-    angle:    Math.atan2(ey - sy, to.x - from.x),
+    travelMs: 185, holdMs: 30, fadeMs: 70,
+    size:  72,
+    angle: Math.atan2(ey - sy, to.x - from.x),
   });
 }
 
-function spawnPlus(cx: number, cy: number, count: number) {
-  const now = performance.now();
-  for (let i = 0; i < count; i++) {
-    const a    = Math.random() * Math.PI * 2;
-    const dist = Math.random() * 60;   // ×2 horizontal spread
-    const size = 7 + Math.random() * 14;   // 7–21 px arm half-length
-    plusPool.push({
-      cx, cy,
-      ox:      Math.cos(a) * dist,
-      oy:      Math.sin(a) * dist,
-      size,
-      thick:   Math.max(3, size * 0.30),
-      spawnMs: now,
-      delay:   Math.random() * 260,
-      riseMs:  380 + Math.random() * 220,
-      fadeIn:  110,
+function spawnHealProj(actorSlot: number, actorSide: 'hero' | 'enemy',
+                       tSlot: number, tSide: 'hero' | 'enemy') {
+  ensureAsset(HEAL_URL, healAsset, () => {
+    const actor = slotPos(actorSide, actorSlot);
+    const tgt   = slotPos(tSide, tSlot);
+    const sy    = actor.y;
+    const ey    = tgt.y;
+    const cfg   = getSpriteSize('vfx_emma_heal');
+    healPool.push({
+      sx: actor.x, sy,
+      ex: tgt.x,   ey,
+      startH:  cfg.h * 0.45,
+      endH:    cfg.h,
+      startW:  cfg.w * 0.45,
+      endW:    cfg.w,
+      angle:   Math.atan2(ey - sy, tgt.x - actor.x),
+      startMs: performance.now(),
+      travelMs: 230,
+      fadeMs:   130,
     });
-  }
+  });
 }
 
-function spawnShield(cx: number, anchorY: number, slotH: number, delay = 0) {
-  shieldPool.push({
-    cx,
-    anchorY:  anchorY - slotH * 0.12,
-    w:        slotH * 1.80,            // ×1.5 width (was 1.20)
-    h:        slotH * 2.88,            // ×3 height
-    spawnMs:  performance.now(),
-    delay,
-    dropMs:   260,
-    holdMs:   260,
-    fadeMs:   400,
+/** Instant heal overlay at target — same grow/hold/fade as shield, uses heal asset */
+function spawnHealOverlay(tSlot: number, tSide: 'hero' | 'enemy', delay = 0) {
+  ensureAsset(HEAL_URL, healAsset, () => {
+    const { x, y } = slotPos(tSide, tSlot);
+    const cfg = getSpriteSize('vfx_emma_heal');
+    healOverlayPool.push({
+      cx:      x,
+      cy:      y,
+      startH:  cfg.h * 0.45,
+      endH:    cfg.h,
+      startW:  cfg.w * 0.45,
+      endW:    cfg.w,
+      startMs: performance.now(),
+      delay,
+      growMs:  200,
+      holdMs:  350,
+      fadeMs:  260,
+    });
+  });
+}
+
+function spawnShieldOverlay(tSlot: number, tSide: 'hero' | 'enemy', delay = 0) {
+  ensureAsset(SHIELD_URL, shieldAsset, () => {
+    const { x, y } = slotPos(tSide, tSlot);
+    const cfg = getSpriteSize('vfx_emma_shield');
+    shieldPool.push({
+      cx:      x,
+      cy:      y,
+      startH:  cfg.h * 0.50,
+      endH:    cfg.h,
+      startW:  cfg.w * 0.50,
+      endW:    cfg.w,
+      startMs: performance.now(),
+      delay,
+      growMs:  220,
+      holdMs:  420,
+      fadeMs:  320,
+    });
   });
 }
 
 // ── Public spawn-by-type helpers ──────────────────────────────────────────────
+
 function spawnBasic(actorSlot: number, actorSide: 'hero' | 'enemy',
                     tSlots: number[], tSide: 'hero' | 'enemy') {
   for (const s of tSlots) spawnProj(actorSlot, actorSide, s, tSide);
 }
 
-function spawnSk1(tSlots: number[], tSide: 'hero' | 'enemy') {
-  for (const s of tSlots) {
-    const { x, y } = slotPos(tSide, s);
-    spawnPlus(x, y, 11);
-  }
+/** SK1: instant heal overlay at target (NOT a flying projectile) */
+function spawnSk1(_actorSlot: number, _actorSide: 'hero' | 'enemy',
+                  tSlots: number[], tSide: 'hero' | 'enemy') {
+  for (const s of tSlots) spawnHealOverlay(s, tSide);
 }
 
 function spawnSk2(tSlots: number[], tSide: 'hero' | 'enemy') {
-  for (const s of tSlots) {
-    const p = slotPos(tSide, s);
-    spawnShield(p.x, p.y, p.slotH);
-  }
+  for (const s of tSlots) spawnShieldOverlay(s, tSide);
 }
 
 function spawnPassive(tSlots: number[], tSide: 'hero' | 'enemy') {
   // Stagger each shield 90 ms apart for a pleasing wave effect
   for (let i = 0; i < tSlots.length; i++) {
-    const p = slotPos(tSide, tSlots[i]);
-    spawnShield(p.x, p.y, p.slotH, i * 90);
+    spawnShieldOverlay(tSlots[i], tSide, i * 90);
   }
 }
 
-function spawnUlt(tSlots: number[], tSide: 'hero' | 'enemy') {
-  for (const s of tSlots) {
-    const { x, y } = slotPos(tSide, s);
-    spawnPlus(x, y, 11);
+/** ULT: instant heal overlay per target (NOT flying projectiles) */
+function spawnUlt(_actorSlot: number, _actorSide: 'hero' | 'enemy',
+                  tSlots: number[], tSide: 'hero' | 'enemy') {
+  for (let i = 0; i < tSlots.length; i++) {
+    spawnHealOverlay(tSlots[i], tSide, i * 80);
   }
 }
 
@@ -188,24 +275,16 @@ function spawnUlt(tSlots: number[], tSide: 'hero' | 'enemy') {
 // Draw helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * 4-pointed Gemini star (sparkle shape).
- * outerR = size, innerR = size×0.16 → very elongated / pointed arms.
- * Uses a radial gradient: white center → silver → transparent rim.
- */
+/** 4-pointed Gemini star (canvas-drawn, unchanged from v1) */
 function draw4Star(ctx: CanvasRenderingContext2D,
                    cx: number, cy: number, size: number,
                    rot: number, alpha: number) {
-  const outerR = size;
-  const innerR = size * 0.16;
-  const pts    = 4;
-
+  const outerR = size, innerR = size * 0.16, pts = 4;
   const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, outerR * 0.9);
   grad.addColorStop(0,    `rgba(255,255,255,${alpha})`);
   grad.addColorStop(0.22, `rgba(230,230,248,${alpha * 0.92})`);
   grad.addColorStop(0.55, `rgba(188,188,215,${alpha * 0.55})`);
   grad.addColorStop(1.00, `rgba(160,160,195,0)`);
-
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(rot);
@@ -221,94 +300,11 @@ function draw4Star(ctx: CanvasRenderingContext2D,
   ctx.shadowColor = `rgba(210,215,255,${alpha * 0.65})`;
   ctx.shadowBlur  = 12;
   ctx.fill();
-  // Bright core dot
   ctx.beginPath();
   ctx.arc(0, 0, size * 0.07, 0, Math.PI * 2);
-  ctx.fillStyle = `rgba(255,255,255,${alpha * 0.90})`;
-  ctx.shadowBlur = 6;
+  ctx.fillStyle   = `rgba(255,255,255,${alpha * 0.90})`;
+  ctx.shadowBlur  = 6;
   ctx.fill();
-  ctx.restore();
-}
-
-/** Bright-green plus/cross */
-function drawPlus(ctx: CanvasRenderingContext2D,
-                  cx: number, cy: number, size: number,
-                  thick: number, alpha: number) {
-  ctx.save();
-  ctx.fillStyle   = `rgba(74,222,128,${alpha})`;
-  ctx.shadowColor = `rgba(74,222,128,${alpha * 0.75})`;
-  ctx.shadowBlur  = 9;
-  // Horizontal arm
-  ctx.fillRect(cx - size,         cy - thick / 2, size * 2,  thick);
-  // Vertical arm
-  ctx.fillRect(cx - thick / 2,    cy - size,      thick,     size * 2);
-  ctx.restore();
-}
-
-/**
- * Classic heater-shield silhouette.
- *  ┌────────┐   ← flat top with rounded corners
- *  │        │   ← straight-ish sides
- *  │        │   ← sides curve inward
- *   \      /    ← converge to a bottom point
- *     \  /
- *      \/
- */
-function drawShieldShape(ctx: CanvasRenderingContext2D,
-                         cx: number, topY: number, w: number, h: number,
-                         alpha: number) {
-  const left  = cx - w / 2;
-  const right = cx + w / 2;
-  const botY  = topY + h;
-  const r     = w * 0.13;  // corner radius
-
-  ctx.save();
-
-  // ── Shield fill (sky-blue, faded) ─────────────────────────────────────────
-  ctx.beginPath();
-  ctx.moveTo(left + r, topY);
-  ctx.lineTo(right - r, topY);
-  ctx.quadraticCurveTo(right, topY,           right, topY + r * 1.6);
-  ctx.quadraticCurveTo(right, topY + h * 0.64, cx,   botY);
-  ctx.quadraticCurveTo(left,  topY + h * 0.64, left, topY + r * 1.6);
-  ctx.quadraticCurveTo(left,  topY,            left + r, topY);
-  ctx.closePath();
-
-  const fillGrad = ctx.createLinearGradient(cx, topY, cx, botY);
-  fillGrad.addColorStop(0,    `rgba(186,230,255,${alpha * 0.38})`);
-  fillGrad.addColorStop(0.45, `rgba(125,200,255,${alpha * 0.25})`);
-  fillGrad.addColorStop(1,    `rgba( 59,130,246,${alpha * 0.12})`);
-  ctx.fillStyle   = fillGrad;
-  ctx.shadowColor = `rgba(135,206,250,${alpha * 0.55})`;
-  ctx.shadowBlur  = 22;
-  ctx.fill();
-
-  // ── Rim stroke ───────────────────────────────────────────────────────────
-  ctx.strokeStyle = `rgba(147,210,255,${alpha * 0.85})`;
-  ctx.lineWidth   = 2.2;
-  ctx.shadowBlur  = 18;
-  ctx.stroke();
-
-  // ── Top highlight bar ─────────────────────────────────────────────────────
-  ctx.beginPath();
-  ctx.moveTo(left + r + 5, topY + 5);
-  ctx.lineTo(right - r - 5, topY + 5);
-  ctx.strokeStyle = `rgba(210,240,255,${alpha * 0.50})`;
-  ctx.lineWidth   = 1.2;
-  ctx.shadowBlur  = 4;
-  ctx.stroke();
-
-  // ── Subtle center cross emblem ────────────────────────────────────────────
-  const emY = topY + h * 0.38;
-  const ew  = w * 0.22;
-  const et  = Math.max(2, w * 0.045);
-  ctx.fillStyle = `rgba(200,235,255,${alpha * 0.28})`;
-  ctx.shadowBlur = 0;
-  // vertical
-  ctx.fillRect(cx - et / 2, emY - ew,     et,     ew * 2);
-  // horizontal
-  ctx.fillRect(cx - ew,     emY - et / 2, ew * 2, et);
-
   ctx.restore();
 }
 
@@ -316,87 +312,112 @@ function drawShieldShape(ctx: CanvasRenderingContext2D,
 // Master render tick
 // ─────────────────────────────────────────────────────────────────────────────
 function drawPools(ctx: CanvasRenderingContext2D, now: number) {
-  // ── Gemini projectiles ────────────────────────────────────────────────────
+
+  // ── Gemini star (basic) ───────────────────────────────────────────────────
   for (let i = projPool.length - 1; i >= 0; i--) {
     const p       = projPool[i];
     const elapsed = now - p.spawnMs;
     const total   = p.travelMs + p.holdMs + p.fadeMs;
     if (elapsed >= total) { projPool.splice(i, 1); continue; }
-
     let t: number, alpha: number;
     if (elapsed < p.travelMs) {
-      t     = elapsed / p.travelMs;
-      alpha = 1;
+      t = elapsed / p.travelMs; alpha = 1;
     } else if (elapsed < p.travelMs + p.holdMs) {
-      t     = 1;
-      alpha = 1;
+      t = 1; alpha = 1;
     } else {
-      t     = 1;
-      alpha = 1 - (elapsed - p.travelMs - p.holdMs) / p.fadeMs;
+      t = 1; alpha = 1 - (elapsed - p.travelMs - p.holdMs) / p.fadeMs;
     }
-
-    // Ease-out quadratic travel
-    const ease = 1 - (1 - t) * (1 - t);
-    const cx   = p.sx + (p.ex - p.sx) * ease;
-    const cy   = p.sy + (p.ey - p.sy) * ease;
-    // Star oriented along travel direction, spinning slightly
-    const rot  = p.angle + elapsed * 0.004;
-    // Slight burst scale at impact
+    const ease  = 1 - (1 - t) * (1 - t);
+    const cx    = p.sx + (p.ex - p.sx) * ease;
+    const cy    = p.sy + (p.ey - p.sy) * ease;
+    const rot   = p.angle + elapsed * 0.004;
     const scale = t < 1 ? 1 : 1 + (1 - alpha) * 0.45;
-
     draw4Star(ctx, cx, cy, p.size * scale, rot, c01(alpha));
   }
 
-  // ── Rising plus signs ─────────────────────────────────────────────────────
-  for (let i = plusPool.length - 1; i >= 0; i--) {
-    const p       = plusPool[i];
-    const elapsed = now - p.spawnMs - p.delay;
-    if (elapsed < 0) continue;
-    if (elapsed >= p.riseMs) { plusPool.splice(i, 1); continue; }
-
-    const t      = elapsed / p.riseMs;
-    const riseAmt = 225;               // ×3 rise height
-    const x      = p.cx + p.ox;
-    const y      = p.cy + p.oy + 66 - riseAmt * t;  // start offset ×3 too
-
-    // Fade: in for first fadeIn ms, then out for remainder
-    const fadeT = p.fadeIn / p.riseMs;
-    const alpha = t < fadeT
-      ? t / fadeT
-      : 1 - (t - fadeT) / (1 - fadeT);
-
-    drawPlus(ctx, x, y, p.size, p.thick, c01(alpha));
+  // ── Heal projectiles (legacy — no longer used but kept for safety) ────────
+  if (healAsset.canvas && healAsset.bounds) {
+    const { x: bx, y: by, w: bw, h: bh } = healAsset.bounds;
+    for (let i = healPool.length - 1; i >= 0; i--) {
+      const p   = healPool[i];
+      const age = now - p.startMs;
+      const tot = p.travelMs + p.fadeMs;
+      if (age >= tot) { healPool.splice(i, 1); continue; }
+      let t: number, alpha: number;
+      if (age <= p.travelMs) { t = age / p.travelMs; alpha = 0.88; }
+      else { t = 1; alpha = 0.88 * (1 - (age - p.travelMs) / p.fadeMs); }
+      const et = eio(Math.min(1, t));
+      const cx = p.sx + (p.ex - p.sx) * et;
+      const cy = p.sy + (p.ey - p.sy) * et;
+      const h  = p.startH + (p.endH - p.startH) * et;
+      const w  = p.startW + (p.endW - p.startW) * et;
+      ctx.save();
+      ctx.globalAlpha = c01(alpha);
+      ctx.drawImage(healAsset.canvas, bx, by, bw, bh, cx - w / 2, cy - h / 2, w, h);
+      ctx.restore();
+    }
   }
 
-  // ── Shields ───────────────────────────────────────────────────────────────
-  for (let i = shieldPool.length - 1; i >= 0; i--) {
-    const p       = shieldPool[i];
-    const elapsed = now - p.spawnMs - p.delay;
-    if (elapsed < 0) continue;
-    const total   = p.dropMs + p.holdMs + p.fadeMs;
-    if (elapsed >= total) { shieldPool.splice(i, 1); continue; }
-
-    // Drop start = anchorY - shield height - 80px above character
-    const dropStartY = p.anchorY - p.h * 0.5 - 85;
-
-    let alpha: number;
-    let currentTopY: number;
-
-    if (elapsed < p.dropMs) {
-      const t      = elapsed / p.dropMs;
-      // Ease-out cubic: fast start, cushioned landing
-      const ease   = 1 - Math.pow(1 - t, 3);
-      currentTopY  = dropStartY + (p.anchorY - p.h * 0.5 - dropStartY) * ease;
-      alpha        = Math.min(1, elapsed / (p.dropMs * 0.35));
-    } else if (elapsed < p.dropMs + p.holdMs) {
-      currentTopY = p.anchorY - p.h * 0.5;
-      alpha       = 1;
-    } else {
-      currentTopY = p.anchorY - p.h * 0.5;
-      alpha       = 1 - (elapsed - p.dropMs - p.holdMs) / p.fadeMs;
+  // ── Heal overlays (SK1 / ULT — instant at target) ─────────────────────────
+  if (healAsset.canvas && healAsset.bounds) {
+    const { x: bx, y: by, w: bw, h: bh } = healAsset.bounds;
+    for (let i = healOverlayPool.length - 1; i >= 0; i--) {
+      const p   = healOverlayPool[i];
+      const age = now - p.startMs - p.delay;
+      if (age < 0) continue;
+      const tot = p.growMs + p.holdMs + p.fadeMs;
+      if (age >= tot) { healOverlayPool.splice(i, 1); continue; }
+      let h: number, w: number, alpha: number;
+      if (age < p.growMs) {
+        const t = eio(age / p.growMs);
+        h     = p.startH + (p.endH - p.startH) * t;
+        w     = p.startW + (p.endW - p.startW) * t;
+        alpha = 0.90 * (age / p.growMs);
+      } else if (age < p.growMs + p.holdMs) {
+        h     = p.endH;
+        w     = p.endW;
+        alpha = 0.90;
+      } else {
+        h     = p.endH;
+        w     = p.endW;
+        alpha = 0.90 * (1 - (age - p.growMs - p.holdMs) / p.fadeMs);
+      }
+      ctx.save();
+      ctx.globalAlpha = c01(alpha);
+      ctx.drawImage(healAsset.canvas, bx, by, bw, bh, p.cx - w / 2, p.cy - h / 2, w, h);
+      ctx.restore();
     }
+  }
 
-    drawShieldShape(ctx, p.cx, currentTopY, p.w, p.h, c01(alpha));
+  // ── Shield overlays (SK2 / passive) — image-based ─────────────────────────
+  if (shieldAsset.canvas && shieldAsset.bounds) {
+    const { x: bx, y: by, w: bw, h: bh } = shieldAsset.bounds;
+    for (let i = shieldPool.length - 1; i >= 0; i--) {
+      const p   = shieldPool[i];
+      const age = now - p.startMs - p.delay;
+      if (age < 0) continue;
+      const tot = p.growMs + p.holdMs + p.fadeMs;
+      if (age >= tot) { shieldPool.splice(i, 1); continue; }
+      let h: number, w: number, alpha: number;
+      if (age < p.growMs) {
+        const t = eio(age / p.growMs);
+        h     = p.startH + (p.endH - p.startH) * t;
+        w     = p.startW + (p.endW - p.startW) * t;
+        alpha = 0.88 * (age / p.growMs);
+      } else if (age < p.growMs + p.holdMs) {
+        h     = p.endH;
+        w     = p.endW;
+        alpha = 0.88;
+      } else {
+        h     = p.endH;
+        w     = p.endW;
+        alpha = 0.88 * (1 - (age - p.growMs - p.holdMs) / p.fadeMs);
+      }
+      ctx.save();
+      ctx.globalAlpha = c01(alpha);
+      ctx.drawImage(shieldAsset.canvas, bx, by, bw, bh, p.cx - w / 2, p.cy - h / 2, w, h);
+      ctx.restore();
+    }
   }
 }
 
@@ -407,30 +428,38 @@ export function EmmaVFX() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef    = useRef(0);
 
-  // Listen for VFX events dispatched by BattlePlayback
   useEffect(() => {
+    // Pre-load both assets immediately
+    ensureAsset(HEAL_URL,   healAsset,   () => {});
+    ensureAsset(SHIELD_URL, shieldAsset, () => {});
+
     const onVFX = (ev: Event) => {
       const e = (ev as CustomEvent<EmmaVFXTrigger>).detail;
       switch (e.type) {
-        case 'emma_basic':   spawnBasic(e.actorSlot, e.actorSide, e.targetSlots, e.targetSide); break;
-        case 'emma_sk1':     spawnSk1(e.targetSlots, e.targetSide);     break;
-        case 'emma_sk2':     spawnSk2(e.targetSlots, e.targetSide);     break;
-        case 'emma_passive': spawnPassive(e.targetSlots, e.targetSide); break;
-        case 'emma_ult':     spawnUlt(e.targetSlots, e.targetSide);     break;
+        case 'emma_basic':
+          spawnBasic(e.actorSlot, e.actorSide, e.targetSlots, e.targetSide);
+          break;
+        case 'emma_sk1':
+          spawnSk1(e.actorSlot, e.actorSide, e.targetSlots, e.targetSide);
+          break;
+        case 'emma_sk2':
+          spawnSk2(e.targetSlots, e.targetSide);
+          break;
+        case 'emma_passive':
+          spawnPassive(e.targetSlots, e.targetSide);
+          break;
+        case 'emma_ult':
+          spawnUlt(e.actorSlot, e.actorSide, e.targetSlots, e.targetSide);
+          break;
       }
     };
     window.addEventListener('emma-vfx', onVFX);
     return () => window.removeEventListener('emma-vfx', onVFX);
   }, []);
 
-  // rAF render loop
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
-    const hasParticles = () =>
-      projPool.length > 0 || plusPool.length > 0 || shieldPool.length > 0;
-
     const loop = () => {
       const dpr = window.devicePixelRatio || 1;
       const pw  = Math.round(window.innerWidth  * dpr);
@@ -442,7 +471,9 @@ export function EmmaVFX() {
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.clearRect(0, 0, pw, ph);
-        if (hasParticles()) {
+        const hasParticles =
+          projPool.length > 0 || healPool.length > 0 || healOverlayPool.length > 0 || shieldPool.length > 0;
+        if (hasParticles) {
           ctx.save();
           ctx.scale(dpr, dpr);
           drawPools(ctx, performance.now());
@@ -454,9 +485,10 @@ export function EmmaVFX() {
     rafRef.current = requestAnimationFrame(loop);
     return () => {
       cancelAnimationFrame(rafRef.current);
-      projPool.length   = 0;
-      plusPool.length   = 0;
-      shieldPool.length = 0;
+      projPool.length        = 0;
+      healPool.length        = 0;
+      healOverlayPool.length = 0;
+      shieldPool.length      = 0;
     };
   }, []);
 

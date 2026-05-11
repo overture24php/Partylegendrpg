@@ -1,27 +1,32 @@
 /**
- * LucasVFX — thick tapered white slash effects for Lucas.
+ * LucasVFX v3 — Flying slash projectile with content-aware sizing.
  *
- * LENGTHS (referenced from the 20×20 lobby grid):
- *   Basic / SK1 / SK2 : 8 grid cells = window.innerHeight × 0.40
- *   ULT               : 20 grid cells = window.innerHeight × 1.00
+ * KEY FIX: After chroma key, getContentBounds() finds the ACTUAL slash stroke
+ * region inside the source image (ignoring all transparent padding).
+ * drawImage() then draws ONLY that content region at the desired display size.
  *
- * SHAPE: quadratic-bezier lens — pointed at both tips, 32px wide at waist
- *   (= 4 × HP-bar height of 8 px). Slight bend (3 %) for a natural sword feel.
- *   Outer edges have a white semi-transparent gradient.
+ * This eliminates the "looks like a line" problem caused by:
+ *   - Source image being e.g. 1024×1024 with slash occupying 80% diagonally
+ *   - Drawing full image at 120px → slash visually = 10px wide line
+ *   - With content crop → slash content fills the full target height
  *
- * DIRECTIONS:
- *   basic    — diagonal ↘  centred on target
- *   sk1      — vertical ↓  centred on target
- *   sk2      — diagonal ↗  centred on target  (bottom-left → top-right)
- *   ult hit0 — diagonal ↘  centred on enemy column mid-point
- *   ult hit1 — diagonal ↗  centred on enemy column mid-point
- *   ult hit2 — vertical ↓  centred on enemy column mid-point
- *   (sk3 passive: no effect)
+ * Sizing reference = HERO_SPRITE_H (Lucas visible height in DOM):
+ *   normal  : startH = HERO_SPRITE_H×0.5, endH = HERO_SPRITE_H×1.0
+ *   ULT     : same but ×3 (called 3 times by BattlePlayback)
+ *
+ * Flight: 220ms travel (ease-in-out) + 110ms fade. Opacity: 0.80.
+ * Rotation: auto-faces direction of travel (atan2).
  */
 
 import { useEffect, useRef } from 'react';
+import { applyChromaKey, getContentBounds } from '../../utils/chromaKey';
+import { getSpriteSize } from '../../data/spriteConfig';
 
-// ── Layout constants (mirror BattlePlayback) ──────────────────────────────────
+// ── Asset URL ─────────────────────────────────────────────────────────────────
+const SLASH_URL =
+  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778171220/ChatGPT_Image_May_7_2026_11_26_25_PM_otixhr.png';
+
+// ── Grid layout (mirrors BattlePlayback) ──────────────────────────────────────
 const GRID_W = 368;
 const GRID_H = 310;
 const ROW_DATA = [
@@ -30,287 +35,191 @@ const ROW_DATA = [
   { slotW: 120, slotH: 120, col0X: 0,   col1X: 248, y: 190 },
 ] as const;
 
+/**
+ * Per-row upward lift so effect origins land on the character's
+ * upper-body / chest area rather than the feet.
+ * Sprites are significantly taller than their slot containers:
+ *   front (row2 slotH=120, sprite~270px) → lift 110px
+ *   mid   (row1 slotH= 86, sprite~240px) → lift  95px
+ *   back  (row0 slotH= 60, sprite~150px) → lift  70px
+ */
+const ROW_BODY_LIFT = [70, 95, 110] as const;
+
+/**
+ * Reference height for "full Lucas body" in screen pixels.
+ * Matches spriteH used in HeroBattleSprite for non-slime heroes.
+ * Used to scale slash effects proportionally to the actual character.
+ */
+const HERO_SPRITE_H = 280;
+
 // ── Public event type ─────────────────────────────────────────────────────────
 export type VFXTrigger = {
-  type: 'lucas_basic' | 'lucas_sk1' | 'lucas_sk2' | 'lucas_ult_hit';
-  actorSlot:   number; actorSide:  'hero'|'enemy';
-  targetSlots: number[]; targetSide: 'hero'|'enemy';
-  hitIndex?: number;
+  type:        'lucas_basic' | 'lucas_sk1' | 'lucas_sk2' | 'lucas_ult_hit';
+  actorSlot:   number;
+  actorSide:   'hero' | 'enemy';
+  targetSlots: number[];
+  targetSide:  'hero' | 'enemy';
+  hitIndex?:   number;
 };
 
-// ── Slash pool ────────────────────────────────────────────────────────────────
-type Slash = {
-  ax: number; ay: number;   // start tip
-  bx: number; by: number;   // end tip
-  maxW:  number;            // blade waist width (px)
-  bend:  number;            // bend fraction of length
-  startMs: number;
-  drawMs:  number;
-  holdMs:  number;
-  fadeMs:  number;
-  glow:  number;
-};
+// ── Slash asset state ─────────────────────────────────────────────────────────
+let slashCanvas: HTMLCanvasElement | null = null;
+// Content bounds of the actual slash stroke (post-chroma-key, no padding)
+let slashBounds: { x: number; y: number; w: number; h: number } | null = null;
+// Aspect ratio of the CONTENT region (not the full image)
+let slashContentAspect = 1.5;
+const pendingCbs: Array<() => void> = [];
 
-const pool: Slash[] = [];
+function ensureSlash(cb: () => void) {
+  if (slashCanvas) { cb(); return; }
+  pendingCbs.push(cb);
+  if (pendingCbs.length > 1) return;  // already in-flight
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    const c   = document.createElement('canvas');
+    c.width   = img.naturalWidth;
+    c.height  = img.naturalHeight;
+    const cx  = c.getContext('2d', { willReadFrequently: true })!;
+    cx.drawImage(img, 0, 0);
+    const d   = cx.getImageData(0, 0, c.width, c.height);
+    applyChromaKey(d.data);
+    cx.putImageData(d, 0, 0);
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-const lerp  = (a: number, b: number, t: number) => a + (b - a) * t;
-const c01   = (x: number) => Math.max(0, Math.min(1, x));
-const INV_RT2 = 1 / Math.SQRT2;  // 0.7071…
+    // Detect actual slash content bounds
+    const b = getContentBounds(d.data, c.width, c.height);
+    if (b) {
+      slashBounds       = b;
+      slashContentAspect = b.w / Math.max(1, b.h);
+    } else {
+      // Fallback: treat full image as content
+      slashBounds        = { x: 0, y: 0, w: c.width, h: c.height };
+      slashContentAspect = c.width / Math.max(1, c.height);
+    }
 
-/** Slash length in pixels: n lobby-grid cells out of 20×20 */
-const gridLen = (n: number) => window.innerHeight * (n / 20);
+    slashCanvas = c;
+    pendingCbs.forEach(f => f());
+    pendingCbs.length = 0;
+  };
+  img.onerror = () => { pendingCbs.length = 0; };
+  img.src = SLASH_URL;
+}
 
-function slotPos(side: 'hero'|'enemy', slot: number) {
-  const col  = slot % 2;
+// ── Slot helpers ──────────────────────────────────────────────────────────────
+function slotPos(side: 'hero' | 'enemy', slot: number) {
   const rowI = Math.min(2, Math.floor(slot / 2));
+  const col  = slot % 2;
   const row  = ROW_DATA[rowI];
   const gl   = side === 'hero' ? 12 : window.innerWidth - 12 - GRID_W;
   return {
     x: gl + (col === 0 ? row.col0X : row.col1X) + row.slotW / 2,
-    y: window.innerHeight - GRID_H + row.y + row.slotH / 2,
+    // Raised to upper-body/chest level (sprites extend well above slot boundary)
+    y: window.innerHeight - GRID_H + row.y + row.slotH / 2 - ROW_BODY_LIFT[rowI],
   };
 }
 
-/** Enemy column centre X — consistent across all 3 rows. */
-function enemyColX(side: 'hero'|'enemy', col: number): number {
-  const gl = side === 'hero' ? 12 : window.innerWidth - 12 - GRID_W;
-  return gl + (col === 0 ? 60 : 308);
-}
+// ── Projectile pool ───────────────────────────────────────────────────────────
+type Proj = {
+  sx: number; sy: number;
+  ex: number; ey: number;
+  startH: number; endH: number;
+  startW: number; endW: number;   // independent W (editor-controllable)
+  angle:  number;
+  startMs:  number;
+  travelMs: number;
+  fadeMs:   number;
+};
 
-/** Vertical mid-point of the enemy/hero grid column area. */
-function colCentreY(): number {
-  const yTop = window.innerHeight - GRID_H + ROW_DATA[0].y;
-  const yBot = window.innerHeight - GRID_H + ROW_DATA[2].y + ROW_DATA[2].slotH;
-  return (yTop + yBot) / 2;
-}
+const pool: Proj[] = [];
 
-function push(s: Omit<Slash, 'startMs'>) {
-  pool.push({ ...s, startMs: performance.now() });
-}
+const eio = (t: number) =>
+  t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
 
-// ── Spawners ──────────────────────────────────────────────────────────────────
-const MAX_W =  32;   // 4 × HP bar H (8 px)
-const BEND   =  0.03;  // 3 % of length — very subtle
-
-/**
- * basic — diagonal ↘, 4 grid cells long, centred on target slot.
- */
-function spawnBasic(_actorSlot: number, _actorSide: 'hero'|'enemy',
-                    tSlot: number, tSide: 'hero'|'enemy') {
-  const { x, y } = slotPos(tSide, tSlot);
-  const h = gridLen(8) / 2;  // half-length
-  const d = h * INV_RT2;     // diagonal component
-  push({
-    ax: x - d, ay: y - d,
-    bx: x + d, by: y + d,
-    maxW: MAX_W, bend: BEND,
-    drawMs: 80, holdMs: 20, fadeMs: 110, glow: 10,
-  });
-}
-
-/**
- * sk1 — vertical ↓, 4 grid cells long, centred on target.
- */
-function spawnSk1(tSlot: number, tSide: 'hero'|'enemy') {
-  const { x, y } = slotPos(tSide, tSlot);
-  const h = gridLen(8) / 2;
-  push({
-    ax: x, ay: y - h,
-    bx: x, by: y + h,
-    maxW: MAX_W, bend: -BEND,   // bends right (normal for ↓ points left)
-    drawMs: 100, holdMs: 20, fadeMs: 120, glow: 10,
-  });
-}
-
-/**
- * sk2 — diagonal ↗ (bottom-left → top-right), 4 grid cells long.
- * User confirmed diagonal is fine; ↗ visually differentiates from basic ↘.
- */
-function spawnSk2(tSlot: number, tSide: 'hero'|'enemy') {
-  const { x, y } = slotPos(tSide, tSlot);
-  const h = gridLen(8) / 2;
-  const d = h * INV_RT2;
-  push({
-    ax: x - d, ay: y + d,  // bottom-left
-    bx: x + d, by: y - d,  // top-right
-    maxW: MAX_W, bend: BEND,
-    drawMs: 80, holdMs: 18, fadeMs: 110, glow: 10,
-  });
-}
-
-/**
- * ult �� 3 slashes (hitIndex 0/1/2), 10 grid cells long.
- * All centred on the enemy column vertical mid-point.
- *  0 → diagonal ↘
- *  1 → diagonal ↗
- *  2 → vertical ↓
- */
-function spawnUlt(tSlot: number, tSide: 'hero'|'enemy', hitIndex: number) {
-  const col  = tSlot % 2;
-  const cx   = enemyColX(tSide, col);
-  const cy   = colCentreY();
-  const h    = gridLen(20) / 2;   // half of 20 grid cells
-  const d    = h * INV_RT2;
-
-  switch (hitIndex % 3) {
-    case 0:   // ↘ diagonal
-      push({
-        ax: cx - d, ay: cy - d,
-        bx: cx + d, by: cy + d,
-        maxW: MAX_W, bend: BEND,
-        drawMs: 170, holdMs: 28, fadeMs: 190, glow: 13,
-      });
-      break;
-    case 1:   // ↗ diagonal
-      push({
-        ax: cx - d, ay: cy + d,
-        bx: cx + d, by: cy - d,
-        maxW: MAX_W, bend: BEND,
-        drawMs: 170, holdMs: 28, fadeMs: 190, glow: 13,
-      });
-      break;
-    case 2:   // ↓ vertical
-      push({
-        ax: cx, ay: cy - h,
-        bx: cx, by: cy + h,
-        maxW: MAX_W, bend: -BEND,
-        drawMs: 170, holdMs: 28, fadeMs: 190, glow: 13,
-      });
-      break;
-  }
-}
-
-// ── Lens shape (quadratic bezier, both tips pointed) ─────────────────────────
-/**
- * Build full or partial lens shape.
- *
- * Control points offset by maxW in the normal direction, so actual waist
- * width at t=0.5 equals maxW (quadratic bezier midpoint = 0.25A+0.5ctrl+0.25B
- * → shifts midAB by maxW/2 per edge, net = maxW total).
- *
- * drawT ∈ [0,1]: de Casteljau split reveals the partial blade with a naturally
- * pointed front tip at every intermediate step.
- */
-function buildBlade(
-  ctx: CanvasRenderingContext2D,
-  ax: number, ay: number, bx: number, by: number,
-  maxW: number, bend: number, drawT: number,
+// ── Spawn ─────────────────────────────────────────────────────────────────────
+function spawn(
+  actorSlot: number, actorSide: 'hero' | 'enemy',
+  tSlot:     number, tSide:     'hero' | 'enemy',
+  sizeMult:  number,
 ) {
-  const dx = bx - ax, dy = by - ay;
-  const len = Math.sqrt(dx * dx + dy * dy);
-  if (len < 1) return;
-  const nx = -dy / len, ny = dx / len;
-
-  const bendDist = len * bend;
-  const midX = (ax + bx) / 2 + nx * bendDist;
-  const midY = (ay + by) / 2 + ny * bendDist;
-
-  // Control points — offset maxW so waist width = maxW
-  const ctTx = midX + nx * maxW, ctTy = midY + ny * maxW;
-  const ctBx = midX - nx * maxW, ctBy = midY - ny * maxW;
-
-  if (drawT >= 1) {
-    ctx.moveTo(ax, ay);
-    ctx.quadraticCurveTo(ctTx, ctTy, bx, by);
-    ctx.quadraticCurveTo(ctBx, ctBy, ax, ay);
-    ctx.closePath();
-    return;
-  }
-
-  const t = c01(drawT);
-
-  // de Casteljau split at t — top edge (A → ctTop → B, forward)
-  const tm1Tx = lerp(ax, ctTx, t), tm1Ty = lerp(ay, ctTy, t);
-  const tm2Tx = lerp(ctTx, bx, t), tm2Ty = lerp(ctTy, by, t);
-  const ptTx  = lerp(tm1Tx, tm2Tx, t), ptTy = lerp(tm1Ty, tm2Ty, t);
-
-  // de Casteljau split at t — bottom edge (A → ctBot → B, same direction)
-  const bm1Bx = lerp(ax, ctBx, t), bm1By = lerp(ay, ctBy, t);
-  const bm2Bx = lerp(ctBx, bx, t), bm2By = lerp(ctBy, by, t);
-  const ptBx  = lerp(bm1Bx, bm2Bx, t), ptBy = lerp(bm1By, bm2By, t);
-
-  // Partial blade: A → ptTop (top partial) → ptBot (front tip) → A (bottom partial reversed)
-  ctx.moveTo(ax, ay);
-  ctx.quadraticCurveTo(tm1Tx, tm1Ty, ptTx, ptTy);
-  ctx.lineTo(ptBx, ptBy);
-  ctx.quadraticCurveTo(bm1Bx, bm1By, ax, ay);
-  ctx.closePath();
+  ensureSlash(() => {
+    const actor  = slotPos(actorSide, actorSlot);
+    const target = slotPos(tSide, tSlot);
+    const cfg    = getSpriteSize('vfx_lucas_slash');
+    pool.push({
+      sx: actor.x,  sy: actor.y,
+      ex: target.x, ey: target.y,
+      startH:   cfg.h * 0.50 * sizeMult,
+      endH:     cfg.h * 1.00 * sizeMult,
+      startW:   cfg.w * 0.50 * sizeMult,
+      endW:     cfg.w * 1.00 * sizeMult,
+      angle:    Math.atan2(target.y - actor.y, target.x - actor.x),
+      startMs:  performance.now(),
+      travelMs: 220,
+      fadeMs:   110,
+    });
+  });
 }
 
-// ── Perpendicular gradient ────────────────────────────────────────────────────
-function makeGrad(
-  ctx: CanvasRenderingContext2D,
-  ax: number, ay: number, bx: number, by: number,
-  maxW: number, bend: number,
-): CanvasGradient {
-  const dx = bx - ax, dy = by - ay;
-  const len = Math.sqrt(dx * dx + dy * dy);
-  const nx = len > 0 ? -dy / len : 0;
-  const ny = len > 0 ?  dx / len : 1;
-  const hw = maxW / 2;
-  const cx = (ax + bx) / 2 + nx * (len * bend);
-  const cy = (ay + by) / 2 + ny * (len * bend);
-  const grd = ctx.createLinearGradient(
-    cx - nx * hw, cy - ny * hw,
-    cx + nx * hw, cy + ny * hw,
-  );
-  grd.addColorStop(0.00, 'rgba(255,255,255,0.00)');
-  grd.addColorStop(0.18, 'rgba(255,255,255,0.40)');
-  grd.addColorStop(0.42, 'rgba(255,255,255,0.88)');
-  grd.addColorStop(0.50, 'rgba(255,255,255,1.00)');
-  grd.addColorStop(0.58, 'rgba(255,255,255,0.88)');
-  grd.addColorStop(0.82, 'rgba(255,255,255,0.40)');
-  grd.addColorStop(1.00, 'rgba(255,255,255,0.00)');
-  return grd;
-}
-
-// ── Render ────────────────────────────────────────────────────────────────────
+// ── Draw ──────────────────────────────────────────────────────────────────────
 function drawPool(ctx: CanvasRenderingContext2D, now: number) {
+  if (!slashCanvas || !slashBounds) return;
+  const { x: bx, y: by, w: bw, h: bh } = slashBounds;
+
   for (let i = pool.length - 1; i >= 0; i--) {
-    const s   = pool[i];
-    const age = now - s.startMs;
-    const tot = s.drawMs + s.holdMs + s.fadeMs;
+    const p   = pool[i];
+    const age = now - p.startMs;
+    const tot = p.travelMs + p.fadeMs;
     if (age >= tot) { pool.splice(i, 1); continue; }
 
-    let drawT: number, alpha: number;
-    if (age < s.drawMs) {
-      drawT = age / s.drawMs;
-      alpha = 1.0;
-    } else if (age < s.drawMs + s.holdMs) {
-      drawT = 1.0;
-      alpha = 1.0;
+    let t: number, alpha: number;
+    if (age <= p.travelMs) {
+      t     = age / p.travelMs;
+      alpha = 0.80;
     } else {
-      drawT = 1.0;
-      alpha = 1.0 - (age - s.drawMs - s.holdMs) / s.fadeMs;
+      t     = 1;
+      alpha = 0.80 * (1 - (age - p.travelMs) / p.fadeMs);
     }
+
+    const et = eio(Math.min(1, t));
+    const cx = p.sx + (p.ex - p.sx) * et;
+    const cy = p.sy + (p.ey - p.sy) * et;
+    // h = interpolated height of the CONTENT region at this moment
+    const h  = p.startH + (p.endH - p.startH) * et;
+    const w  = p.startW + (p.endW - p.startW) * et;
 
     ctx.save();
     ctx.globalAlpha = Math.max(0, alpha);
-    ctx.shadowColor = 'rgba(255,255,255,0.55)';
-    ctx.shadowBlur  = s.glow;
-    ctx.fillStyle   = makeGrad(ctx, s.ax, s.ay, s.bx, s.by, s.maxW, s.bend);
-    ctx.beginPath();
-    buildBlade(ctx, s.ax, s.ay, s.bx, s.by, s.maxW, s.bend, drawT);
-    ctx.fill();
+    ctx.translate(cx, cy);
+    ctx.rotate(p.angle);
+    // Draw ONLY the content region of the source image, scaled to (w × h)
+    ctx.drawImage(slashCanvas, bx, by, bw, bh, -w / 2, -h / 2, w, h);
     ctx.restore();
   }
 }
 
-// ── Component ────────────────��────────────────────────────────────────────────
+// ── Component ─────────────────────────────────────────────────────────────────
 export function LucasVFX() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef    = useRef(0);
 
   useEffect(() => {
+    // Pre-load slash asset immediately so first attack has no delay
+    ensureSlash(() => {});
+
     const onVFX = (ev: Event) => {
       const e = (ev as CustomEvent<VFXTrigger>).detail;
       for (const tSlot of e.targetSlots) {
         switch (e.type) {
-          case 'lucas_basic':    spawnBasic(e.actorSlot, e.actorSide, tSlot, e.targetSide); break;
-          case 'lucas_sk1':      spawnSk1(tSlot, e.targetSide);   break;
-          case 'lucas_sk2':      spawnSk2(tSlot, e.targetSide);   break;
-          case 'lucas_ult_hit':  spawnUlt(tSlot, e.targetSide, e.hitIndex ?? 0); break;
+          case 'lucas_basic':
+          case 'lucas_sk1':
+          case 'lucas_sk2':
+            spawn(e.actorSlot, e.actorSide, tSlot, e.targetSide, 1);
+            break;
+          case 'lucas_ult_hit':
+            // BattlePlayback calls this once per ULT hit (3× total).
+            // Each call = one 3× bigger slash.
+            spawn(e.actorSlot, e.actorSide, tSlot, e.targetSide, 3);
+            break;
         }
       }
     };
@@ -342,7 +251,10 @@ export function LucasVFX() {
       rafRef.current = requestAnimationFrame(loop);
     };
     rafRef.current = requestAnimationFrame(loop);
-    return () => { cancelAnimationFrame(rafRef.current); pool.length = 0; };
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      pool.length = 0;
+    };
   }, []);
 
   return (

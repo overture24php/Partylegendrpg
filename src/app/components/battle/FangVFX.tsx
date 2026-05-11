@@ -1,11 +1,16 @@
 /**
- * GorrVFX — Flying slash effects for Gorr.
+ * FangVFX — Flying slash effects for Fang.
  *
- * Uses the same shared slash asset as FangVFX (chroma-keyed via slashAsset.ts).
- * Replaces the old quadratic-bezier drawn shape.
+ * Asset: shared green-screen slash image (chroma-keyed via slashAsset.ts).
  *
- * basic / sk1 / sk2 : one slash projectile per hit target, size 1×.
- * ult               : large slashes (2.2×) to each enemy hit, staggered 80 ms.
+ * SKILL 1 (Twin Slash / 2× hit) — Lucas-ULT-style alternating mechanism:
+ *   hitIndex 0  → slash angled +0.22 rad above travel axis
+ *   hitIndex 1  → slash angled −0.22 rad below travel axis
+ *   BattlePlayback fires hitIndex 0 at the attack moment, then fires
+ *   hitIndex 1 before the second damage application (160 ms later).
+ *
+ * All other skills: single slash along actor→target axis.
+ * ULT (Death Bound): 2.5× size for execute visual weight.
  */
 
 import { useEffect, useRef } from 'react';
@@ -21,15 +26,18 @@ const ROW_DATA = [
   { slotW: 120, slotH: 120, col0X: 0,   col1X: 248, y: 190 },
 ] as const;
 
+// Per-row lift so effects land on upper body, not feet
 const ROW_BODY_LIFT = [70, 95, 110] as const;
 
-// ── Public event type ────────────────────────────────────────────────────────
-export type GorrVFXTrigger = {
-  type:        'gorr_basic' | 'gorr_ult';
+// ── Public event type ─────────────────────────────────────────────────────────
+export type FangVFXTrigger = {
+  type:        'fang_basic' | 'fang_sk1' | 'fang_sk2' | 'fang_ult';
   actorSlot:   number;
   actorSide:   'hero' | 'enemy';
   targetSlots: number[];
   targetSide:  'hero' | 'enemy';
+  /** 0 = first hit, 1 = second hit (SK1 alternating slashes). */
+  hitIndex?:   number;
 };
 
 // ── Projectile pool ───────────────────────────────────────────────────────────
@@ -61,17 +69,17 @@ function slotPos(side: 'hero' | 'enemy', slot: number) {
   };
 }
 
-// ── Spawn a slash projectile ──────────────────────────────────────────────────
+// ── Spawn a single slash projectile ──────────────────────────────────────────
 function spawn(
   actorSlot: number, actorSide: 'hero' | 'enemy',
   tSlot:     number, tSide:     'hero' | 'enemy',
   sizeMult:  number,
-  delayMs:   number = 0,
+  angleOffset: number,
 ) {
-  const go = () => {
+  ensureSlashAsset(() => {
     const actor  = slotPos(actorSide, actorSlot);
     const target = slotPos(tSide, tSlot);
-    const cfg    = getSpriteSize('vfx_gorr_slash');
+    const cfg    = getSpriteSize('vfx_fang_slash');
     pool.push({
       sx: actor.x,  sy: actor.y,
       ex: target.x, ey: target.y,
@@ -79,18 +87,12 @@ function spawn(
       endH:     cfg.h * 1.00 * sizeMult,
       startW:   cfg.w * 0.45 * sizeMult,
       endW:     cfg.w * 1.00 * sizeMult,
-      angle:    Math.atan2(target.y - actor.y, target.x - actor.x),
+      angle:    Math.atan2(target.y - actor.y, target.x - actor.x) + angleOffset,
       startMs:  performance.now(),
-      travelMs: 210,
-      fadeMs:   110,
+      travelMs: 195,
+      fadeMs:   105,
     });
-  };
-
-  if (delayMs > 0) {
-    ensureSlashAsset(() => setTimeout(go, delayMs));
-  } else {
-    ensureSlashAsset(go);
-  }
+  });
 }
 
 // ── Draw all pooled slashes ───────────────────────────────────────────────────
@@ -109,10 +111,10 @@ function drawPool(ctx: CanvasRenderingContext2D, now: number) {
     let t: number, alpha: number;
     if (age <= p.travelMs) {
       t     = age / p.travelMs;
-      alpha = 0.86;
+      alpha = 0.88;
     } else {
       t     = 1;
-      alpha = 0.86 * (1 - (age - p.travelMs) / p.fadeMs);
+      alpha = 0.88 * (1 - (age - p.travelMs) / p.fadeMs);
     }
 
     const et = eio(Math.min(1, t));
@@ -130,32 +132,35 @@ function drawPool(ctx: CanvasRenderingContext2D, now: number) {
   }
 }
 
-// ── Component ────────────────────────────────────────────────────────────────
-export function GorrVFX() {
+// ── Component ─────────────────────────────────────────────────────────────────
+export function FangVFX() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef    = useRef(0);
 
   useEffect(() => {
-    ensureSlashAsset(() => {}); // pre-load
+    // Pre-load asset so first attack has no delay
+    ensureSlashAsset(() => {});
 
     const onVFX = (ev: Event) => {
-      const e = (ev as CustomEvent<GorrVFXTrigger>).detail;
+      const e = (ev as CustomEvent<FangVFXTrigger>).detail;
+      const hitIndex = e.hitIndex ?? 0;
 
-      if (e.type === 'gorr_basic') {
-        // basic / sk1 / sk2: one slash per hit target
-        for (const tSlot of e.targetSlots) {
-          spawn(e.actorSlot, e.actorSide, tSlot, e.targetSide, 1.0);
-        }
-      } else {
-        // ULT: larger slashes to each enemy target, staggered 80 ms apart
-        e.targetSlots.forEach((tSlot, i) => {
-          spawn(e.actorSlot, e.actorSide, tSlot, e.targetSide, 2.2, i * 80);
-        });
+      // SK1 alternating: alternate ±0.22 rad (~13°) around the travel axis
+      let angleOffset = 0;
+      if (e.type === 'fang_sk1') {
+        angleOffset = hitIndex % 2 === 0 ? 0.22 : -0.22;
+      }
+
+      // ULT gets a larger slash for visual weight
+      const sizeMult = e.type === 'fang_ult' ? 2.5 : 1.0;
+
+      for (const tSlot of e.targetSlots) {
+        spawn(e.actorSlot, e.actorSide, tSlot, e.targetSide, sizeMult, angleOffset);
       }
     };
 
-    window.addEventListener('gorr-vfx', onVFX);
-    return () => window.removeEventListener('gorr-vfx', onVFX);
+    window.addEventListener('fang-vfx', onVFX);
+    return () => window.removeEventListener('fang-vfx', onVFX);
   }, []);
 
   useEffect(() => {

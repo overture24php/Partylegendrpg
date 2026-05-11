@@ -21,9 +21,11 @@ import { useState, useEffect, useRef } from 'react';
 import { useChromaKeyDataUrl } from '../../utils/chromaKey';
 import { resolveTurn, completeBattle } from '/utils/supabase/battle-service';
 import type { ResolveTurnResult } from '/utils/supabase/battle-service';
+import { isNoCooldown, isSk2BeforeSk1, getSkillMechanics } from '../../constants/heroMechanics';
 import { LucasVFX } from './LucasVFX';
 import type { VFXTrigger } from './LucasVFX';
 // Note: LucasVFX no longer needs sceneRef — uses window dimensions directly
+import { HERO_DEFS, heroSpriteName } from '../../data/heroDefs';
 
 const MELEE_TYPES = new Set(['Fighter', 'Tank', 'Assassin']);
 
@@ -40,98 +42,50 @@ const ROW_DATA = [
   { slotW: 120, slotH: 120, col0X: 0,   col1X: 248, y: 190 },
 ] as const;
 
-// ─── Asset maps ───────────────────────────────────────────────────────────────
-const IDLE_SPRITES: Record<string, string> = {
-  Lucas: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777630336/idle_luk_mobysy.png',
-  Emma:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777630434/idle_em_p8uxjs.png',
-  Gorr:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919607/ChatGPT_Image_May_5_2026_01_23_54_AM_nhkzmq.png',
-  Craw:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919783/ChatGPT_Image_May_5_2026_01_26_59_AM_zfdewm.png',
-  Myko:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778005026/ChatGPT_Image_May_6_2026_01_01_00_AM_bhjzhr.png',
-  Fang:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058539/ChatGPT_Image_May_6_2026_03_43_22_PM_ejhf1t.png',
-  Clover: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058829/ChatGPT_Image_May_6_2026_03_57_38_PM_jwipj1.png',
-};
-const ACTION_BGREMOVE: Record<string, string> = {
-  Lucas: 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777631550/act_luc_mhmivj.png',
-};
-const ACTION_CHROMA: Record<string, string> = {
-  Emma: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777630357/act_em_fnrl1t.png',
-  Gorr: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919615/ChatGPT_Image_May_5_2026_01_31_48_AM_m65s2g.png',
-  Craw: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919799/ChatGPT_Image_May_5_2026_01_27_08_AM_p8yjub.png',
-  Myko:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778005040/ChatGPT_Image_May_6_2026_01_03_49_AM_sirb54.png',
-  Fang:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058739/ChatGPT_Image_May_6_2026_03_45_46_PM_plgice.png',
-  Clover: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058887/ChatGPT_Image_May_6_2026_04_00_04_PM_fattkj.png',
-};
-const ENEMY_IDLE: Record<string, string> = {
-  RockSlime:  'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777634810/Gemini_Generated_Image_c7qsl1c7qsl1c7qs_mekkjz.png',
-  AcidSlime:  'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777634782/ChatGPT_Image_May_1_2026_06_25_59_PM_dsoxsd.png',
-  WaterSlime: 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777545810/ChatGPT_Image_Apr_30_2026_05_40_35_PM_w370l3.png',
-  // Human heroes on enemy side — green screen, chroma key needed, scaleX(-1) via container
-  Myko:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778005026/ChatGPT_Image_May_6_2026_01_01_00_AM_bhjzhr.png',
-  Fang:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058539/ChatGPT_Image_May_6_2026_03_43_22_PM_ejhf1t.png',
-  Clover: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058829/ChatGPT_Image_May_6_2026_03_57_38_PM_jwipj1.png',
-};
-const SKILL_ICONS: Record<string, Partial<Record<string, string>>> = {
-  Lucas: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550813/s1lukas_wrrnuo.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550848/ChatGPT_Image_Apr_30_2026_07_02_57_PM_kbtfs3.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550841/psvluk_b0quhw.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550833/ultlukas_jcehyx.png',
-  },
-  Emma: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550127/s1emma_1d4245.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550505/ChatGPT_Image_Apr_30_2026_06_53_05_PM_s9ssbz.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550512/ChatGPT_Image_Apr_30_2026_ffPM_m405s1.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550533/ultema_vshlxt.png',
-  },
-  RockSlime: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777565812/s1rlime_hfstrz.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777565820/s2rslime_shjl5b.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777565826/s3rslime_vip7sb.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777565833/s4rslime_duuc2g.png',
-  },
-  AcidSlime: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777806549/sk1acd_nqz0x5.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777806563/sk2acd_x4d8qu.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777806571/sk3acd_gh45ki.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777806578/sk4acd_mcmpzu.png',
-  },
-  WaterSlime: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777807420/sk1wtr.pg_fbx8a0.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777807428/sk2wtr_vmi777.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777807444/sk3wtr_fedwpe.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777807456/sk4wtr_fbixax.png',
-  },
-  Gorr: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002904/sk1gor_wkgpaz.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002911/sk2gor_grkelh.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002917/sk3gor_ppjc9j.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002925/sk4gor_axfkc2.png',
-  },
-  Craw: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002931/sk1craw_cgwnc7.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002935/sk2craw_hmjjoz.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002946/sk3craw_f6s5e5.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002939/sk4craw_zg73ez.png',
-  },
-  Myko: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009427/sk1myk_nr36fc.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009434/sk2myk_nry1oe.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009440/sk3myk_oc94bf.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009488/sk4myk_egyexz.png',
-  },
-  Fang: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066250/sk1fang_lzaud9.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066256/sk2fang_mkmdui.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066265/sk3fang_wdo19c.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066271/sk4fang_msdipt.png',
-  },
-  Clover: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066277/sk1clov_pwyu2r.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066283/sk2clov_ebrxbb.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066288/sk3clov_p4van1.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066294/sk4clov_hysri6.png',
-  },
-};
+// ─── Asset maps — AUTO-DERIVED from heroDefs.ts ───────────────────────────────
+// ⚠️  DO NOT hardcode URLs here. Add/edit heroes in heroDefs.ts ONLY.
+//     These maps rebuild automatically from HERO_DEFS at module load time.
+//     This is the same pattern used by BattlePlayback.tsx.
+
+const IDLE_SPRITES: Record<string, string> = Object.fromEntries(
+  HERO_DEFS
+    .filter(d => d.sprites.isHumanHero && d.sprites.idleUrl)
+    .map(d => [heroSpriteName(d), d.sprites.idleUrl!])
+);
+
+const ACTION_BGREMOVE: Record<string, string> = Object.fromEntries(
+  HERO_DEFS
+    .filter(d => d.sprites.isHumanHero && d.sprites.actionUrl && d.sprites.actionMethod === 'bgremoval')
+    .map(d => [heroSpriteName(d), d.sprites.actionUrl!])
+);
+
+const ACTION_CHROMA: Record<string, string> = Object.fromEntries(
+  HERO_DEFS
+    .filter(d => d.sprites.isHumanHero && d.sprites.actionUrl && d.sprites.actionMethod === 'chroma')
+    .map(d => [heroSpriteName(d), d.sprites.actionUrl!])
+);
+
+const ENEMY_IDLE: Record<string, string> = Object.fromEntries(
+  HERO_DEFS
+    .filter(d => d.sprites.appearsAsEnemy && d.sprites.idleUrl)
+    .map(d => [heroSpriteName(d), d.sprites.idleUrl!])
+);
+/** Skill icon map — AUTO-DERIVED from heroDefs.ts skill.iconUrl entries. */
+const SKILL_ICONS: Record<string, Partial<Record<string, string>>> = Object.fromEntries(
+  HERO_DEFS
+    .filter(d => d.battleReady && d.skills)
+    .map(d => {
+      const icons: Partial<Record<string, string>> = {};
+      for (const sk of d.skills!) {
+        if (!sk.iconUrl) continue;
+        if (sk.slot === 1) icons.sk1 = sk.iconUrl;
+        else if (sk.slot === 2) icons.sk2 = sk.iconUrl;
+        else if (sk.slot === 3) icons.sk3 = sk.iconUrl;
+        else if (sk.slot === 4) icons.ult = sk.iconUrl;
+      }
+      return [heroSpriteName(d), icons];
+    })
+);
 
 // ─── Trail colors ─────────────────────────────────────────────────────────────
 type TrailRgb = readonly [string, string, string];
@@ -152,9 +106,17 @@ const trail = (map: Record<string, TrailRgb>, def: TrailRgb) => (n: string) => {
 };
 const heroTrail  = trail(HERO_TRAIL,  HERO_TRAIL_DEF);
 const enemyTrail = trail(ENEMY_TRAIL, ENEMY_TRAIL.RockSlime);
-// Enemy sprites that need client chroma key (human heroes on enemy side)
-const ENEMY_HUMAN_CHROMA = new Set(['Myko', 'Fang', 'Clover']);
-const ENEMY_HUMAN_NAMES  = new Set(['Myko', 'Fang', 'Clover']);
+// Enemy sprites that need client chroma key — AUTO-DERIVED from heroDefs
+const ENEMY_HUMAN_CHROMA = new Set<string>(
+  HERO_DEFS
+    .filter(d => d.sprites.appearsAsEnemy && d.sprites.isHumanHero && d.sprites.enemyNeedsChroma)
+    .map(d => heroSpriteName(d))
+);
+const ENEMY_HUMAN_NAMES = new Set<string>(
+  HERO_DEFS
+    .filter(d => d.sprites.appearsAsEnemy && d.sprites.isHumanHero)
+    .map(d => heroSpriteName(d))
+);
 // Myko reduced dims: height −50%, width −25%
 const MYKO_HERO_W=135, MYKO_HERO_H=169, MYKO_ENEMY_W=135, MYKO_ENEMY_H=90;
 // Enemies whose sprite image natively faces LEFT — outer scaleX(-1) would flip them
@@ -242,7 +204,7 @@ const LOWEST_HP_SKILLS     = new Set(['Gorr:sk1']);
 const FANG_TWIN_SLASH      = new Set(['Fang:sk1']);
 // Fang:ult Death Bound — base dmg × 3 if target is below 35% HP
 const FANG_DEATH_BOUND     = new Set(['Fang:ult']);
-// Clover:ult Bloom Cascade — heal all alive allies
+// Clover:ult Bloom Cascade �� heal all alive allies
 const CLOVER_BLOOM_CASCADE = new Set(['Clover:ult']);
 
 const MAGIC_DMG_HEROES     = new Set(['WaterSlime','Myko']);
@@ -400,7 +362,7 @@ function VictoryOverlay({rewards,onContinue}:{rewards:BattleRewards;onContinue:(
   );
 }
 
-// ─── FailedOverlay ────────────────────────────────────────────────────────────
+// ─── FailedOverlay ──────────────────────────────────────────��─────────────────
 function FailedOverlay({onContinue}:{onContinue:()=>void}){
   const F="'Roboto Condensed',sans-serif";
   return(
@@ -477,7 +439,7 @@ function HeroBattleSprite({name,phase,dashOffsetX,dashOffsetY,currentHp,maxHp,sh
   const src=(showAct&&actionSrc)?actionSrc:(idleUrl??undefined);
   const flipCls=phase==='flip-windup'?'bs-flip-wind':phase==='flip-revert'?'bs-flip-rev':'';
   const isDash=phase==='dashing', isRet=phase==='dash-return';
-  const isMykoH=name==='Myko'||name==='Fang'||name==='Clover';
+  const isMykoH=name==='Myko'||name==='Fang'||name==='Clover'||name==='Bolo';
   return(
     <div className={phase==='dying'?'bs-dying':''} style={{
       position:'absolute',bottom:-4,left:'50%',
@@ -896,10 +858,23 @@ export function BattleScreen({units:initUnits,onVictory,onDefeat,sessionId}:{
       const ultLv=getSkillLv(att.level,'ult');
 
       let slot:'basic'|'sk1'|'sk2'|'ult';
-      if(rage>=100&&ultLv>0)                slot='ult';
-      else if(rage>=60&&!sk2Used&&sk2Lv>0)  slot='sk2';
-      else if(rage>=30&&!sk1Used&&sk1Lv>0)  slot='sk1';
-      else                                   slot='basic';
+      const _sk2First=isSk2BeforeSk1(att.name);
+      const _sk1NoCD =isNoCooldown(att.name,'sk1');
+      if(rage>=100&&ultLv>0){
+        slot='ult';
+      }else if(_sk2First&&!sk2Used&&sk2Lv>0){
+        // Fang-style: SK2 is checked before SK1 (SK1 fills remaining turns)
+        slot='sk2';
+      }else if(_sk1NoCD&&sk1Lv>0){
+        // No-cooldown SK1: always fires regardless of used-flag or rage threshold
+        slot='sk1';
+      }else if(rage>=60&&!sk2Used&&sk2Lv>0){
+        slot='sk2';
+      }else if(rage>=30&&!sk1Used&&sk1Lv>0){
+        slot='sk1';
+      }else{
+        slot='basic';
+      }
 
       // skillLv needed by local-fallback getMult() — keep even when server is active
       const skillLv=slot==='basic'?0:getSkillLv(att.level,slot);
@@ -918,7 +893,10 @@ export function BattleScreen({units:initUnits,onVictory,onDefeat,sessionId}:{
         const cur=stateRef.current.find(u=>u.uid===uid);
         if(cur){
           if(slot==='basic')    patch(uid,{rage:Math.min(100,(cur.rage??0)+5)});
-          else if(slot==='sk1') patch(uid,{sk1Used:true});
+          else if(slot==='sk1') {
+            // No-cooldown SK1 (e.g. Fang Twin Slash): NEVER mark sk1Used — fires every turn
+            if(!isNoCooldown(att.name,'sk1')) patch(uid,{sk1Used:true});
+          }
           else if(slot==='sk2') patch(uid,{sk2Used:true});
           else if(slot==='ult') patch(uid,{rage:0,sk1Used:false,sk2Used:false});
         }
@@ -992,14 +970,53 @@ export function BattleScreen({units:initUnits,onVictory,onDefeat,sessionId}:{
       const applyResults=()=>{
         if(srvResult){
           // SERVER PATH: all values authoritative — client cannot modify
+
+          // ── Twin Slash detection: two consecutive dmg entries for same target ─
+          // Stagger hit 1 immediately, hit 2 after hitDelay ms so both floats
+          // are visually distinct. Works for any hero with hitCount=2 mechanic.
+          const _smech=getSkillMechanics(att.name, slot==='basic'?'basic':slot);
+          const _hitDelay=_smech.hitDelay??220;
+          const _dmgEntries=srvResult.targets.filter(t=>t.type==='dmg'&&t.damage>0);
+          const _isTwinHit=(_smech.hitCount??1)>=2
+            && _dmgEntries.length===2
+            && _dmgEntries[0].target_uid===_dmgEntries[1].target_uid;
+
+          let _twinHit2Done=false;
           for(const tgt of srvResult.targets){
             const sHp   =srvResult.hp_state[tgt.target_uid]??0;
             const sAlive=srvResult.alive_state[tgt.target_uid]??false;
             if(tgt.type==='dmg'&&tgt.damage>0){
+              if(_isTwinHit&&!_twinHit2Done&&srvResult.targets.indexOf(tgt)===srvResult.targets.filter(t=>t.type==='dmg').indexOf(tgt)&&_dmgEntries.indexOf(tgt)===1){
+                // Second hit of twin slash — stagger with delay
+                _twinHit2Done=true;
+                const _tuid=tgt.target_uid, _tdmg=tgt.damage;
+                setTimeout(()=>{
+                  addFloat(_tuid,_tdmg,'dmg');
+                  if(!sAlive){
+                    patch(_tuid,{currentHp:0,shield:0,animPhase:'dying'});
+                    setTimeout(()=>patch(_tuid,{animPhase:'dead'}),1600);
+                  }else{
+                    // Reconstruct intermediate HP for visual: final hp was already set, show hurt again
+                    patch(_tuid,{currentHp:sHp,animPhase:'hurt'});
+                    setTimeout(()=>patch(_tuid,{animPhase:'idle'}),440);
+                  }
+                },_hitDelay);
+                continue; // don't process this entry immediately
+              }
+              // First hit (or normal non-twin hit)
+              const _intermediateHp=_isTwinHit
+                ? Math.max(0,(stateRef.current.find(u=>u.uid===tgt.target_uid)?.currentHp??sHp)+tgt.damage*(-1)+(_dmgEntries[1]?.damage??0))
+                : sHp;
               addFloat(tgt.target_uid,tgt.damage,'dmg');
-              if(!sAlive){
+              if(!sAlive&&!_isTwinHit){
                 patch(tgt.target_uid,{currentHp:0,shield:0,animPhase:'dying'});
                 setTimeout(()=>patch(tgt.target_uid,{animPhase:'dead'}),1600);
+              }else if(_isTwinHit){
+                // For twin: set intermediate HP after hit 1 (not final yet)
+                const curHp=stateRef.current.find(u=>u.uid===tgt.target_uid)?.currentHp??sHp;
+                const hit1Hp=Math.max(0,curHp-tgt.damage);
+                patch(tgt.target_uid,{currentHp:hit1Hp,animPhase:'hurt'});
+                setTimeout(()=>patch(tgt.target_uid,{animPhase:'idle'}),300);
               }else{
                 patch(tgt.target_uid,{currentHp:sHp,animPhase:'hurt'});
                 setTimeout(()=>patch(tgt.target_uid,{animPhase:'idle'}),440);
@@ -1007,6 +1024,11 @@ export function BattleScreen({units:initUnits,onVictory,onDefeat,sessionId}:{
             }else if(tgt.type==='heal'&&tgt.heal>0){
               addFloat(tgt.target_uid,tgt.heal,'heal');
               patch(tgt.target_uid,{currentHp:sHp});
+            }else if(tgt.type==='life_bloom'&&tgt.heal>0){
+              // Clover Life Bloom passive reactive heal
+              addFloat(tgt.target_uid,tgt.heal,'heal');
+              const cur=stateRef.current.find(u=>u.uid===tgt.target_uid);
+              if(cur)patch(tgt.target_uid,{currentHp:Math.min(cur.hp,(sHp??cur.currentHp))});
             }else if(tgt.type==='shield'&&tgt.shield&&tgt.shield>0){
               // Show shield grant as green float number for visual feedback
               addFloat(tgt.target_uid,tgt.shield,'heal');

@@ -9,21 +9,29 @@ import { HeroCard } from '../components/HeroCard';
 import { HeroCardAnimated } from '../components/HeroCardAnimated';
 import { useChromaKeyDataUrl } from '../utils/chromaKey';
 import { useHero } from '../context/HeroContext';
-import type { StageEnemyFull } from '../context/HeroContext';
 import { BattlePlayback } from '../components/battle/BattlePlayback';
 import { playBtnSound, playCardSound, playBackSound, playStartBattleSound } from '../utils/buttonSound';
 import { pauseMainBgm, resumeMainBgm } from '../components/BgmController';
 import { simulateBattle } from '/utils/supabase/battle-service';
 import type { SimBattleResult } from '/utils/supabase/battle-service';
+import { seedStageData } from '/utils/supabase/setup-db';
 import { useAuth } from '../context/AuthContext';
 import { getHeroIlust } from '../data/heroGallery';
 import { PixiEnemyInfoRow, EnemyCardData } from '../components/PixiEnemyInfoRow';
 import { PixiDeployGrid, DeployHeroData } from '../components/PixiDeployGrid';
+import { HERO_DEFS } from '../data/heroDefs';
+import { getSpriteSize } from '../data/spriteConfig';
+import { buildChapterStageMap } from '../data/stageData';
+import type { StageClientData } from '../data/stageData';
 
 
-const MAP_URL   = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777566900/ChatGPT_Image_Apr_30_2026_11_34_05_PM_ptwl1w.png';
-const GRASS_URL = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777571911/ChatGPT_Image_May_1_2026_12_57_58_AM_xgzne0.png';
-const BATTLE_BG_URL = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777582000/35957be7-1c54-4274-80bf-dbabbd1d8a99.png';
+const MAP_URL        = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777566900/ChatGPT_Image_Apr_30_2026_11_34_05_PM_ptwl1w.png';
+const GRASS_URL      = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777571911/ChatGPT_Image_May_1_2026_12_57_58_AM_xgzne0.png';
+const BATTLE_BG_URL  = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777582000/35957be7-1c54-4274-80bf-dbabbd1d8a99.png';
+const FOREST_URL     = 'https://images.unsplash.com/photo-1761800459257-51dc80488352?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080';
+const MOUNTAIN_URL   = 'https://images.unsplash.com/photo-1768065137304-530a5305ad1a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080';
+const DUNGEON_URL    = 'https://images.unsplash.com/photo-1728339097250-bf673536786f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080';
+const VOLCANO_URL    = 'https://images.unsplash.com/photo-1665120947762-e7ecbe11ada3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080';
 
 const FP = "'Playfair Display', serif";
 const F  = "'Roboto Condensed', sans-serif";
@@ -36,11 +44,11 @@ const PAD_L   = 24;
 const PAD_R   = 32;
 
 const CHAPTERS = [
-  { num: 'I',   label: 'Grasslands', img: GRASS_URL, available: true  },
-  { num: 'II',  label: 'Coming Soon', img: null,      available: false },
-  { num: 'III', label: 'Coming Soon', img: null,      available: false },
-  { num: 'IV',  label: 'Coming Soon', img: null,      available: false },
-  { num: 'V',   label: 'Coming Soon', img: null,      available: false },
+  { num: 'I',   label: 'Grasslands',     img: GRASS_URL,    bg: GRASS_URL,    tint: 'rgba(0,80,0,0.28)',       title: 'CHAPTER I',   subtitle: 'GRASSLANDS'     },
+  { num: 'II',  label: 'Dark Forest',    img: FOREST_URL,   bg: FOREST_URL,   tint: 'rgba(0,10,40,0.42)',      title: 'CHAPTER II',  subtitle: 'DARK FOREST'    },
+  { num: 'III', label: 'Stone Peaks',    img: MOUNTAIN_URL, bg: MOUNTAIN_URL, tint: 'rgba(10,20,50,0.38)',     title: 'CHAPTER III', subtitle: 'STONE PEAKS'    },
+  { num: 'IV',  label: 'Ancient Dungeon',img: DUNGEON_URL,  bg: DUNGEON_URL,  tint: 'rgba(40,0,60,0.45)',      title: 'CHAPTER IV',  subtitle: 'ANCIENT DUNGEON'},
+  { num: 'V',   label: 'Volcanic Realm', img: VOLCANO_URL,  bg: VOLCANO_URL,  tint: 'rgba(80,10,0,0.42)',      title: 'CHAPTER V',   subtitle: 'VOLCANIC REALM' },
 ];
 
 // ─── Connector ───────────────────────────────────────────────────────────────
@@ -58,8 +66,8 @@ function Connector() {
 }
 
 // ─── Chapter Card ─────────────────────────────────────────────────────────────
-function ChapterCard({ num, label, img, onSelect }: {
-  num: string; label: string; img: string | null; onSelect?: () => void;
+function ChapterCard({ num, label, img, available = true, onSelect }: {
+  num: string; label: string; img: string | null; available?: boolean; onSelect?: () => void;
 }) {
   const pressX = useRef(0);
 
@@ -68,6 +76,7 @@ function ChapterCard({ num, label, img, onSelect }: {
       onPointerDown={(e) => { pressX.current = e.clientX; }}
       onClick={(e) => {
         if (Math.abs(e.clientX - pressX.current) > 10) return;
+        if (!available) { playBtnSound(); return; }
         if (img) playCardSound(); else playBtnSound();
         onSelect?.();
       }}
@@ -76,7 +85,7 @@ function ChapterCard({ num, label, img, onSelect }: {
         flexShrink: 0,
         borderRadius: 10,
         overflow: 'hidden',
-        border: img ? '2px solid rgba(180,250,100,0.5)' : '2px solid rgba(255,255,255,0.07)',
+        border: !available ? '2px solid rgba(100,100,120,0.35)' : img ? '2px solid rgba(180,250,100,0.5)' : '2px solid rgba(255,255,255,0.07)',
         boxShadow: img
           ? '0 0 28px rgba(80,160,0,0.28), 0 6px 24px rgba(0,0,0,0.75)'
           : '0 4px 20px rgba(0,0,0,0.5)',
@@ -104,20 +113,39 @@ function ChapterCard({ num, label, img, onSelect }: {
         </div>
       )}
 
+      {/* Lock overlay — shown when chapter is not yet unlocked */}
+      {!available && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 5,
+          background: 'rgba(0,0,0,0.72)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
+        }}>
+          <svg width="36" height="36" viewBox="0 0 40 40" fill="none">
+            <circle cx="20" cy="20" r="18" fill="rgba(255,255,255,0.04)" stroke="rgba(150,120,220,0.35)" strokeWidth="1.5"/>
+            <rect x="11" y="22" width="18" height="13" rx="3" fill="rgba(120,100,200,0.25)" stroke="rgba(170,140,255,0.45)" strokeWidth="1.5"/>
+            <path d="M13 22v-6a7 7 0 0 1 14 0v6" stroke="rgba(170,140,255,0.55)" strokeWidth="2" strokeLinecap="round"/>
+            <circle cx="20" cy="29" r="2" fill="rgba(200,180,255,0.55)"/>
+          </svg>
+          <span style={{ fontFamily: FP, fontSize: 10, fontWeight: 800, color: 'rgba(200,180,255,0.65)', letterSpacing: '0.2em' }}>LOCKED</span>
+          <span style={{ fontFamily: F, fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.08em' }}>Clear previous chapter</span>
+        </div>
+      )}
+
       {/* Text label overlay */}
       <div style={{
         position: 'absolute',
         bottom: 0, left: 0, right: 0,
-        background: 'rgba(0,0,0,0.42)',
+        background: available ? 'rgba(0,0,0,0.42)' : 'rgba(0,0,0,0.6)',
         backdropFilter: 'blur(4px)',
         WebkitBackdropFilter: 'blur(4px)',
         padding: '8px 12px 10px',
         borderTop: '1px solid rgba(255,255,255,0.06)',
+        zIndex: 6,
       }}>
-        <div style={{ fontFamily: FP, fontSize: 14, fontWeight: 800, color: img ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.2)', letterSpacing: '0.2em', lineHeight: 1.15 }}>
+        <div style={{ fontFamily: FP, fontSize: 14, fontWeight: 800, color: available ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.3)', letterSpacing: '0.2em', lineHeight: 1.15 }}>
           CHAPTER {num}
         </div>
-        <div style={{ fontFamily: F, fontSize: 11, color: img ? 'rgba(180,250,100,0.88)' : 'rgba(255,255,255,0.16)', letterSpacing: '0.1em', marginTop: 3 }}>
+        <div style={{ fontFamily: F, fontSize: 11, color: available ? 'rgba(180,250,100,0.88)' : 'rgba(255,255,255,0.22)', letterSpacing: '0.1em', marginTop: 3 }}>
           {label}
         </div>
       </div>
@@ -126,7 +154,28 @@ function ChapterCard({ num, label, img, onSelect }: {
 }
 
 // ─── World Map View ───────────────────────────────────────────────────────────
+/** Read chapter progress from localStorage (DB value already merged on write) */
+function readChapterProgress(chapterNum: number, userId: string): number {
+  try { return parseInt(localStorage.getItem(`ch${chapterNum}_prog_${userId}`) ?? '0', 10) || 0; }
+  catch { return 0; }
+}
+
 function WorldMapView({ onChapterSelect }: { onChapterSelect: (n: number) => void }) {
+  const { user } = useAuth();
+  const userId   = user?.id ?? 'guest';
+
+  // Dynamic availability: chapter N unlocks when chapter N-1 reaches stage 40
+  const chProgress = [
+    Math.max(user?.chapter1_progress ?? 0, readChapterProgress(1, userId)),
+    readChapterProgress(2, userId),
+    readChapterProgress(3, userId),
+    readChapterProgress(4, userId),
+    readChapterProgress(5, userId),
+  ];
+  const chapterAvailable = chProgress.map((_, i) =>
+    i === 0 ? true : chProgress[i - 1] >= 40
+  );
+
   const [offsetX, setOffsetX] = useState(PAD_L);
   const dragRef   = useRef({ active: false, startX: 0, startOffset: 0, lastX: 0, lastTime: 0, velocity: 0, moved: false });
   const rafRef    = useRef<number | null>(null);
@@ -242,7 +291,8 @@ function WorldMapView({ onChapterSelect }: { onChapterSelect: (n: number) => voi
                 num={ch.num}
                 label={ch.label}
                 img={ch.img}
-                onSelect={ch.available ? () => { if (!blockRef.current) onChapterSelect(i + 1); } : undefined}
+                available={chapterAvailable[i]}
+                onSelect={chapterAvailable[i] ? () => { if (!blockRef.current) onChapterSelect(i + 1); } : undefined}
               />
               {i < CHAPTERS.length - 1 && <Connector />}
             </div>
@@ -258,14 +308,16 @@ function WorldMapView({ onChapterSelect }: { onChapterSelect: (n: number) => voi
 // ─── Stage Map — Horizontal Scroll ──────────────────────────────────────────
 // Each stage gets H_SPACING px; only 2–3 nodes are visible per screen.
 // Nodes alternate between upper and lower lanes for a winding road feel.
-const H_SPACING = 190;
-const H_R       = 10;    // small dots like original
-const H_PAD_L   = 60;
-const H_PAD_R   = 80;
-const H_YTOP    = 36;
-const H_YBOT    = 86;
-const SVG_HM_H  = H_YBOT + H_R + 26;    // ~122px
-const SVG_HM_W  = H_PAD_L + 19 * H_SPACING + H_PAD_R;
+const TOTAL_STAGES = 40;
+const H_SPACING    = 190;
+const H_R          = 10;
+const H_R_BOSS     = 15;   // boss nodes are bigger
+const H_PAD_L      = 60;
+const H_PAD_R      = 80;
+const H_YTOP       = 36;
+const H_YBOT       = 90;
+const SVG_HM_H     = H_YBOT + H_R_BOSS + 28;
+const SVG_HM_W     = H_PAD_L + (TOTAL_STAGES - 1) * H_SPACING + H_PAD_R;
 
 function hNodePos(n: number): { cx: number; cy: number } {
   return {
@@ -276,7 +328,7 @@ function hNodePos(n: number): { cx: number; cy: number } {
 
 function buildHPath(): string {
   const segs: string[] = [];
-  for (let i = 1; i < 20; i++) {
+  for (let i = 1; i < TOTAL_STAGES; i++) {
     const { cx: x1, cy: y1 } = hNodePos(i);
     const { cx: x2, cy: y2 } = hNodePos(i + 1);
     const mx = (x1 + x2) / 2;
@@ -287,10 +339,11 @@ function buildHPath(): string {
 const H_PATH_D = buildHPath();
 
 function StageMapScrollable({
-  selectedStageNum, chapter1Progress, onSelectStage, scrollOffset, wasDragRef, bottomOffset,
+  selectedStageNum, chapterProgress, chapterNum, onSelectStage, scrollOffset, wasDragRef, bottomOffset,
 }: {
   selectedStageNum: number | null;
-  chapter1Progress: number;
+  chapterProgress: number;
+  chapterNum: number;
   onSelectStage: (n: number) => void;
   scrollOffset: number;
   wasDragRef: React.MutableRefObject<boolean>;
@@ -317,70 +370,109 @@ function StageMapScrollable({
         {/* Background faint path */}
         <path d={H_PATH_D} fill="none"
           stroke="rgba(255,255,255,0.06)" strokeWidth="14" strokeLinecap="round"/>
-        {/* Thin dashed white line — original style */}
+        {/* Thin dashed white line */}
         <path d={H_PATH_D} fill="none"
           stroke="rgba(255,255,255,0.80)" strokeWidth="2.5"
           strokeDasharray="7 9" strokeLinecap="round"/>
 
-        {Array.from({ length: 20 }, (_, i) => i + 1).map(n => {
-          const { cx, cy } = hNodePos(n);
-          const cleared    = n <= chapter1Progress;
-          const isCurrent  = n === chapter1Progress + 1;
-          const isLocked   = n > chapter1Progress + 1;
-          const isSelected = selectedStageNum === n;
-          const stageId    = `1-${n}`;
-          const hasGems    = n % 5 === 0;
+        {Array.from({ length: TOTAL_STAGES }, (_, i) => i + 1).map(n => {
+          const { cx, cy }  = hNodePos(n);
+          const isBoss      = n === 20 || n === 40;
+          const cleared     = n <= chapterProgress;
+          const isCurrent   = n === chapterProgress + 1;
+          const isLocked    = n > chapterProgress + 1;
+          const isSelected  = selectedStageNum === n;
+          const stageId     = `${chapterNum}-${n}`;
+          const nodeR       = isBoss ? H_R_BOSS : H_R;
+          const hasGems     = !isBoss && n % 5 === 0;
 
-          const nodeFill   = cleared    ? 'rgba(255,255,255,0.22)'
-                           : isCurrent  ? '#FFD700'
+          const nodeFill   = cleared   ? 'rgba(255,255,255,0.22)'
+                           : isCurrent ? (isBoss ? '#ff4500' : '#FFD700')
+                           : isBoss    ? 'rgba(255,60,0,0.18)'
                            : 'rgba(255,255,255,0.06)';
-          const nodeStroke = cleared    ? 'rgba(255,255,255,0.38)'
-                           : isCurrent  ? '#FFA500'
+          const nodeStroke = cleared   ? (isBoss ? '#ff6633' : 'rgba(255,255,255,0.38)')
+                           : isCurrent ? (isBoss ? '#ff2200' : '#FFA500')
+                           : isBoss    ? 'rgba(255,100,0,0.55)'
                            : 'rgba(255,255,255,0.22)';
-          const textColor  = cleared    ? 'rgba(255,255,255,0.32)'
-                           : isCurrent  ? '#fff'
+          const textColor  = cleared   ? 'rgba(255,255,255,0.32)'
+                           : isCurrent ? (isBoss ? '#ff8866' : '#fff')
+                           : isBoss    ? 'rgba(255,120,60,0.70)'
                            : 'rgba(255,255,255,0.22)';
-          const labelY     = cy - H_R - 5;
+          const labelY     = cy - nodeR - 5;
 
           return (
             <g key={n}
               style={{ cursor: isLocked ? 'default' : 'pointer', pointerEvents: 'auto' }}
               onClick={() => { if (!wasDragRef.current && !isLocked) { playBtnSound(); onSelectStage(n); } }}
             >
-              {/* Invisible larger hit area for easier tapping */}
-              <circle cx={cx} cy={cy} r={20} fill="transparent"/>
+              {/* Hit area */}
+              <circle cx={cx} cy={cy} r={22} fill="transparent"/>
 
-              {/* Glow for selected / current */}
+              {/* Boss outer pulse ring */}
+              {isBoss && !isLocked && (
+                <circle cx={cx} cy={cy} r={nodeR + 7}
+                  fill="none"
+                  stroke={cleared ? 'rgba(255,80,0,0.22)' : isCurrent ? 'rgba(255,60,0,0.60)' : 'rgba(255,80,0,0.30)'}
+                  strokeWidth="2" strokeDasharray="4 3"
+                />
+              )}
+
+              {/* Selected / current glow */}
               {(isSelected || isCurrent) && (
-                <circle cx={cx} cy={cy} r={18}
-                  fill={isSelected ? 'rgba(255,215,0,0.18)' : 'rgba(255,215,0,0.10)'}
-                  stroke={isSelected ? 'rgba(255,215,0,0.65)' : 'none'}
+                <circle cx={cx} cy={cy} r={nodeR + 9}
+                  fill={isSelected
+                    ? (isBoss ? 'rgba(255,60,0,0.22)' : 'rgba(255,215,0,0.18)')
+                    : (isBoss ? 'rgba(255,60,0,0.14)' : 'rgba(255,215,0,0.10)')}
+                  stroke={isSelected
+                    ? (isBoss ? 'rgba(255,80,0,0.70)' : 'rgba(255,215,0,0.65)')
+                    : 'none'}
                   strokeWidth="1.5"
                 />
               )}
 
-              {/* Main node — small dot */}
-              <circle cx={cx} cy={cy} r={H_R}
-                fill={nodeFill} stroke={nodeStroke} strokeWidth="1.5"/>
+              {/* Main node */}
+              <circle cx={cx} cy={cy} r={nodeR}
+                fill={nodeFill} stroke={nodeStroke} strokeWidth={isBoss ? 2 : 1.5}/>
 
-              {/* Gem stage indicator */}
+              {/* Boss skull icon */}
+              {isBoss && !isLocked && (
+                <>
+                  <text x={cx} y={cy + 4}
+                    textAnchor="middle"
+                    fontSize={cleared ? 10 : 12}
+                    fill={cleared ? 'rgba(255,150,80,0.55)' : isCurrent ? '#ff8844' : 'rgba(255,120,60,0.70)'}
+                    fontFamily="sans-serif"
+                  >💀</text>
+                </>
+              )}
+              {isBoss && isLocked && (
+                <>
+                  <rect x={cx-3} y={cy-1.5} width="6" height="4.5" rx="1"
+                    fill="rgba(255,80,0,0.18)" stroke="rgba(255,100,40,0.30)" strokeWidth="0.8"/>
+                  <path d={`M${cx-2} ${cy-1.5}v-2a2 2 0 0 1 4 0v2`}
+                    stroke="rgba(255,100,40,0.35)" strokeWidth="1.2"
+                    strokeLinecap="round" fill="none"/>
+                </>
+              )}
+
+              {/* Gem indicator (every 5th non-boss stage) */}
               {hasGems && !isLocked && (
                 <polygon
-                  points={`${cx},${cy-16} ${cx+5},${cy-11} ${cx},${cy-6} ${cx-5},${cy-11}`}
+                  points={`${cx},${cy-18} ${cx+5},${cy-13} ${cx},${cy-8} ${cx-5},${cy-13}`}
                   fill={cleared ? 'rgba(103,232,249,0.35)' : '#67e8f9'}
                   opacity={cleared ? 0.5 : 0.9}
                 />
               )}
 
-              {/* Checkmark for cleared */}
-              {cleared && (
+              {/* Checkmark for cleared non-boss */}
+              {cleared && !isBoss && (
                 <path d={`M${cx-4},${cy} L${cx-1},${cy+3} L${cx+4},${cy-3}`}
                   stroke="rgba(255,255,255,0.55)" strokeWidth="2"
                   strokeLinecap="round" strokeLinejoin="round" fill="none"/>
               )}
 
-              {/* Lock icon for locked */}
-              {isLocked && (
+              {/* Lock icon for locked non-boss */}
+              {isLocked && !isBoss && (
                 <>
                   <rect x={cx-3} y={cy-1.5} width="6" height="4.5" rx="1"
                     fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.25)" strokeWidth="0.8"/>
@@ -390,14 +482,14 @@ function StageMapScrollable({
                 </>
               )}
 
-              {/* Stage ID label */}
+              {/* Stage label */}
               <text x={cx} y={labelY}
                 textAnchor="middle"
                 fill={textColor}
                 fontFamily="'Roboto Condensed',sans-serif"
-                fontSize="11" fontWeight="700" letterSpacing="0.5"
+                fontSize={isBoss ? 9 : 11} fontWeight="700" letterSpacing="0.5"
               >
-                {stageId}
+                {isBoss ? `⚔${stageId}` : stageId}
               </text>
             </g>
           );
@@ -415,98 +507,7 @@ const BTN_H  = 68;
 // Right-flush panel & button
 const PANEL_R = '0px';
 
-// ─── Fire canvas removed — replaced with plain styled button ─────────────────
-function _unused() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const canvas = canvasRef.current; if (!canvas) return;
-    const ctx = canvas.getContext('2d'); if (!ctx) return;
-    type P = { x: number; y: number; vx: number; vy: number; life: number; max: number; sz: number; wob: number };
-    const pool: P[] = [];
 
-    // Spawn zone: along bottom + left/right edges of button in canvas coords
-    const bLeft  = FIRE_X;
-    const bRight = FIRE_X + BTN_W;
-    const bTop   = FIRE_T;
-    const bBot   = CH;
-
-    const spawn = (): P => {
-      const r = Math.random();
-      let x, y;
-      if (r < 0.55) {
-        // bottom edge — most particles
-        x = bLeft + Math.random() * BTN_W;
-        y = bBot - Math.random() * 3;
-      } else if (r < 0.77) {
-        // left edge
-        x = bLeft - Math.random() * 6;
-        y = bTop + Math.random() * BTN_H;
-      } else {
-        // right edge
-        x = bRight + Math.random() * 6;
-        y = bTop + Math.random() * BTN_H;
-      }
-      const max = 32 + Math.random() * 38;
-      return { x, y, vx: (Math.random() - 0.5) * 0.9, vy: -(1.1 + Math.random() * 2.2), life: max, max, sz: 6 + Math.random() * 11, wob: Math.random() * Math.PI * 2 };
-    };
-
-    let raf: number;
-    let fc = 0;
-
-    const draw = () => {
-      ctx.clearRect(0, 0, CW, CH);
-
-      fc++;
-      // Cap at 28 particles (was 55) — halves GPU overdraw on mobile
-      if (pool.length < 28) {
-        pool.push(spawn());
-        if (Math.random() > 0.55) pool.push(spawn());
-      }
-
-      ctx.globalCompositeOperation = 'lighter';
-
-      for (let i = pool.length - 1; i >= 0; i--) {
-        const p = pool[i];
-        p.wob += 0.07;
-        p.x  += p.vx + Math.sin(p.wob) * 0.35;
-        p.y  += p.vy;
-        p.vy *= 0.985;
-        p.life--;
-
-        if (p.life <= 0) { pool.splice(i, 1); continue; }
-
-        const t     = p.life / p.max;
-        const alpha = Math.sin(t * Math.PI) * 0.68;
-        const sz    = p.sz * (0.5 + t * 0.8);
-
-        // Solid circle with additive blend — cheaper than radialGradient per frame
-        const g = Math.max(0, Math.floor(t * 210));
-        const b = t > 0.72 ? Math.floor((t - 0.72) / 0.28 * 90) : 0;
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle   = `rgb(255,${g},${b})`;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, sz, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      ctx.globalAlpha = 1;
-      ctx.globalCompositeOperation = 'source-over';
-      raf = requestAnimationFrame(draw);
-    };
-
-    draw();
-    return () => cancelAnimationFrame(raf);
-  }, []);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      width={CW}
-      height={CH}
-      style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', zIndex: 2 }}
-    />
-  );
-}
 
 function BattleButton({ onToggle, open }: { onToggle: () => void; open: boolean }) {
   return (
@@ -545,44 +546,42 @@ function BattleButton({ onToggle, open }: { onToggle: () => void; open: boolean 
   );
 }
 
-// ─── Enemy display data ───────────────────────────────────────────────────────
+// ─── Enemy display data — all 10 C-Rarity heroes ─────────────────────────────
 const ENEMY_DEFS: Record<string, { name: string; rarity: string; heroType: string; ilust: string; rarityColor: string }> = {
-  rock_slime:  { name: 'Rock Slime',  rarity: 'common', heroType: 'Tank',    rarityColor: '#22C55E',
+  rock_slime:  { name: 'Rock Slime',  rarity: 'common', heroType: 'Tank',     rarityColor: '#22C55E',
     ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777545681/ChatGPT_Image_Apr_30_2026_05_38_28_PM_wzt4ox.png' },
-  acid_slime:  { name: 'Acid Slime',  rarity: 'common', heroType: 'Ranged',  rarityColor: '#22C55E',
+  acid_slime:  { name: 'Acid Slime',  rarity: 'common', heroType: 'Ranged',   rarityColor: '#22C55E',
     ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777545738/ChatGPT_Image_Apr_30_2026_05_39_48_PM_oq2njh.png' },
-  water_slime: { name: 'Water Slime', rarity: 'common', heroType: 'Support', rarityColor: '#22C55E',
+  water_slime: { name: 'Water Slime', rarity: 'common', heroType: 'Support',  rarityColor: '#22C55E',
     ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777545810/ChatGPT_Image_Apr_30_2026_05_40_35_PM_w370l3.png' },
+  gorr:        { name: 'Gorr',        rarity: 'common', heroType: 'Fighter',  rarityColor: '#22C55E',
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058398/ChatGPT_Image_May_6_2026_03_41_03_PM_hxymbk.png' },
+  craw:        { name: 'Craw',        rarity: 'common', heroType: 'Ranged',   rarityColor: '#22C55E',
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058474/ChatGPT_Image_May_6_2026_03_43_04_PM_u0dyy5.png' },
+  myko:        { name: 'Myko',        rarity: 'common', heroType: 'Tank',     rarityColor: '#22C55E',
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058438/ChatGPT_Image_May_6_2026_03_42_51_PM_o43yt7.png' },
+  fang:        { name: 'Fang',        rarity: 'common', heroType: 'Assassin', rarityColor: '#22C55E',
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058505/ChatGPT_Image_May_6_2026_03_43_11_PM_xagzjf.png' },
+  clover:      { name: 'Clover',      rarity: 'common', heroType: 'Support',  rarityColor: '#22C55E',
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058786/ChatGPT_Image_May_6_2026_03_55_39_PM_dssunr.png' },
+  bolo:        { name: 'Bolo',        rarity: 'common', heroType: 'Fighter',  rarityColor: '#22C55E',
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778231010/ChatGPT_Image_May_8_2026_03_58_18_PM_bchzp9.png' },
+  quill:       { name: 'Quill',       rarity: 'common', heroType: 'Assassin', rarityColor: '#22C55E',
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778238897/ChatGPT_Image_May_8_2026_06_13_09_PM_vnblpy.png' },
 };
 
-// ─── Chapter 1 stage client-side data (display only — server has authoritative data) ─
-interface StageClientData {
-  name: string; recPower: number;
-  enemyIds: string[];  // hero_ids to display cards for
-  rewards: { exp: number; heroExp: number; gold: number; gems: number };
+// ─── Stage data — all chapters, generated from stageData.ts ──────────────────
+// Lazy-built on first access per chapter
+const _stageDataCache: Record<number, Record<string, StageClientData>> = {};
+function getChapterStageData(chapter: number): Record<string, StageClientData> {
+  if (!_stageDataCache[chapter]) _stageDataCache[chapter] = buildChapterStageMap(chapter);
+  return _stageDataCache[chapter];
 }
-const C1_STAGE_DATA: Record<string, StageClientData> = {
-  '1-1':  { name:'Slime Meadow',   recPower:300,  enemyIds:['rock_slime','acid_slime'], rewards:{exp:100,heroExp:50,gold:150,gems:0} },
-  '1-2':  { name:'Rocky Path',     recPower:500,  enemyIds:['rock_slime','rock_slime','acid_slime'], rewards:{exp:100,heroExp:60,gold:200,gems:0} },
-  '1-3':  { name:'Muddy Fields',   recPower:700,  enemyIds:['rock_slime','rock_slime','acid_slime','acid_slime'], rewards:{exp:100,heroExp:70,gold:250,gems:0} },
-  '1-4':  { name:'Slime Pit',      recPower:900,  enemyIds:['rock_slime','rock_slime','acid_slime','water_slime'], rewards:{exp:100,heroExp:80,gold:300,gems:0} },
-  '1-5':  { name:'Verdant Hollow', recPower:1100, enemyIds:['rock_slime','rock_slime','acid_slime','acid_slime','water_slime'], rewards:{exp:100,heroExp:100,gold:400,gems:5} },
-  '1-6':  { name:'Swamp Border',   recPower:1400, enemyIds:['rock_slime','rock_slime','rock_slime','acid_slime','water_slime'], rewards:{exp:100,heroExp:110,gold:450,gems:0} },
-  '1-7':  { name:'Acid Lakes',     recPower:1600, enemyIds:['rock_slime','rock_slime','acid_slime','acid_slime','water_slime'], rewards:{exp:100,heroExp:120,gold:500,gems:0} },
-  '1-8':  { name:'Stone Grove',    recPower:1900, enemyIds:['rock_slime','rock_slime','rock_slime','acid_slime','acid_slime'], rewards:{exp:100,heroExp:130,gold:550,gems:0} },
-  '1-9':  { name:'Sour Springs',   recPower:2200, enemyIds:['rock_slime','rock_slime','acid_slime','acid_slime','water_slime'], rewards:{exp:100,heroExp:140,gold:600,gems:0} },
-  '1-10': { name:'Ooze Ravine',    recPower:2500, enemyIds:['rock_slime','rock_slime','rock_slime','acid_slime','water_slime'], rewards:{exp:100,heroExp:160,gold:700,gems:8} },
-  '1-11': { name:'Toxic Dell',     recPower:2800, enemyIds:['rock_slime','rock_slime','rock_slime','acid_slime','acid_slime'], rewards:{exp:100,heroExp:170,gold:750,gems:0} },
-  '1-12': { name:'Blighted Glade', recPower:3100, enemyIds:['rock_slime','rock_slime','acid_slime','acid_slime','water_slime'], rewards:{exp:100,heroExp:180,gold:800,gems:0} },
-  '1-13': { name:'Crystal Fen',    recPower:3400, enemyIds:['rock_slime','rock_slime','rock_slime','acid_slime','water_slime'], rewards:{exp:100,heroExp:190,gold:850,gems:0} },
-  '1-14': { name:'Mossy Canyon',   recPower:3800, enemyIds:['rock_slime','rock_slime','rock_slime','acid_slime','acid_slime'], rewards:{exp:100,heroExp:200,gold:900,gems:0} },
-  '1-15': { name:'Emerald Bog',    recPower:4200, enemyIds:['rock_slime','rock_slime','acid_slime','acid_slime','water_slime'], rewards:{exp:100,heroExp:220,gold:1000,gems:12} },
-  '1-16': { name:'Slime Fortress', recPower:4600, enemyIds:['rock_slime','rock_slime','rock_slime','acid_slime','water_slime'], rewards:{exp:100,heroExp:240,gold:1100,gems:0} },
-  '1-17': { name:'Venom Crossing', recPower:5100, enemyIds:['rock_slime','rock_slime','rock_slime','acid_slime','acid_slime'], rewards:{exp:100,heroExp:260,gold:1200,gems:0} },
-  '1-18': { name:'Mire Depths',    recPower:5600, enemyIds:['rock_slime','rock_slime','acid_slime','acid_slime','water_slime'], rewards:{exp:100,heroExp:280,gold:1300,gems:0} },
-  '1-19': { name:'Ancient Marsh',  recPower:6200, enemyIds:['rock_slime','rock_slime','rock_slime','acid_slime','acid_slime'], rewards:{exp:100,heroExp:300,gold:1400,gems:0} },
-  '1-20': { name:'Slime King Lair',recPower:7000, enemyIds:['rock_slime','rock_slime','rock_slime','acid_slime','water_slime'], rewards:{exp:100,heroExp:350,gold:1600,gems:20} },
-};
+function getStageData(stageId: string): StageClientData | undefined {
+  const parts   = stageId.split('-');
+  const chapter = parseInt(parts[0] ?? '1', 10);
+  return getChapterStageData(chapter)[stageId];
+}
 
 // Enemy card wrapper — same card as gallery, half gallery size (93×149)
 function EnemyCard({ name, rarity, heroType, level, ilust, rarityColor }: {
@@ -614,37 +613,49 @@ function RewardItem({ label, icon, value, accent }: { label: string; icon: React
   );
 }
 
-function StageInfoPanel({ stageId, chapter1Progress, onChallenge }: {
-  stageId: string; chapter1Progress: number; onChallenge: () => void;
+function StageInfoPanel({ stageId, chapterProgress, onChallenge }: {
+  stageId: string; chapterProgress: number; onChallenge: () => void;
 }) {
-  const data    = C1_STAGE_DATA[stageId];
+  const data    = getStageData(stageId);
   const stageN  = parseInt(stageId.split('-')[1] ?? '1', 10);
-  const cleared = stageN <= chapter1Progress;
-  const locked  = stageN > chapter1Progress + 1;
+  const cleared = stageN <= chapterProgress;
+  const locked  = stageN > chapterProgress + 1;
   if (!data) return null;
 
-  // Deduplicate enemy IDs for card display (unique per type)
-  const uniqueEnemyIds = [...new Set(data.enemyIds)];
-  // Enemy level from stage number (rough estimate for display)
-  const displayLevel   = Math.max(1, Math.floor((stageN - 1) * 0.6));
+  // Compact unique enemy IDs from slot array (filter nulls, deduplicate)
+  const uniqueEnemyIds = [...new Set(data.enemySlots.filter((id): id is string => !!id))];
+  // Enemy display level: scales with chapter + stage position
+  const chapterN     = parseInt(stageId.split('-')[0] ?? '1', 10);
+  const baseLevel    = (chapterN - 1) * 40;
+  const displayLevel = Math.max(1, baseLevel + Math.floor((stageN - 1) * 0.85) + (data.isBoss ? 8 : 0));
 
   return (
     <div style={{
       width: '100%', height: '100%',
-      background: 'rgba(6,3,15,0.97)',
-      border: `1.5px solid ${cleared ? 'rgba(74,222,128,0.45)' : locked ? 'rgba(100,100,120,0.45)' : 'rgba(249,115,22,0.65)'}`,
+      background: data.isBoss ? 'rgba(15,3,3,0.98)' : 'rgba(6,3,15,0.97)',
+      border: `1.5px solid ${
+        cleared ? (data.isBoss ? 'rgba(255,120,0,0.55)' : 'rgba(74,222,128,0.45)')
+        : locked ? 'rgba(100,100,120,0.45)'
+        : data.isBoss ? 'rgba(255,60,0,0.75)'
+        : 'rgba(249,115,22,0.65)'}`,
       borderRadius: 10, display: 'flex', flexDirection: 'column',
       overflow: 'hidden',
-      boxShadow: '0 0 28px rgba(249,115,22,0.2), 0 8px 36px rgba(0,0,0,0.9)',
+      boxShadow: data.isBoss
+        ? '0 0 36px rgba(255,60,0,0.35), 0 8px 36px rgba(0,0,0,0.9)'
+        : '0 0 28px rgba(249,115,22,0.2), 0 8px 36px rgba(0,0,0,0.9)',
     }}>
+      {/* Boss header glow strip */}
+      {data.isBoss && (
+        <div style={{ height: 3, background: 'linear-gradient(90deg,transparent,#ff3300,#ff8800,#ff3300,transparent)', flexShrink: 0 }}/>
+      )}
       {/* Stage header */}
-      <div style={{ padding: '8px 10px 6px', borderBottom: '1px solid rgba(255,255,255,0.07)', flexShrink: 0 }}>
+      <div style={{ padding: '8px 10px 6px', borderBottom: `1px solid ${data.isBoss ? 'rgba(255,80,0,0.18)' : 'rgba(255,255,255,0.07)'}`, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <span style={{ fontFamily: FP, fontSize: 11, fontWeight: 800, color: cleared ? '#4ade80' : locked ? 'rgba(255,255,255,0.28)' : '#ffd54f', letterSpacing: '0.14em' }}>
-              STAGE {stageId}
+            <span style={{ fontFamily: FP, fontSize: 11, fontWeight: 800, color: cleared ? (data.isBoss ? '#ff8844' : '#4ade80') : locked ? 'rgba(255,255,255,0.28)' : (data.isBoss ? '#ff6633' : '#ffd54f'), letterSpacing: '0.14em' }}>
+              {data.isBoss ? '⚔ BOSS ' : ''}STAGE {stageId}
             </span>
-            {cleared && <span style={{ fontFamily: F, fontSize: 9, color: '#4ade80', marginLeft: 6, letterSpacing: '0.08em' }}>✓ CLEARED</span>}
+            {cleared && <span style={{ fontFamily: F, fontSize: 9, color: data.isBoss ? '#ff9944' : '#4ade80', marginLeft: 6, letterSpacing: '0.08em' }}>✓ CLEARED</span>}
             {locked  && <span style={{ fontFamily: F, fontSize: 9, color: 'rgba(255,255,255,0.35)', marginLeft: 6, letterSpacing: '0.08em' }}>🔒 LOCKED</span>}
           </div>
           <span style={{ fontFamily: F, fontSize: 9, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.06em' }}>
@@ -672,7 +683,7 @@ function StageInfoPanel({ stageId, chapter1Progress, onChallenge }: {
                 heroType:  def.heroType,
                 level:     displayLevel || 1,
                 illustUrl: def.ilust,
-                count:     data.enemyIds.filter(x => x === eid).length,
+                count:     data.enemySlots.filter(x => x === eid).length,
               });
               return acc;
             }, [])}
@@ -730,11 +741,12 @@ function StageInfoPanel({ stageId, chapter1Progress, onChallenge }: {
         ) : cleared ? (
           <div style={{
             width: '100%', height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'rgba(74,222,128,0.08)', border: '1.5px solid rgba(74,222,128,0.3)',
+            background: data.isBoss ? 'rgba(255,120,0,0.10)' : 'rgba(74,222,128,0.08)',
+            border: `1.5px solid ${data.isBoss ? 'rgba(255,120,0,0.40)' : 'rgba(74,222,128,0.3)'}`,
             borderRadius: 8,
           }}>
-            <span style={{ fontFamily: FP, fontSize: 12, fontWeight: 700, color: '#4ade80', letterSpacing: '0.14em' }}>
-              ✓ STAGE CLEARED
+            <span style={{ fontFamily: FP, fontSize: 12, fontWeight: 700, color: data.isBoss ? '#ff9944' : '#4ade80', letterSpacing: '0.14em' }}>
+              {data.isBoss ? '⚔ BOSS CLEARED' : '✓ STAGE CLEARED'}
             </span>
           </div>
         ) : (
@@ -742,14 +754,20 @@ function StageInfoPanel({ stageId, chapter1Progress, onChallenge }: {
             onClick={() => { playBtnSound(); onChallenge(); }}
             style={{
               width: '100%', height: 40, flexShrink: 0,
-              background: 'linear-gradient(180deg,#b84200 0%,#6e1a00 100%)',
-              border: '1.5px solid #ffd54f', borderRadius: 8, cursor: 'pointer',
+              background: data.isBoss
+                ? 'linear-gradient(180deg,#cc0000 0%,#7a0000 100%)'
+                : 'linear-gradient(180deg,#b84200 0%,#6e1a00 100%)',
+              border: `1.5px solid ${data.isBoss ? '#ff6633' : '#ffd54f'}`,
+              borderRadius: 8, cursor: 'pointer',
               position: 'relative', overflow: 'hidden',
               display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+              boxShadow: data.isBoss ? '0 0 18px rgba(255,0,0,0.45)' : 'none',
             }}
           >
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg,transparent,rgba(255,213,79,0.65),transparent)', pointerEvents: 'none' }}/>
-            <span style={{ fontFamily: FP, fontSize: 13, fontWeight: 800, color: '#ffd54f', letterSpacing: '0.14em' }}>CHALLENGE</span>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg,transparent,rgba(255,150,50,0.65),transparent)', pointerEvents: 'none' }}/>
+            <span style={{ fontFamily: FP, fontSize: 13, fontWeight: 800, color: data.isBoss ? '#ffaa66' : '#ffd54f', letterSpacing: '0.14em' }}>
+              {data.isBoss ? '⚔ BOSS CHALLENGE' : 'CHALLENGE'}
+            </span>
           </button>
         )}
       </div>
@@ -765,67 +783,38 @@ const RARITY_COLOR: Record<string, string> = {
   mythic: '#E00000', legendary: '#FB923C', epic: '#A855F7', rare: '#1877F2', common: '#22C55E',
 };
 
-// ─── Team sprite config ─────────────────────────────────────────────────────
-// Keys MUST match hero_defs.name (display names stored in heroSlots)
-const TEAM_SPRITE_CONFIG: Record<string, { src: string; chromaKey: boolean; flipX: boolean }> = {
-  'Lucas': {
-    src: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777630336/idle_luk_mobysy.png',
-    chromaKey: true, flipX: false,
-  },
-  'Emma': {
-    src: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777630434/idle_em_p8uxjs.png',
-    chromaKey: true, flipX: false,
-  },
-  // Slimes — green screen, chroma key client-side; images face RIGHT (no flip for team side)
-  'Rock Slime': {
-    src: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777634810/Gemini_Generated_Image_c7qsl1c7qsl1c7qs_mekkjz.png',
-    chromaKey: true, flipX: false,
-  },
-  'Acid Slime': {
-    // White background → Cloudinary e_background_removal (no client chroma key)
-    src: 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777634782/ChatGPT_Image_May_1_2026_06_25_59_PM_dsoxsd.png',
-    chromaKey: false, flipX: false,
-  },
-  'Water Slime': {
-    src: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777907811/7d3947a5-76a6-4422-9dc6-1eb5fd4d29bd.png',
-    chromaKey: true, flipX: false,
-  },
-  // Gorr — green screen, faces right (team side), flip for enemy side
-  'Gorr': {
-    src: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919607/ChatGPT_Image_May_5_2026_01_23_54_AM_nhkzmq.png',
-    chromaKey: true, flipX: false,
-  },
-  // Craw — green screen, faces right (team side), flip for enemy side
-  'Craw': {
-    src: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919783/ChatGPT_Image_May_5_2026_01_26_59_AM_zfdewm.png',
-    chromaKey: true, flipX: false,
-  },
-  // Myko — green screen, mushroom tank, faces right (team side)
-  'Myko': {
-    src: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778005026/ChatGPT_Image_May_6_2026_01_01_00_AM_bhjzhr.png',
-    chromaKey: true, flipX: false,
-  },
-  // Fang — killer rabbit assassin, green screen
-  'Fang': {
-    src: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058539/ChatGPT_Image_May_6_2026_03_43_22_PM_ejhf1t.png',
-    chromaKey: true, flipX: false,
-  },
-  // Clover — bunny support mage, green screen
-  'Clover': {
-    src: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058829/ChatGPT_Image_May_6_2026_03_57_38_PM_jwipj1.png',
-    chromaKey: true, flipX: false,
-  },
-};
+// ─── Team sprite config — AUTO-DERIVED from heroDefs.ts ─────────────────────
+// ⚠️  DO NOT hardcode hero names here. Add heroes to heroDefs.ts ONLY.
+//     Key = hero display name (matches name stored in heroSlots state).
+//     chromaKey = true  → green-screen sprite, processed client-side
+//     chromaKey = false → Cloudinary bg-removal URL, use as-is
+const TEAM_SPRITE_CONFIG: Record<string, { src: string; chromaKey: boolean; flipX: boolean }> =
+  Object.fromEntries(
+    HERO_DEFS
+      .filter(d => d.battleReady && d.sprites.idleUrl)
+      .map(d => {
+        const needsChroma = d.sprites.isHumanHero
+          ? true                          // all human heroes use green screen
+          : !d.sprites.enemyNeedsBgRemoval; // slimes: true unless bg-removal
+        // For Acid Slime (enemyNeedsBgRemoval=true) idleUrl already has e_background_removal in it
+        return [
+          d.name,
+          { src: d.sprites.idleUrl!, chromaKey: needsChroma, flipX: false },
+        ];
+      })
+  );
 
-// (BATTLE_SPRITES merged into TEAM_SPRITE_CONFIG above)
-
-// ── Human-type heroes: use battle-idle-breathe + tall sprite (180×338) ────────
-// Any hero NOT listed here is treated as a slime → compact 150×150 + slime-bounce.
-// ADD new human heroes here whenever they are introduced.
-const HUMAN_HERO_NAMES = new Set(['Lucas', 'Emma', 'Gorr', 'Craw', 'Myko', 'Fang', 'Clover']);
-// Myko uses reduced sprite size (height −50%, width −25%)
-const MYKO_W = 135; // 180 × 0.75
-const MYKO_H = 169; // 338 × 0.50
+// ── Human-type heroes — AUTO-DERIVED (tall sprite + battle-idle-breathe anim) ──
+// Slimes/non-human use compact 150×150 + slime-bounce animation.
+const HUMAN_HERO_NAMES = new Set<string>(
+  HERO_DEFS
+    .filter(d => d.battleReady && d.sprites.isHumanHero)
+    .map(d => d.name)
+);
+// Name → heroId map: "Rock Slime" → "rock_slime", "Bolo" → "bolo", etc.
+const NAME_TO_HERO_ID: Record<string, string> = Object.fromEntries(
+  HERO_DEFS.map(d => [d.name, d.heroId])
+);
 
 // ── Inject battle-idle CSS once into document.head ────────────────────────────
 // ROOT FIX: two separate @keyframes both targeting `transform` = last one
@@ -878,11 +867,11 @@ function BattleSlotSprite({ heroName }: { heroName: string }) {
   // Always call hook — pass '' for non-chroma so hook returns null immediately
   const chromaUrl = useChromaKeyDataUrl(cfg?.chromaKey ? (cfg?.src ?? '') : '');
   const finalSrc  = cfg?.chromaKey ? chromaUrl : (cfg?.src ?? null);
-  // Slimes use compact 150×150 + slime-bounce; humans use tall 180×338 + battle-idle-breathe
-  const isSlime   = Boolean(cfg) && !HUMAN_HERO_NAMES.has(heroName);
-  const isMyko    = heroName === 'Myko' || heroName === 'Fang' || heroName === 'Clover';
-  const w = isSlime ? 150 : isMyko ? MYKO_W : 180;
-  const h = isSlime ? 150 : isMyko ? MYKO_H : 338;
+  // Slimes bounce; everything else (human OR compact animal like Quill/Myko) breathes.
+  // Size comes from spriteConfig so each hero uses its individually-tuned container.
+  const isSlime = Boolean(cfg) && !HUMAN_HERO_NAMES.has(heroName);
+  const heroId  = NAME_TO_HERO_ID[heroName] ?? heroName.toLowerCase().replace(/\s+/g, '_');
+  const { w, h } = getSpriteSize(`sprite_${heroId}_idle`);
 
   return (
     <div style={{
@@ -910,36 +899,51 @@ function BattleSlotSprite({ heroName }: { heroName: string }) {
   );
 }
 
-// ─── Enemy sprite map ─────────────────���───────────────────────────────────────
-// Rock/Water = green-screen → client-side chroma key
-// Acid       = white bg     → Cloudinary e_background_removal (no chroma key)
-const ENEMY_SPRITES: Record<string, string> = {
-  RockSlime:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777634810/Gemini_Generated_Image_c7qsl1c7qsl1c7qs_mekkjz.png',
-  AcidSlime:  'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777634782/ChatGPT_Image_May_1_2026_06_25_59_PM_dsoxsd.png',
-  WaterSlime: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777907811/7d3947a5-76a6-4422-9dc6-1eb5fd4d29bd.png',
-  // Human heroes on enemy side — same idle URL; CSS scaleX(-1) flips to face left
-  Myko:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778005026/ChatGPT_Image_May_6_2026_01_01_00_AM_bhjzhr.png',
-  Fang:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058539/ChatGPT_Image_May_6_2026_03_43_22_PM_ejhf1t.png',
-  Clover: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058829/ChatGPT_Image_May_6_2026_03_57_38_PM_jwipj1.png',
-};
-// Slimes that use Cloudinary bg-removal instead of client chroma key
-const BGREMOVE_SLIMES = new Set(['AcidSlime']);
+// ─── Enemy sprite map — AUTO-DERIVED from heroDefs.ts ────────────────────────
+// ⚠️  DO NOT hardcode URLs here. Add heroes to heroDefs.ts ONLY.
+//     Key = PascalCase-no-spaces name (e.g. "Rock Slime" → "RockSlime")
+const _toPascal = (name: string) =>
+  name.split(/[\s_]+/).map(w => w[0].toUpperCase() + w.slice(1)).join('');
 
-// Enemy sprite — flipped LEFT to face the hero team
+// Human-type ENEMY names — auto-derived; drives sprite size + animation in EnemySlotSprite
+const HUMAN_ENEMY_NAMES = new Set<string>(
+  HERO_DEFS
+    .filter(d => d.sprites.appearsAsEnemy && d.sprites.isHumanHero)
+    .map(d => _toPascal(d.name))
+);
+
+const ENEMY_SPRITES: Record<string, string> = Object.fromEntries(
+  HERO_DEFS
+    .filter(d => d.sprites.appearsAsEnemy && d.sprites.idleUrl)
+    .map(d => [_toPascal(d.name), d.sprites.idleUrl!])
+);
+// Enemies that use Cloudinary bg-removal instead of client chroma key
+const BGREMOVE_ENEMIES = new Set<string>(
+  HERO_DEFS
+    .filter(d => d.sprites.appearsAsEnemy && d.sprites.enemyNeedsBgRemoval)
+    .map(d => _toPascal(d.name))
+);
+
+// Reverse map: PascalCase sprite key → heroId (for getSpriteSize lookup)
+// Built lazily after HERO_ID_TO_SPRITE is defined.
+const PASCAL_TO_HERO_ID: Record<string, string> = {};
+// Populated immediately below once HERO_ID_TO_SPRITE is declared — see comment there.
+
+// Enemy sprite — identical sizing logic to BattleSlotSprite, mirrored to face hero team
 function EnemySlotSprite({ enemyName }: { enemyName: string }) {
-  const rawSrc    = ENEMY_SPRITES[enemyName] ?? '';
-  const needsChroma = !BGREMOVE_SLIMES.has(enemyName);
-  const chromaUrl = useChromaKeyDataUrl(needsChroma ? rawSrc : '');
-  const finalSrc  = needsChroma ? (chromaUrl ?? '') : rawSrc;
-  // Myko enemy: 50% height, 25% width reduction. Human heroes use battle-idle-breathe.
-  const isMyko = enemyName === 'Myko';
-  const isHumanEnemy = ['Fang', 'Clover'].includes(enemyName);
-  const w = (isMyko || isHumanEnemy) ? 135 : 180;
-  const h = (isMyko || isHumanEnemy) ? 90  : 180;
-  const animCls = (isMyko || isHumanEnemy) ? 'battle-idle-breathe' : 'slime-bounce';
+  const heroId      = PASCAL_TO_HERO_ID[enemyName] ?? enemyName.toLowerCase().replace(/\s+/g, '_');
+  const rawSrc      = ENEMY_SPRITES[enemyName] ?? '';
+  const needsChroma = !BGREMOVE_ENEMIES.has(enemyName);
+  const chromaUrl   = useChromaKeyDataUrl(needsChroma ? rawSrc : '');
+  const finalSrc    = needsChroma ? (chromaUrl ?? '') : rawSrc;
+  // Use the SAME getSpriteSize as BattleSlotSprite — ensures identical container size
+  const { w, h }  = getSpriteSize(`sprite_${heroId}_idle`);
+  const isSlime   = !HUMAN_ENEMY_NAMES.has(enemyName);
+  const animCls   = isSlime ? 'slime-bounce' : 'battle-idle-breathe';
   return (
     <div style={{
-      position: 'absolute', bottom: isMyko || isHumanEnemy ? -2 : 4, left: '50%',
+      position: 'absolute', bottom: isSlime ? 0 : -4, left: '50%',
+      // scaleX(-1) flips to face the hero team (enemies are on the right side)
       transform: 'translateX(-50%) scaleX(-1)',
       width: w, height: h,
       pointerEvents: 'none', zIndex: 10,
@@ -1156,48 +1160,41 @@ function HeroDeployOverlay({ occupiedNames, onSelect, onClose }: {
   );
 }
 
-// ─── Battle View ─��────────────────────────────────────────────────────────────
-// Enemy slot key → sprite map key (hero_id → ENEMY_SPRITES key)
-const HERO_ID_TO_SPRITE: Record<string, string> = {
-  rock_slime:  'RockSlime',
-  acid_slime:  'AcidSlime',
-  water_slime: 'WaterSlime',
-  myko:        'Myko',
-  fang:        'Fang',
-  clover:      'Clover',
-};
+// ─── Battle View ──────────────────────────────────────────────────────────────
+// AUTO-DERIVED: hero_id → PascalCase sprite key for ENEMY_SPRITES lookup
+const HERO_ID_TO_SPRITE: Record<string, string> = Object.fromEntries(
+  HERO_DEFS
+    .filter(d => d.sprites.appearsAsEnemy)
+    .map(d => [d.heroId, _toPascal(d.name)])
+);
+// Reverse: PascalCase → heroId (used by EnemySlotSprite for getSpriteSize)
+Object.assign(PASCAL_TO_HERO_ID, Object.fromEntries(
+  Object.entries(HERO_ID_TO_SPRITE).map(([heroId, pascal]) => [pascal, heroId])
+));
 
 function BattleView({ onBack, stageId = '1-1', onStageWin }: {
   onBack: () => void; stageId?: string; onStageWin?: () => void;
 }) {
-  const { loadStage, ownedHeroes } = useHero();
+  const { ownedHeroes } = useHero();
   const { gainExp, refreshProfile } = useAuth();
   const [phase,              setPhase]             = useState<'formation' | 'simulating' | 'battle'>('formation');
   const [heroSlots,          setHeroSlots]         = useState<(string | null)[]>(Array(6).fill(null));
   const [deployOverlaySlot,  setDeployOverlaySlot] = useState<number | null>(null);
   const [maxMsg,             setMaxMsg]             = useState(false);
-  const [stageEnemies,       setStageEnemies]      = useState<StageEnemyFull[]>([]);
   const [battleLog,          setBattleLog]         = useState<SimBattleResult | null>(null);
   const [simError,           setSimError]          = useState<string | null>(null);
 
-  // Load stage enemy data from DB
-  useEffect(() => {
-    loadStage(stageId).then(data => {
-      if (data) setStageEnemies(data.enemies);
-    });
-  }, [stageId, loadStage]);
-
-  // Build enemySlots from DB data (slot_position = formation slot index 0-5)
-  const enemySlots: (string | null)[] = Array(6).fill(null);
-  for (const se of stageEnemies) {
-    const spriteKey = HERO_ID_TO_SPRITE[se.enemy.enemy_hero_id];
-    if (spriteKey && se.enemy.slot_position >= 0 && se.enemy.slot_position < 6) {
-      enemySlots[se.enemy.slot_position] = spriteKey;
-    }
-  }
+  // Build enemySlots from the SAME client-side stageData that the info panel shows.
+  // This guarantees formation ↔ panel consistency across all chapters/stages.
+  const clientStageData = getStageData(stageId);
+  // Build enemySlots from the SAME client-side stageData as the info panel.
+  // enemySlots[i] is already role-positioned: even=front, odd=back (see stageData.ts).
+  const enemySlots: (string | null)[] = clientStageData
+    ? clientStageData.enemySlots.map(heroId => heroId ? (HERO_ID_TO_SPRITE[heroId] ?? null) : null)
+    : Array(6).fill(null);
 
   // ── Trigger full server-side simulation — one RPC call, entire battle ────────
-  const handleStartBattle = async () => {
+  const handleStartBattle = async () => { try {
     const heroEntries = heroSlots
       .map((name, idx) => {
         if (!name) return null;
@@ -1210,12 +1207,19 @@ function BattleView({ onBack, stageId = '1-1', onStageWin }: {
     if (!heroEntries.length) return;
 
     setSimError(null);
-    setPhase('simulating'); // show loading screen while server runs full simulation
+    setPhase('simulating');
 
-    const { data, error } = await simulateBattle(stageId, heroEntries);
+    // 30s timeout — race the RPC so we never get permanently stuck
+    const TIMEOUT_MS = 30_000;
+    const rpcPromise = simulateBattle(stageId, heroEntries);
+    const timeoutPromise = new Promise<{ data?: SimBattleResult; error?: string }>(
+      resolve => setTimeout(() => resolve({ error: 'Battle simulation timed out (30 s). Please try again.' }), TIMEOUT_MS)
+    );
+
+    const { data, error } = await Promise.race([rpcPromise, timeoutPromise]);
 
     if (error || !data) {
-      console.error('[Battle] simulateBattle RPC error:', error);
+      console.error('[Battle] simulateBattle error:', error);
       setSimError(error ?? 'Unknown server error');
       setPhase('formation');
       return;
@@ -1223,9 +1227,13 @@ function BattleView({ onBack, stageId = '1-1', onStageWin }: {
 
     // Server returned complete battle log — hand it to BattlePlayback
     setBattleLog(data);
-    pauseMainBgm();   // mute main BGM before battle
+    pauseMainBgm();
     setPhase('battle');
-  };
+  } catch (err) {
+    console.error('[Battle] unexpected error in handleStartBattle:', err);
+    setSimError(err instanceof Error ? err.message : 'Unexpected error. Please try again.');
+    setPhase('formation');
+  }};
 
   const deployedCount = heroSlots.filter(Boolean).length;
 
@@ -1434,39 +1442,79 @@ function BattleView({ onBack, stageId = '1-1', onStageWin }: {
   );
 }
 
-// ─── Chapter 1 Stage Map View ─────────────────────────────────────────────────
-// Attack-button sits at bottom: NAV_H from screen bottom.
-// Stage map strip sits at MAP_BOTTOM px from screen bottom (just above fire flames).
-const NAV_H      = 64;   // approx nav-bar height
-const MAP_BOTTOM = BTN_H + NAV_H + 18; // button + nav + gap → 150 px
+// ─── Chapter Stage Map View (generic — handles all 5 chapters) ────────────────
+const NAV_H      = 64;
+const MAP_BOTTOM = BTN_H + NAV_H + 18;
 
-function Chapter1View({ onBack }: { onBack: () => void }) {
-  const { user } = useAuth();
-  const chapter1Progress = user?.chapter1_progress ?? 0;
+// Chapter accent colours (subtitle text tint)
+const CHAPTER_ACCENT = [
+  'rgba(180,250,100,0.85)', // Ch1 grass green
+  'rgba(100,200,255,0.85)', // Ch2 forest blue
+  'rgba(200,220,255,0.85)', // Ch3 mountain ice
+  'rgba(200,140,255,0.85)', // Ch4 dungeon purple
+  'rgba(255,150,80,0.85)',  // Ch5 volcano orange
+];
 
-  const [selectedStageNum, setSelectedStageNum] = useState<number>(
-    Math.min(chapter1Progress + 1, 20),
-  );
-  const [showPanel, setShowPanel]       = useState(false);
-  const [battleStageId, setBattleStageId] = useState<string | null>(null);
+function useChapterProgress(chapterNum: number): { progress: number; saveProgress: (n: number) => void } {
+  const { user, refreshProfile } = useAuth();
+  const userId = user?.id ?? 'guest';
+  const lsKey  = `ch${chapterNum}_prog_${userId}`;
 
-  // ── Drag-to-scroll state ──────────────────────────────────────────────────
-  const [mapScrollOffset, setMapScrollOffset] = useState<number>(() => {
-    const n = Math.min(chapter1Progress + 1, 20);
-    const { cx } = hNodePos(n);
-    const sw = typeof window !== 'undefined' ? window.innerWidth : 375;
-    return Math.max(0, cx - sw * 0.38);
+  // DB is the single source of truth for chapter 1.
+  // For other chapters we still use localStorage (no DB column yet).
+  const dbProgress = chapterNum === 1 ? (user?.chapter1_progress ?? 0) : 0;
+
+  const [localProgress, setLocalProgress] = useState<number>(() => {
+    if (chapterNum === 1) return dbProgress; // DB wins on first load
+    try { return Math.max(dbProgress, parseInt(localStorage.getItem(lsKey) ?? '0', 10) || 0); }
+    catch { return dbProgress; }
   });
+
+  // ── Authoritative sync: whenever DB value arrives (or changes), use it ────
+  // This ensures manual DB resets propagate to UI, and prevents "ghost progress"
+  // from old no-enemy wins that never actually wrote chapter1_progress to DB.
+  useEffect(() => {
+    if (chapterNum !== 1) return;
+    setLocalProgress(dbProgress);
+    try { localStorage.setItem(lsKey, String(dbProgress)); } catch { /* ignore */ }
+  }, [dbProgress, chapterNum]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const saveProgress = (n: number) => {
+    // Optimistically advance local state; DB will be updated by the RPC and
+    // confirmed on next refreshProfile call.
+    const next = Math.max(localProgress, n);
+    setLocalProgress(next);
+    try { localStorage.setItem(lsKey, String(next)); } catch { /* ignore */ }
+    if (chapterNum === 1) refreshProfile(); // re-fetch authoritative DB value
+  };
+
+  return { progress: localProgress, saveProgress };
+}
+
+function ChapterView({ chapterNum, onBack }: { chapterNum: number; onBack: () => void }) {
+  const chInfo   = CHAPTERS[chapterNum - 1];
+  const { progress, saveProgress } = useChapterProgress(chapterNum);
+
+  // ── Seed stage_enemies + stage_definitions on first render ────────────────
+  // Runs once per session; idempotent if tables already have data.
+  useEffect(() => { seedStageData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const [selectedStageNum,  setSelectedStageNum]  = useState<number>(Math.min(progress + 1, TOTAL_STAGES));
+  const [showPanel,         setShowPanel]         = useState(false);
+  const [battleStageId,     setBattleStageId]     = useState<string | null>(null);
+
+  const [mapScrollOffset, setMapScrollOffset] = useState<number>(() => {
+    const { cx } = hNodePos(Math.min(progress + 1, TOTAL_STAGES));
+    return Math.max(0, cx - (typeof window !== 'undefined' ? window.innerWidth : 375) * 0.38);
+  });
+
   const dragState  = useRef({ active: false, startX: 0, startOffset: 0 });
   const wasDragRef = useRef(false);
 
-  // Auto-scroll when a node is selected
   useEffect(() => {
     const { cx } = hNodePos(selectedStageNum);
-    const sw = window.innerWidth;
-    const maxOff = SVG_HM_W - sw;
-    const target = Math.max(0, Math.min(maxOff, cx - sw * 0.38));
-    setMapScrollOffset(target);
+    const maxOff = SVG_HM_W - window.innerWidth;
+    setMapScrollOffset(Math.max(0, Math.min(maxOff, cx - window.innerWidth * 0.38)));
   }, [selectedStageNum]);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -1478,27 +1526,31 @@ function Chapter1View({ onBack }: { onBack: () => void }) {
     const dx = e.clientX - dragState.current.startX;
     if (Math.abs(dx) > 5) {
       wasDragRef.current = true;
-      const maxOff = SVG_HM_W - window.innerWidth;
-      setMapScrollOffset(Math.max(0, Math.min(maxOff, dragState.current.startOffset - dx)));
+      setMapScrollOffset(Math.max(0, Math.min(SVG_HM_W - window.innerWidth, dragState.current.startOffset - dx)));
     }
   };
   const handlePointerUp = () => { dragState.current.active = false; };
 
-  const selectedStageId  = `1-${selectedStageNum}`;
-  const isSelectedLocked = selectedStageNum > chapter1Progress + 1;
+  const selectedStageId  = `${chapterNum}-${selectedStageNum}`;
+  const isSelectedLocked = selectedStageNum > progress + 1;
 
   if (battleStageId) {
     return (
       <BattleView
         onBack={() => setBattleStageId(null)}
         stageId={battleStageId}
-        onStageWin={() => setBattleStageId(null)}
+        onStageWin={() => {
+          const stageN = parseInt(battleStageId.split('-')[1] ?? '0', 10);
+          saveProgress(stageN);
+          setBattleStageId(null);
+        }}
       />
     );
   }
 
+  const accent = CHAPTER_ACCENT[chapterNum - 1] ?? 'rgba(180,250,100,0.85)';
+
   return (
-    // Root div captures drag everywhere except excluded zones (attack btn, nav, resource bar)
     <div
       style={{ position: 'fixed', inset: 0, zIndex: 50, cursor: wasDragRef.current ? 'grabbing' : 'default' }}
       onPointerDown={handlePointerDown}
@@ -1506,17 +1558,17 @@ function Chapter1View({ onBack }: { onBack: () => void }) {
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
     >
-
-      {/* ── Background ── */}
-      <img src={GRASS_URL} alt="" draggable={false} style={{
+      {/* Background */}
+      <img src={chInfo?.bg ?? GRASS_URL} alt="" draggable={false} style={{
         position: 'absolute', inset: 0, width: '100%', height: '100%',
         objectFit: 'cover', objectPosition: 'center',
         display: 'block', pointerEvents: 'none', userSelect: 'none',
       }}/>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.54)', pointerEvents: 'none' }}/>
+      <div style={{ position: 'absolute', inset: 0, background: chInfo?.tint ?? 'rgba(0,0,0,0.54)', pointerEvents: 'none' }}/>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.36)', pointerEvents: 'none' }}/>
       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg,rgba(0,0,0,0.55) 0%,transparent 22%,transparent 52%,rgba(0,0,0,0.78) 100%)', pointerEvents: 'none' }}/>
 
-      {/* ── Back button — top left ── */}
+      {/* Back button */}
       <button
         onClick={() => { playBackSound(); onBack(); }}
         onPointerDown={e => e.stopPropagation()}
@@ -1534,39 +1586,38 @@ function Chapter1View({ onBack }: { onBack: () => void }) {
         Back
       </button>
 
-      {/* ── Chapter title — below resource bar ── */}
+      {/* Chapter title */}
       <div style={{
-        position: 'absolute',
-        top: 'clamp(52px,9dvh,68px)',
-        left: 0, right: 0,
+        position: 'absolute', top: 'clamp(52px,9dvh,68px)', left: 0, right: 0,
         zIndex: 60, textAlign: 'center', pointerEvents: 'none',
       }}>
         <div style={{ fontFamily: FP, fontSize: 'clamp(13px,2vw,19px)', fontWeight: 800, color: 'rgba(255,255,255,0.96)', letterSpacing: '0.22em', textShadow: '0 2px 14px rgba(0,0,0,0.95)' }}>
-          CHAPTER I
+          {chInfo?.title ?? `CHAPTER ${chapterNum}`}
         </div>
-        <div style={{ fontFamily: F, fontSize: 'clamp(9px,1.3vw,12px)', color: 'rgba(180,250,100,0.85)', letterSpacing: '0.2em', marginTop: 1, textShadow: '0 1px 8px rgba(0,0,0,0.9)' }}>
-          GRASSLANDS
+        <div style={{ fontFamily: F, fontSize: 'clamp(9px,1.3vw,12px)', color: accent, letterSpacing: '0.2em', marginTop: 1, textShadow: '0 1px 8px rgba(0,0,0,0.9)' }}>
+          {chInfo?.subtitle ?? ''}
+        </div>
+        <div style={{ fontFamily: F, fontSize: 10, color: 'rgba(255,255,255,0.40)', letterSpacing: '0.12em', marginTop: 2, textShadow: '0 1px 8px rgba(0,0,0,0.9)' }}>
+          {progress}/{TOTAL_STAGES} CLEARED
         </div>
       </div>
 
-      {/* ── Horizontal stage map — just above attack button ── */}
+      {/* Stage map */}
       <StageMapScrollable
         selectedStageNum={selectedStageNum}
-        chapter1Progress={chapter1Progress}
+        chapterProgress={progress}
+        chapterNum={chapterNum}
         onSelectStage={(n) => { setSelectedStageNum(n); setShowPanel(false); }}
         scrollOffset={mapScrollOffset}
         wasDragRef={wasDragRef}
         bottomOffset={MAP_BOTTOM}
       />
 
-      {/* ── ATTACK button — bottom right, stop drag propagation ── */}
+      {/* ATTACK button */}
       <div
         onPointerDown={e => e.stopPropagation()}
         style={{
-          position: 'absolute',
-          right: PANEL_R,
-          bottom: NAV_H,
-          zIndex: 66,
+          position: 'absolute', right: PANEL_R, bottom: NAV_H, zIndex: 66,
           opacity: isSelectedLocked ? 0.3 : 1,
           pointerEvents: isSelectedLocked ? 'none' : 'auto',
           transition: 'opacity 0.2s',
@@ -1575,41 +1626,26 @@ function Chapter1View({ onBack }: { onBack: () => void }) {
         <BattleButton open={showPanel} onToggle={() => setShowPanel(p => !p)} />
       </div>
 
-      {/* ── Enemy info panel — right side, full height, 25 vw wide ── */}
+      {/* Stage info panel */}
       {showPanel && (
         <>
-          {/* Dim backdrop — tap to close */}
           <div
             onPointerDown={e => e.stopPropagation()}
             onClick={() => setShowPanel(false)}
-            style={{
-              position: 'absolute', inset: 0,
-              background: 'rgba(0,0,0,0.55)',
-              zIndex: 67,
-            }}
+            style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 67 }}
           />
-          {/* Panel — right edge, full height, 1/4 screen wide */}
           <div
             onPointerDown={e => e.stopPropagation()}
             style={{
-              position: 'absolute',
-              right: 0,
-              top: 0,
-              bottom: 0,
-              width: '25vw',
-              minWidth: 220,
-              zIndex: 68,
-              overflow: 'hidden',
+              position: 'absolute', right: 0, top: 0, bottom: 0,
+              width: '25vw', minWidth: 220, zIndex: 68, overflow: 'hidden',
               borderLeft: '1.5px solid rgba(249,115,22,0.5)',
             }}
           >
             <StageInfoPanel
               stageId={selectedStageId}
-              chapter1Progress={chapter1Progress}
-              onChallenge={() => {
-                setShowPanel(false);
-                setBattleStageId(selectedStageId);
-              }}
+              chapterProgress={progress}
+              onChallenge={() => { setShowPanel(false); setBattleStageId(selectedStageId); }}
             />
           </div>
         </>
@@ -1620,12 +1656,12 @@ function Chapter1View({ onBack }: { onBack: () => void }) {
   );
 }
 
-// ─── Main ────────────────────────────────────────────��────────────────────────
+// ─── Main ──────────────────────────────────────────────────────────────────────
 export default function AdventurePage() {
   const [chapterView, setChapterView] = useState<number | null>(null);
 
-  if (chapterView === 1) {
-    return <Chapter1View onBack={() => setChapterView(null)} />;
+  if (chapterView !== null) {
+    return <ChapterView chapterNum={chapterView} onBack={() => setChapterView(null)} />;
   }
 
   return <WorldMapView onChapterSelect={setChapterView} />;

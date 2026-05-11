@@ -13,13 +13,16 @@
  *   4. After last event, show VictoryOverlay or FailedOverlay
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   playLucasAttackSfx, playBulletSfx, playHealSfx, playWaterSfx, playShieldSfx, playPunchSfx,
+  playCrawArrowSfx,
   startBattleBgm, stopBattleBgm, playVictorySound, playDefeatSound,
 } from '../../utils/buttonSound';
-import { useChromaKeyDataUrl } from '../../utils/chromaKey';
+import { useChromaKeyDataUrl, useChromaKeyCroppedDataUrl } from '../../utils/chromaKey';
 import type { SimBattleResult, SimBattleEvent, SimBattleTarget } from '/utils/supabase/battle-service';
+import { HERO_DEFS, heroSpriteName } from '../../data/heroDefs';
+import { getSpriteSize } from '../../data/spriteConfig';
 import { LucasVFX } from './LucasVFX';
 import type { VFXTrigger } from './LucasVFX';
 import { EmmaVFX } from './EmmaVFX';
@@ -30,55 +33,40 @@ import { GorrVFX } from './GorrVFX';
 import type { GorrVFXTrigger } from './GorrVFX';
 import { CrawVFX } from './CrawVFX';
 import type { CrawVFXTrigger } from './CrawVFX';
+import { FangVFX } from './FangVFX';
+import type { FangVFXTrigger } from './FangVFX';
+import { CloverVFX } from './CloverVFX';
+import type { CloverVFXTrigger } from './CloverVFX';
+import { MykoVFX } from './MykoVFX';
+import type { MykoVFXTrigger } from './MykoVFX';
+import { SylvieVFX } from './SylvieVFX';
+import type { SylvieVFXTrigger } from './SylvieVFX';
 
-// ─── Hero ID → Sprite name mapping ───────────────────────────────────────────
-const HERO_ID_TO_NAME: Record<string, string> = {
-  lucas:       'Lucas',
-  emma:        'Emma',
-  rock_slime:  'RockSlime',
-  acid_slime:  'AcidSlime',
-  water_slime: 'WaterSlime',
-};
+// ─── Hero ID → Sprite name (auto-derived from heroDefs) ───────────────────────
+const HERO_ID_TO_NAME: Record<string, string> = Object.fromEntries(
+  HERO_DEFS.map(d => [d.heroId, heroSpriteName(d)])
+);
 
 // Case-insensitive: DB may return 'Tank' or 'tank', 'Fighter' or 'fighter'
 const MELEE_IDS = ['fighter', 'tank', 'assassin'];
 
-// ─── Per-hero-per-slot action definitions (AUTHORITATIVE ENGINE) ──────────────
-// When a new hero is added: fill in their heroId entry here.
+// ─── Per-hero-per-slot action definitions (auto-derived from heroDefs) ─────────
+// To add a new hero: set moveType + sfxKey per skill in heroDefs.ts.
 // sfx:  'lucas'=heavy sword | 'punch'=slam | 'bullet'=arrow/proj | 'water'=splash | 'heal'=magic | 'shield'=guard | 'none'=silent
-// move: 'melee_dash'=charge to target | 'melee_aoe_center'=lunge to enemy-col centre + hit all |
-//       'ranged_place'=stationary ranged | 'self_only'=no movement, self-buff/shield | 'passive'=passive event, no motion
-type SfxKey   = 'lucas'|'punch'|'bullet'|'water'|'heal'|'shield'|'none';
+// move: 'melee_dash' | 'melee_aoe_center' | 'ranged_place' | 'self_only' | 'passive'
+type SfxKey   = 'lucas'|'punch'|'bullet'|'water'|'heal'|'shield'|'none'|'craw_arrow';
 type MoveType = 'melee_dash'|'melee_aoe_center'|'ranged_place'|'self_only'|'passive';
 interface SkillAction { move: MoveType; sfx: SfxKey; }
-const HERO_SKILL_ACTIONS: Record<string, Record<number, SkillAction>> = {
-  // slot: 0=basic | 1=SK1 | 2=SK2 | 3=passive | 4=ULT
-  lucas:      { 0:{move:'melee_dash',        sfx:'lucas'}, 1:{move:'melee_dash',        sfx:'lucas'}, 2:{move:'melee_dash',  sfx:'lucas'}, 3:{move:'passive',  sfx:'none'},   4:{move:'melee_aoe_center',sfx:'lucas'} },
-  emma:       { 0:{move:'ranged_place',       sfx:'bullet'},1:{move:'ranged_place',       sfx:'heal'},  2:{move:'self_only',   sfx:'shield'},3:{move:'passive',  sfx:'shield'}, 4:{move:'ranged_place',    sfx:'heal'}  },
-  rock_slime: { 0:{move:'melee_dash',         sfx:'punch'}, 1:{move:'melee_dash',         sfx:'punch'}, 2:{move:'self_only',   sfx:'shield'},3:{move:'passive',  sfx:'none'},   4:{move:'melee_aoe_center',sfx:'shield'} },
-  // AcidSlime ALL skills use water-splash SFX (basic now matches SK1 per user request)
-  acid_slime: { 0:{move:'ranged_place',       sfx:'water'}, 1:{move:'ranged_place',       sfx:'water'}, 2:{move:'ranged_place',sfx:'water'}, 3:{move:'passive',  sfx:'none'},   4:{move:'ranged_place',    sfx:'water'} },
-  // WaterSlime ALL skills use water-splash SFX (basic now matches SK1 per user request)
-  water_slime:{ 0:{move:'ranged_place',       sfx:'water'}, 1:{move:'ranged_place',       sfx:'water'}, 2:{move:'ranged_place',sfx:'water'}, 3:{move:'passive',  sfx:'none'},   4:{move:'ranged_place',    sfx:'water'} },
-  // Gorr: heavy Fighter — all attacks dash. ULT lunges to centre of enemy column. SFX = Lucas sword (same heavy-blade feel)
-  gorr:       { 0:{move:'melee_dash',         sfx:'lucas'}, 1:{move:'melee_dash',         sfx:'lucas'}, 2:{move:'melee_dash',  sfx:'lucas'}, 3:{move:'passive',  sfx:'none'},   4:{move:'melee_aoe_center',sfx:'lucas'} },
-  // Craw: Ranged archer — always stays in place. ULT = volley (still ranged)
-  craw:       { 0:{move:'ranged_place',        sfx:'bullet'},1:{move:'ranged_place',        sfx:'bullet'},2:{move:'ranged_place',sfx:'bullet'},3:{move:'passive',  sfx:'none'},   4:{move:'ranged_place',    sfx:'bullet'} },
-  // Myko: shield Tank mushroom — melee bash. SK1 = self buff. SK2/ULT = AoE lunge.
-  myko:       { 0:{move:'melee_dash',          sfx:'punch'}, 1:{move:'self_only',           sfx:'shield'},2:{move:'melee_aoe_center',sfx:'punch'},3:{move:'passive',sfx:'none'},   4:{move:'melee_aoe_center',sfx:'punch'} },
-  // Fang: dual-dagger Assassin — all attacks are melee dashes.
-  //   SK1 Twin Slash   = dash to single target (2 hits handled server-side)
-  //   SK2 Shadow Sprint = lunge through the front row (AoE center)
-  //   SK3 Hunter's Mark = passive proc (no movement)
-  //   ULT Death Bound   = heavy dash to lowest-HP target
-  fang:       { 0:{move:'melee_dash',          sfx:'punch'}, 1:{move:'melee_dash',          sfx:'punch'}, 2:{move:'melee_aoe_center',sfx:'punch'}, 3:{move:'passive',sfx:'none'}, 4:{move:'melee_dash',       sfx:'lucas'} },
-  // Clover: bunny support mage — always stays in place, casts from range.
-  //   SK1 Healing Herb  = stationary heal (ranged_place, heal sfx)
-  //   SK2 Lucky Toss    = toss regen charm (ranged_place, heal sfx)
-  //   SK3 Life Bloom    = passive proc (no movement)
-  //   ULT Bloom Cascade = AoE team heal (ranged_place, heal sfx)
-  clover:     { 0:{move:'ranged_place',         sfx:'bullet'},1:{move:'ranged_place',         sfx:'heal'}, 2:{move:'ranged_place',    sfx:'heal'},  3:{move:'passive',sfx:'none'}, 4:{move:'ranged_place',     sfx:'heal'} },
-};
+const HERO_SKILL_ACTIONS: Record<string, Record<number, SkillAction>> = Object.fromEntries(
+  HERO_DEFS
+    .filter(d => d.battleReady && d.skills)
+    .map(d => [
+      d.heroId,
+      Object.fromEntries(
+        d.skills!.map(s => [s.slot, { move: s.moveType as MoveType, sfx: s.sfxKey as SfxKey }])
+      ),
+    ])
+);
 
 // ─── Formation layout ��────────────────────────────────────────────────────────
 const GRID_W = 368;
@@ -89,112 +77,78 @@ const ROW_DATA = [
   { slotW: 120, slotH: 120, col0X: 0,   col1X: 248, y: 190 },
 ] as const;
 
-// ─── Asset maps ───────────────────────────────────────────────────────────────
-const IDLE_SPRITES: Record<string, string> = {
-  Lucas: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777630336/idle_luk_mobysy.png',
-  Emma:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777630434/idle_em_p8uxjs.png',
-  Gorr:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919607/ChatGPT_Image_May_5_2026_01_23_54_AM_nhkzmq.png',
-  Craw:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919783/ChatGPT_Image_May_5_2026_01_26_59_AM_zfdewm.png',
-  Myko:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778005026/ChatGPT_Image_May_6_2026_01_01_00_AM_bhjzhr.png',
-  Fang:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058539/ChatGPT_Image_May_6_2026_03_43_22_PM_ejhf1t.png',
-  Clover: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058829/ChatGPT_Image_May_6_2026_03_57_38_PM_jwipj1.png',
-};
-const ACTION_BGREMOVE: Record<string, string> = {
-  Lucas: 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777631550/act_luc_mhmivj.png',
-};
-const ACTION_CHROMA: Record<string, string> = {
-  Emma: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777630357/act_em_fnrl1t.png',
-  Gorr: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919615/ChatGPT_Image_May_5_2026_01_31_48_AM_m65s2g.png',
-  Craw: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919799/ChatGPT_Image_May_5_2026_01_27_08_AM_p8yjub.png',
-  Myko:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778005040/ChatGPT_Image_May_6_2026_01_03_49_AM_sirb54.png',
-  Fang:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058739/ChatGPT_Image_May_6_2026_03_45_46_PM_plgice.png',
-  Clover: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058887/ChatGPT_Image_May_6_2026_04_00_04_PM_fattkj.png',
-};
-// ─── Enemy / team slime sprites ───────────────────────────────────────────────
-// Rock/Water = green screen → chroma key client-side (chromaKey: true)
-// Acid       = white background → Cloudinary bg-removal (chromaKey: false)
-const ENEMY_IDLE: Record<string, string> = {
-  RockSlime:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777634810/Gemini_Generated_Image_c7qsl1c7qsl1c7qs_mekkjz.png',
-  AcidSlime:  'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777634782/ChatGPT_Image_May_1_2026_06_25_59_PM_dsoxsd.png',
-  WaterSlime: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777907811/7d3947a5-76a6-4422-9dc6-1eb5fd4d29bd.png',
-  // Human heroes on enemy side — same idle URL; scaleX(-1) applied by container
-  Myko:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778005026/ChatGPT_Image_May_6_2026_01_01_00_AM_bhjzhr.png',
-  Fang:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058539/ChatGPT_Image_May_6_2026_03_43_22_PM_ejhf1t.png',
-  Clover: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058829/ChatGPT_Image_May_6_2026_03_57_38_PM_jwipj1.png',
-};
-// Team-side slime sprites (same assets — they face RIGHT, so no flip for hero side)
-const TEAM_SLIME_IDLE = ENEMY_IDLE; // same source; direction handled by render
-// Slimes that use Cloudinary bg-removal (skip chroma key for these)
-const BP_BGREMOVE_SLIMES = new Set(['AcidSlime']);
-// Human heroes on enemy side need chroma key (green screen sprites)
-const BP_ENEMY_HUMAN_CHROMA = new Set(['Myko', 'Fang', 'Clover']);
-const BP_ENEMY_HUMAN_NAMES  = new Set(['Myko', 'Fang', 'Clover']);
-// Myko reduced dims: height −50%, width −25%
-const BP_MYKO_HW=135, BP_MYKO_HH=169, BP_MYKO_EW=135, BP_MYKO_EH=90;
-// All new slime images face RIGHT — enemy side flips scaleX(-1) to face LEFT.
+// ─── Asset maps (auto-derived from heroDefs) ──────────────────────────────────
+// To add a new hero: fill in sprites.* in heroDefs.ts.
+
+const IDLE_SPRITES: Record<string, string> = Object.fromEntries(
+  HERO_DEFS
+    .filter(d => d.sprites.isHumanHero && d.sprites.idleUrl)
+    .map(d => [heroSpriteName(d), d.sprites.idleUrl!])
+);
+
+const ACTION_BGREMOVE: Record<string, string> = Object.fromEntries(
+  HERO_DEFS
+    .filter(d => d.sprites.isHumanHero && d.sprites.actionUrl && d.sprites.actionMethod === 'bgremoval')
+    .map(d => [heroSpriteName(d), d.sprites.actionUrl!])
+);
+
+const ACTION_CHROMA: Record<string, string> = Object.fromEntries(
+  HERO_DEFS
+    .filter(d => d.sprites.isHumanHero && d.sprites.actionUrl && d.sprites.actionMethod === 'chroma')
+    .map(d => [heroSpriteName(d), d.sprites.actionUrl!])
+);
+
+// Enemy/team slime idle sprites
+const ENEMY_IDLE: Record<string, string> = Object.fromEntries(
+  HERO_DEFS
+    .filter(d => d.sprites.appearsAsEnemy && d.sprites.idleUrl)
+    .map(d => [heroSpriteName(d), d.sprites.idleUrl!])
+);
+
+const TEAM_SLIME_IDLE = ENEMY_IDLE;
+
+// Slimes that use Cloudinary bg-removal on enemy side (skip chroma key)
+const BP_BGREMOVE_SLIMES = new Set(
+  HERO_DEFS
+    .filter(d => d.sprites.appearsAsEnemy && d.sprites.enemyNeedsBgRemoval)
+    .map(d => heroSpriteName(d))
+);
+
+// Human enemy names — drives idle animation class (bp-idle-e vs bp-slime-e)
+const BP_ENEMY_HUMAN_NAMES = new Set(
+  HERO_DEFS
+    .filter(d => d.sprites.appearsAsEnemy && d.sprites.isHumanHero)
+    .map(d => heroSpriteName(d))
+);
+// ── BATTLE ENGINE RULE (permanent) ──────────────────────────────────────────
+// Enemy sprite size MUST always equal hero-side sprite size.
+// The ONLY differences between hero-side and enemy-side rendering are:
+//   1. Horizontal flip (scaleX -1): enemies face LEFT toward heroes.
+//   2. Attack dash direction reversed.
+//   3. Idle CSS class: bp-idle-e (bakes scaleX -1 in keyframes) instead of bp-idle.
+// Size, bottom-offset, shadow, HP-bar layout — ALL IDENTICAL to hero side.
+// Source of truth for size: getSpriteSize(`sprite_${heroId}_idle`) for BOTH sides.
+// NEVER hardcode pixel dimensions for any specific hero in this file. ─────────
 const ENEMY_COUNTERFLIP = new Set<string>([]);
-const SKILL_ICONS: Record<string, Partial<Record<string, string>>> = {
-  Lucas: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550813/s1lukas_wrrnuo.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550848/ChatGPT_Image_Apr_30_2026_07_02_57_PM_kbtfs3.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550841/psvluk_b0quhw.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550833/ultlukas_jcehyx.png',
-  },
-  Emma: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550127/s1emma_1d4245.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550505/ChatGPT_Image_Apr_30_2026_06_53_05_PM_s9ssbz.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550512/ChatGPT_Image_Apr_30_2026_ffPM_m405s1.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550533/ultema_vshlxt.png',
-  },
-  RockSlime: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777565812/s1rlime_hfstrz.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777565820/s2rslime_shjl5b.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777565826/s3rslime_vip7sb.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777565833/s4rslime_duuc2g.png',
-  },
-  AcidSlime: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777806549/sk1acd_nqz0x5.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777806563/sk2acd_x4d8qu.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777806571/sk3acd_gh45ki.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777806578/sk4acd_mcmpzu.png',
-  },
-  WaterSlime: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777807420/sk1wtr.pg_fbx8a0.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777807428/sk2wtr_vmi777.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777807444/sk3wtr_fedwpe.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777807456/sk4wtr_fbixax.png',
-  },
-  Gorr: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002904/sk1gor_wkgpaz.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002911/sk2gor_grkelh.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002917/sk3gor_ppjc9j.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002925/sk4gor_axfkc2.png',
-  },
-  Craw: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002931/sk1craw_cgwnc7.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002935/sk2craw_hmjjoz.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002946/sk3craw_f6s5e5.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002939/sk4craw_zg73ez.png',
-  },
-  Myko: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009427/sk1myk_nr36fc.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009434/sk2myk_nry1oe.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009440/sk3myk_oc94bf.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009488/sk4myk_egyexz.png',
-  },
-  Fang: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066250/sk1fang_lzaud9.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066256/sk2fang_mkmdui.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066265/sk3fang_wdo19c.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066271/sk4fang_msdipt.png',
-  },
-  Clover: {
-    sk1: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066277/sk1clov_pwyu2r.png',
-    sk2: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066283/sk2clov_ebrxbb.png',
-    sk3: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066288/sk3clov_p4van1.png',
-    ult: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066294/sk4clov_hysri6.png',
-  },
-};
+
+// SKILL_ICONS — auto-derived from heroDefs (slot 1=sk1, 2=sk2, 3=sk3, 4=ult)
+const SKILL_ICONS: Record<string, Partial<Record<string, string>>> = Object.fromEntries(
+  HERO_DEFS
+    .filter(d => d.battleReady && d.skills)
+    .map(d => {
+      const bySlot: Record<number, string | null> = {};
+      for (const s of d.skills!) if (s.iconUrl) bySlot[s.slot] = s.iconUrl;
+      return [
+        heroSpriteName(d),
+        {
+          ...(bySlot[1] ? { sk1: bySlot[1] } : {}),
+          ...(bySlot[2] ? { sk2: bySlot[2] } : {}),
+          ...(bySlot[3] ? { sk3: bySlot[3] } : {}),
+          ...(bySlot[4] ? { ult: bySlot[4] } : {}),
+        },
+      ];
+    })
+);
 
 // ─── Melee dash trail (faded black, direction-aware) ──────────────────────────
 // Hero  side moves RIGHT → shadow trails to the LEFT  (negative X offsets)
@@ -209,7 +163,7 @@ const MELEE_TRAIL_ENEMY =
   'drop-shadow(54px 3px 13px rgba(0,0,0,0.40)) ' +
   'drop-shadow(82px 5px 17px rgba(0,0,0,0.22))';
 
-// ─── CSS injection ───────────────────────────────────────���────────────────────
+// ─── CSS injection ───────────────────────��───────────────���────────────────────
 ;(() => {
   if (typeof document === 'undefined') return;
   let s = document.getElementById('bp-css') as HTMLStyleElement | null;
@@ -217,6 +171,8 @@ const MELEE_TRAIL_ENEMY =
   s.textContent = `
 @keyframes battle-idle-b{0%,100%{transform:scaleY(1)scaleX(1)}40%,60%{transform:scaleY(1.022)scaleX(0.991)}}
 .bp-idle{animation:battle-idle-b 3.8s ease-in-out infinite;transform-origin:center bottom}
+@keyframes battle-idle-be{0%,100%{transform:scaleY(1)scaleX(-1)}40%,60%{transform:scaleY(1.022)scaleX(-0.991)}}
+.bp-idle-e{animation:battle-idle-be 3.8s ease-in-out infinite;transform-origin:center bottom}
 @keyframes bp-slime{0%,100%{transform:translateY(0)scaleX(1)scaleY(1)}40%{transform:translateY(-14px)scaleX(.91)scaleY(1.09)}55%{transform:translateY(-16px)scaleX(.90)scaleY(1.10)}80%{transform:translateY(2px)scaleX(1.05)scaleY(.95)}}
 .bp-slime{animation:bp-slime 1.7s ease-in-out infinite;transform-origin:center bottom}
 @keyframes bp-slime-e{0%,100%{transform:translateY(0)scaleX(-1)scaleY(1)}40%{transform:translateY(-14px)scaleX(-.91)scaleY(1.09)}55%{transform:translateY(-16px)scaleX(-.90)scaleY(1.10)}80%{transform:translateY(2px)scaleX(-1.05)scaleY(.95)}}
@@ -265,7 +221,7 @@ type CineInfo  = { uid: string; side: 'hero'|'enemy'; slotIndex: number; skillNa
 type BattleRewards = { gold: number; gems: number; exp: number; hero_exp: number } | null;
 type BattleResultData = { winner: 'hero'|'enemy'; rewards: BattleRewards };
 
-// ─── Status effects ───────────────────────────────────────────────────────────
+// ─── Status effects ───────��───────────────────────────────────────────────────
 type StatusEffect = {
   id:        string;   // unique effect key (non-stackable effects use a fixed id)
   iconUrl:   string;   // skill icon to display in the pill
@@ -304,6 +260,11 @@ const EFX: Record<string, Omit<StatusEffect,'turnsLeft'> & { defaultTurns:number
   myko_spore_rot:   { id:'myko_spore_rot',   iconUrl:SKILL_ICONS.Myko?.sk2 ?? '', color:'#84cc16', isBuff:false, isStun:false, defaultTurns:2 },
   myko_spore_toxin: { id:'myko_spore_toxin', iconUrl:SKILL_ICONS.Myko?.ult ?? '', color:'#65a30d', isBuff:false, isStun:false, defaultTurns:3 },
   myko_iron_casing: { id:'myko_iron_casing', iconUrl:SKILL_ICONS.Myko?.sk1 ?? '', color:'#22d3ee', isBuff:true,  isStun:false, defaultTurns:2 },
+  // ── Clover HoT buffs (Lucky Toss / Bloom Cascade) ─────────────────────────
+  clover_sk2_hot:   { id:'clover_sk2_hot', iconUrl:SKILL_ICONS.Clover?.sk2 ?? '', color:'#4ade80', isBuff:true, isStun:false, defaultTurns:3 },
+  clover_ult_hot:   { id:'clover_ult_hot', iconUrl:SKILL_ICONS.Clover?.ult ?? '', color:'#86efac', isBuff:true, isStun:false, defaultTurns:3 },
+  // ── Bolo — Goofy Punch stun (SK1, 35% chance from server) ────────────────
+  bolo_stun:        { id:'bolo_stun',      iconUrl:SKILL_ICONS.Bolo?.sk1   ?? '', color:'#facc15', isBuff:false, isStun:true,  defaultTurns:1 },
 };
 /** IDs of Water Slime debuffs — Soaking Field passive proc condition */
 const WS_DEBUFF_IDS = new Set(['wslime_slow','wslime_mdef','wslime_ult']);
@@ -365,7 +326,7 @@ function calcDashVec(aS: 'hero'|'enemy', aSlot: number, tSlot: number) {
   return { x, y: (tr.y + tr.slotH) - (ar.y + ar.slotH) };
 }
 
-// ── Slot key for skill icons ───────────────────��─────────────────────────────
+// ── Slot key for skill icons ───────────────────��──────────────────────────���──
 function slotToKey(slot: number): string {
   if (slot === 0) return 'basic';
   if (slot === 1) return 'sk1';
@@ -427,6 +388,24 @@ function RageBar({ rage, width = 72 }: { rage: number; width?: number }) {
   );
 }
 
+/**
+ * calcHeadY — where does the rendered image START (from container top)?
+ *
+ * objectFit:contain + objectPosition:center bottom means:
+ *   • Image scales to fit inside container while keeping aspect ratio.
+ *   • Anchored at the BOTTOM centre → empty space is at the TOP.
+ *
+ * Returns that top-Y offset in pixels. HP bar anchored here will always sit
+ * above the character's head regardless of container height or image aspect.
+ */
+function calcHeadY(natW: number, natH: number, cW: number, cH: number): number {
+  if (!natW || !natH || !cW || !cH) return 0;
+  // Scale factor so both dims fit (contain)
+  const scale     = Math.min(cW / natW, cH / natH);
+  const renderedH = natH * scale;
+  return Math.max(0, Math.round(cH - renderedH));
+}
+
 const HERO_SLIME_NAMES = new Set(['RockSlime', 'AcidSlime', 'WaterSlime']);
 
 function HeroBattleSprite({ unit, floats }: { unit: UnitState; floats: FloatNum[] }) {
@@ -436,7 +415,9 @@ function HeroBattleSprite({ unit, floats }: { unit: UnitState; floats: FloatNum[
   // Hooks always called unconditionally
   const idleUrl      = useChromaKeyDataUrl(!isSlime ? (IDLE_SPRITES[name] ?? '') : '');
   const slimeChroma  = useChromaKeyDataUrl(slimeNeedsChroma ? (TEAM_SLIME_IDLE[name] ?? '') : '');
-  const chromaActUrl = useChromaKeyDataUrl(ACTION_CHROMA[name] ?? '');
+  // useChromaKeyCroppedDataUrl: strips transparent padding before objectFit:contain,
+  // so action sprites always fill the container regardless of source image padding.
+  const chromaActUrl = useChromaKeyCroppedDataUrl(ACTION_CHROMA[name] ?? '');
   // Resolve final src
   const slimeSrc     = isSlime
     ? (slimeNeedsChroma ? (slimeChroma ?? '') : (TEAM_SLIME_IDLE[name] ?? ''))
@@ -448,10 +429,29 @@ function HeroBattleSprite({ unit, floats }: { unit: UnitState; floats: FloatNum[
     : ((showAct && actionSrc) ? actionSrc : (idleUrl ?? undefined));
   const flipCls      = animPhase === 'flip-windup' ? 'bp-flip-wind' : animPhase === 'flip-revert' ? 'bp-flip-rev' : '';
   const isDash       = animPhase === 'dashing', isRet = animPhase === 'dash-return';
-  const isMykoHero   = !isSlime && (name === 'Myko' || name === 'Fang' || name === 'Clover');
-  const spriteW      = isSlime ? 180 : isMykoHero ? BP_MYKO_HW : 180;
-  const spriteH      = isSlime ? 180 : isMykoHero ? BP_MYKO_HH : 338;
+  const isMykoHero   = !isSlime && (name === 'Myko' || name === 'Fang' || name === 'Clover' || name === 'Bolo');
+  // Sizes driven by central spriteConfig (editor can override via localStorage)
+  const _cfg         = getSpriteSize(`sprite_${heroId}_${showAct ? 'action' : 'idle'}`);
+  const spriteW      = _cfg.w;
+  const spriteH      = _cfg.h;
   const spriteBottom = isSlime ? 0 : -4;
+
+  // ── Adaptive head position ─────────────────────────────────────────────────
+  // Recomputed on every image load via onCharImgLoad (below).
+  // Null = not yet measured → falls back to legacy offset until img loads.
+  const [headY, setHeadY] = useState<number | null>(null);
+  const hDimRef = useRef({ w: spriteW, h: spriteH });
+  useEffect(() => {
+    hDimRef.current = { w: spriteW, h: spriteH };
+    setHeadY(null); // force recalc when container size changes (idle ↔ action)
+  }, [spriteW, spriteH]);
+  useEffect(() => { setHeadY(null); }, [src]);
+  const onCharImgLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    const { w, h } = hDimRef.current;
+    setHeadY(calcHeadY(img.naturalWidth, img.naturalHeight, w, h));
+  }, []);
+
   return (
     <div className={animPhase === 'dying' ? 'bp-dying' : ''} style={{
       position: 'absolute', bottom: spriteBottom, left: '50%',
@@ -471,13 +471,22 @@ function HeroBattleSprite({ unit, floats }: { unit: UnitState; floats: FloatNum[
           zIndex: 0, pointerEvents: 'none',
         }}/>
       )}
-      <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 20, width: 76, display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {/* ZZZ stun indicator */}
-        {statusEffects.some(e => e.isStun) && (
-          <div style={{ display:'flex', justifyContent:'center' }}>
-            <span className="bp-zzz" style={{ fontFamily:"'Supermercado One',cursive", fontSize:11, fontWeight:400, color:'#facc15', letterSpacing:'0.1em', textShadow:'0 0 8px rgba(250,204,21,0.85),0 1px 4px rgba(0,0,0,1)' }}>zzz</span>
-          </div>
-        )}
+      {/* HP bar stack — bottom edge anchored exactly at character's head (headY).
+           translateY(-100%) makes the whole stack grow UPWARD from that point.
+           headY is auto-computed from image natural dims on every load. */}
+      <div style={{ position: 'absolute', top: headY ?? spriteH * 0.05, left: '50%', transform: 'translateX(-50%) translateY(-100%)', zIndex: 20, width: 76, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {/* ZZZ stun indicator — shows remaining turns */}
+        {statusEffects.some(e => e.isStun) && (() => {
+          const stunEfx = statusEffects.find(e => e.isStun)!;
+          return (
+            <div style={{ display:'flex', justifyContent:'center', alignItems:'center', gap:3,
+              background:'rgba(0,0,0,0.72)', border:'1px solid rgba(250,204,21,0.7)',
+              borderRadius:6, padding:'1px 5px', alignSelf:'center' }}>
+              <span className="bp-zzz" style={{ fontFamily:"'Supermercado One',cursive", fontSize:12, fontWeight:400, color:'#facc15', letterSpacing:'0.1em', textShadow:'0 0 8px rgba(250,204,21,0.85),0 1px 4px rgba(0,0,0,1)' }}>zzz</span>
+              <span style={{ fontFamily:"'Roboto Condensed',sans-serif", fontSize:10, fontWeight:900, color:'#facc15', lineHeight:1, textShadow:'0 1px 4px rgba(0,0,0,1)' }}>{stunEfx.turnsLeft}T</span>
+            </div>
+          );
+        })()}
         {/* Status effect pills — max 3 per row; rows stack upward */}
         {statusEffects.length > 0 && (() => {
           const chunks: StatusEffect[][] = [];
@@ -550,6 +559,7 @@ function HeroBattleSprite({ unit, floats }: { unit: UnitState; floats: FloatNum[
               ? (animPhase === 'idle' ? 'bp-slime' : animPhase === 'hurt' ? 'bp-hurt' : '')
               : (animPhase === 'idle' ? 'bp-idle'  : animPhase === 'hurt' ? 'bp-hurt' : '')
           }
+          onLoad={onCharImgLoad}
           style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center bottom', display: 'block' }}/>
       </div>
     </div>
@@ -557,32 +567,61 @@ function HeroBattleSprite({ unit, floats }: { unit: UnitState; floats: FloatNum[
 }
 
 function EnemyBattleSprite({ unit, floats }: { unit: UnitState; floats: FloatNum[] }) {
-  const { name, animPhase, dashOffsetX, dashOffsetY, currentHp, maxHp, shield, rage, statusEffects } = unit;
-  const rawSrc       = ENEMY_IDLE[name] ?? '';
-  // Human enemies (Myko/Fang/Clover) are green-screen → client chroma key
+  const { name, heroId, animPhase, dashOffsetX, dashOffsetY, currentHp, maxHp, shield, rage, statusEffects } = unit;
+
+  // ── Flags (declared before hooks so they can gate hook inputs) ──────────────
   const isHumanEnemy = BP_ENEMY_HUMAN_NAMES.has(name);
-  const needsChroma  = !BP_BGREMOVE_SLIMES.has(name) && !isHumanEnemy;
-  const needsHumanChroma = BP_ENEMY_HUMAN_CHROMA.has(name);
-  const chromaUrl    = useChromaKeyDataUrl(needsChroma ? rawSrc : '');
-  const humanChroma  = useChromaKeyDataUrl(needsHumanChroma ? rawSrc : '');
-  const src = needsHumanChroma ? (humanChroma ?? '') : needsChroma ? (chromaUrl ?? '') : rawSrc;
-  const flipCls     = animPhase === 'flip-windup' ? 'bp-flip-wind' : animPhase === 'flip-revert' ? 'bp-flip-rev' : '';
-  const counterFlip = ENEMY_COUNTERFLIP.has(name);
-  const isMykoE     = name === 'Myko' || name === 'Fang' || name === 'Clover';
-  const isDash  = animPhase === 'dashing', isRet = animPhase === 'dash-return';
+  const needsChroma  = !BP_BGREMOVE_SLIMES.has(name);
+  const counterFlip  = ENEMY_COUNTERFLIP.has(name);
+  // showAct: only human enemies have action sprites; slimes stay idle-only.
+  const showAct      = isHumanEnemy && (animPhase === 'attacking' || animPhase === 'dashing');
+  const isDash       = animPhase === 'dashing', isRet = animPhase === 'dash-return';
+  const flipCls      = animPhase === 'flip-windup' ? 'bp-flip-wind' : animPhase === 'flip-revert' ? 'bp-flip-rev' : '';
+
+  // ── Sprite sources — hooks called unconditionally (React rules) ─────────────
+  const rawIdleSrc   = ENEMY_IDLE[name] ?? '';
+  // Idle: chroma-key all non-bg-removal enemies (same as EnemySlotSprite)
+  const chromaUrl    = useChromaKeyDataUrl(needsChroma ? rawIdleSrc : '');
+  // Action: useChromaKeyCroppedDataUrl strips transparent padding — same as HeroBattleSprite
+  const chromaActUrl = useChromaKeyCroppedDataUrl(isHumanEnemy ? (ACTION_CHROMA[name] ?? '') : '');
+
+  const idleSrc   = needsChroma ? (chromaUrl ?? '') : rawIdleSrc;
+  const actionSrc = ACTION_BGREMOVE[name] ?? (chromaActUrl ?? undefined);
+  // Final src: action when attacking/dashing (human only), else idle
+  const src       = showAct && actionSrc ? actionSrc : idleSrc;
+
+  // ── Size: IDENTICAL to hero-side (engine rule). Switches idle↔action like HeroBattleSprite.
+  const _cfg         = getSpriteSize(`sprite_${heroId}_${showAct ? 'action' : 'idle'}`);
+  const espriteW     = _cfg.w;
+  const espriteH     = _cfg.h;
+  const spriteBottom = isHumanEnemy ? -4 : 0; // matches HeroBattleSprite
+
+  // ── Adaptive head position (same logic as HeroBattleSprite) ───────────────
+  const [headY, setHeadY] = useState<number | null>(null);
+  const eDimRef = useRef({ w: espriteW, h: espriteH });
+  useEffect(() => {
+    eDimRef.current = { w: espriteW, h: espriteH };
+    setHeadY(null);
+  }, [espriteW, espriteH]);
+  useEffect(() => { setHeadY(null); }, [src]);
+  const onCharImgLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    const { w, h } = eDimRef.current;
+    setHeadY(calcHeadY(img.naturalWidth, img.naturalHeight, w, h));
+  }, []);
+
   return (
     <div className={animPhase === 'dying' ? 'bp-dying' : ''} style={{
-      position: 'absolute', bottom: 4, left: '50%',
+      position: 'absolute', bottom: spriteBottom, left: '50%',
       transform: `translateX(calc(-50% + ${dashOffsetX}px)) translateY(${dashOffsetY}px)`,
       transition: isDash ? 'transform .15s cubic-bezier(.04,0,.08,1)' : isRet ? 'transform .22s ease-out' : 'none',
-      width: isMykoE ? BP_MYKO_EW : 180, height: isMykoE ? BP_MYKO_EH : 180, pointerEvents: 'none', zIndex: 10,
+      width: espriteW, height: espriteH, pointerEvents: 'none', zIndex: 10,
       filter: isDash ? MELEE_TRAIL_ENEMY : '', willChange: 'transform,filter',
     }}>
       {src && (
         <img src={src} alt="" aria-hidden draggable={false} style={{
           position: 'absolute', inset: 0, width: '100%', height: '100%',
           objectFit: 'contain', objectPosition: 'center bottom',
-          // skewX(-12deg) consistent with hero shadow (no outer flip to compensate for)
           transform: 'scaleY(0.65) skewX(-12deg)', transformOrigin: 'bottom center',
           filter: 'brightness(0) opacity(0.15)',
           WebkitMaskImage: 'linear-gradient(to top, rgba(0,0,0,0.90) 0%, rgba(0,0,0,0.65) 38%, rgba(0,0,0,0.20) 72%, transparent 92%)',
@@ -590,13 +629,19 @@ function EnemyBattleSprite({ unit, floats }: { unit: UnitState; floats: FloatNum
           zIndex: 0, pointerEvents: 'none',
         }}/>
       )}
-      <div style={{ position: 'absolute', top: 6, left: '50%', transform: 'translateX(-50%)', zIndex: 20, width: 72, display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {/* ZZZ stun indicator */}
-        {statusEffects.some(e => e.isStun) && (
-          <div style={{ display:'flex', justifyContent:'center' }}>
-            <span className="bp-zzz" style={{ fontFamily:"'Supermercado One',cursive", fontSize:11, fontWeight:400, color:'#facc15', letterSpacing:'0.1em', textShadow:'0 0 8px rgba(250,204,21,0.85),0 1px 4px rgba(0,0,0,1)' }}>zzz</span>
-          </div>
-        )}
+      <div style={{ position: 'absolute', top: headY ?? espriteH * 0.05, left: '50%', transform: 'translateX(-50%) translateY(-100%)', zIndex: 20, width: 72, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {/* ZZZ stun indicator — shows remaining turns */}
+        {statusEffects.some(e => e.isStun) && (() => {
+          const stunEfx = statusEffects.find(e => e.isStun)!;
+          return (
+            <div style={{ display:'flex', justifyContent:'center', alignItems:'center', gap:3,
+              background:'rgba(0,0,0,0.72)', border:'1px solid rgba(250,204,21,0.7)',
+              borderRadius:6, padding:'1px 5px', alignSelf:'center' }}>
+              <span className="bp-zzz" style={{ fontFamily:"'Supermercado One',cursive", fontSize:12, fontWeight:400, color:'#facc15', letterSpacing:'0.1em', textShadow:'0 0 8px rgba(250,204,21,0.85),0 1px 4px rgba(0,0,0,1)' }}>zzz</span>
+              <span style={{ fontFamily:"'Roboto Condensed',sans-serif", fontSize:10, fontWeight:900, color:'#facc15', lineHeight:1, textShadow:'0 1px 4px rgba(0,0,0,1)' }}>{stunEfx.turnsLeft}T</span>
+            </div>
+          );
+        })()}
         {/* Status effect pills — max 3 per row; rows stack upward */}
         {statusEffects.length > 0 && (() => {
           const chunks: StatusEffect[][] = [];
@@ -637,15 +682,19 @@ function EnemyBattleSprite({ unit, floats }: { unit: UnitState; floats: FloatNum
         <img src={src} alt={name} draggable={false}
           className={
             animPhase === 'idle'
-              ? (isHumanEnemy ? 'bp-idle' : counterFlip ? 'bp-slime-cfl' : 'bp-slime-e')
+              // bp-idle-e bakes scaleX(-1) into keyframes so the CSS animation
+              // cannot override the flip (same technique as bp-slime-e for slimes).
+              // bp-idle (hero version) has scaleX(1) in keyframes — it would
+              // override the inline scaleX(-1) and make enemies face the wrong way.
+              ? (isHumanEnemy ? 'bp-idle-e' : counterFlip ? 'bp-slime-cfl' : 'bp-slime-e')
               : animPhase === 'hurt' ? 'bp-hurt' : ''
           }
+          onLoad={onCharImgLoad}
           style={{
             width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center bottom',
             display: 'block',
-            // Normal enemy: scaleX(-1) faces LEFT (flips right-facing sprite).
-            // counterFlip (WaterSlime): scaleX(1) — already LEFT-facing, no flip needed.
-            // Human enemies (Myko/Fang/Clover): bp-idle animation, scaleX(-1) to face left.
+            // scaleX(-1): used during non-animated phases (hurt, dashing, attacking).
+            // Idle phases bake the flip into their keyframes (bp-idle-e / bp-slime-e).
             transform: counterFlip ? 'scaleX(1)' : 'scaleX(-1)',
           }}/>
       </div>
@@ -1000,6 +1049,20 @@ export function BattlePlayback({ battleLog, onVictory, onDefeat }: BattlePlaybac
     // ── Play a single event from the battle log ─────────────────────────────
     const playEvent = async (ev: SimBattleEvent) => {
       // ── passive_init: init shield bars dari pre-battle passive (Emma, dll) ──
+      // ── stun_skip: unit's turn consumed by stun — decrement counter + flash ──
+      if (ev.type === 'stun_skip') {
+        const stunUnit = getUnit(ev.actor!);
+        if (stunUnit && stunUnit.animPhase !== 'dead') {
+          // Brief hurt flash so the player sees the turn was lost
+          patch(ev.actor!, { animPhase: 'hurt' });
+          await delay(480);
+          patch(ev.actor!, { animPhase: 'idle' });
+          // Tick stun counter down (will remove at 0)
+          tickEffects(ev.actor!);
+        }
+        return;
+      }
+
       if (ev.type === 'passive_init') {
         if (ev.shields) {
           stateRef.current = stateRef.current.map(u => ({
@@ -1076,13 +1139,34 @@ export function BattlePlayback({ battleLog, onVictory, onDefeat }: BattlePlaybac
         await delay(50);
       }
 
-      // ── PASSIVE PROC (slot 3) ─────────────────────────────────────────────
+      // ── PASSIVE PROC (slot 3) ────────���────────────────────────────────────
       // Bleed ticks, lifesteal, on-hit passives: NO actor animation, NO cinematic.
-      // Server puts Bleed-tick dmg in targets[] (dtype='bleed') and
-      // lifesteal heal as a heal target for the actor.
-      // Special float type 'bleed' renders as 🩸-N in bright red.
       if (isPassiveProc) {
-        // Bleed tick or other passive proc: use 'bleed' float type when dtype='bleed'
+
+        // ── HoT Tick: show heal float + update HoT effect counter ──────────
+        if (ev.skill_type === 'hot') {
+          const HOT_IDS = ['clover_sk2_hot', 'clover_ult_hot'] as const;
+          for (const tgt of targets) {
+            const unit = getUnit(tgt.uid);
+            if (!unit || unit.animPhase === 'dead') continue;
+            if ((tgt.heal ?? 0) > 0) {
+              addFloat(tgt.uid, tgt.heal!, 'heal');
+              const remaining = tgt.hot_turns ?? 0;
+              const newEffects = unit.statusEffects
+                .map(e => HOT_IDS.includes(e.id as typeof HOT_IDS[number])
+                  ? remaining > 0 ? { ...e, turnsLeft: remaining } : null
+                  : e)
+                .filter(Boolean) as typeof unit.statusEffects;
+              patch(tgt.uid, { currentHp: tgt.hp_after, statusEffects: newEffects });
+            }
+          }
+          patch(ev.actor!, { rage: ev.rage_after ?? (getUnit(ev.actor!)?.rage ?? 0) });
+          return;
+        }
+
+        // ── Standard passive proc (Myko regen, Clover Life Bloom, Gorr bleed, etc.) ──
+        // NOTE: tickEffects is NOT called here — effects only tick on the unit's
+        // own main action event to avoid double-decrement.
         const passiveDtype: FloatNum['type'] =
           ev.skill_dtype === 'bleed' ? 'bleed' :
           ev.skill_dtype === 'magical' ? 'magic' : 'dmg';
@@ -1102,12 +1186,10 @@ export function BattlePlayback({ battleLog, onVictory, onDefeat }: BattlePlaybac
               setTimeout(() => { if (getUnit(tgt.uid)?.animPhase === 'hurt') patch(tgt.uid, { animPhase: 'idle' }); }, 440);
             }
           } else if ((tgt.heal ?? 0) > 0) {
-            // Lifesteal heal — show green float on Gorr (or whoever heals)
             addFloat(tgt.uid, tgt.heal!, 'heal');
             patch(tgt.uid, { currentHp: tgt.hp_after, rage: tgt.rage_after });
           }
         }
-        tickEffects(ev.actor!);
         patch(ev.actor!, { rage: ev.rage_after ?? (getUnit(ev.actor!)?.rage ?? 0) });
         return; // skip all actor animations
       }
@@ -1175,6 +1257,53 @@ export function BattlePlayback({ battleLog, onVictory, onDefeat }: BattlePlaybac
         } as CrawVFXTrigger }));
       };
 
+      const fireSylvieVFX = (
+        type: SylvieVFXTrigger['type'],
+        tSlots: number[],
+        tSide: 'hero' | 'enemy',
+      ) => {
+        if (actor.heroId !== 'sylvie' || !tSlots.length) return;
+        window.dispatchEvent(new CustomEvent('sylvie-vfx', { detail: {
+          type,
+          actorSlot:   actor.slotIndex,
+          actorSide:   actor.side,
+          targetSlots: tSlots,
+          targetSide:  tSide,
+        } as SylvieVFXTrigger }));
+      };
+
+      const fireFangVFX = (
+        type: FangVFXTrigger['type'],
+        tSlots: number[],
+        tSide: 'hero' | 'enemy',
+        hitIndex: number = 0,
+      ) => {
+        if (actor.heroId !== 'fang' || !tSlots.length) return;
+        window.dispatchEvent(new CustomEvent('fang-vfx', { detail: {
+          type,
+          actorSlot:   actor.slotIndex,
+          actorSide:   actor.side,
+          targetSlots: tSlots,
+          targetSide:  tSide,
+          hitIndex,
+        } as FangVFXTrigger }));
+      };
+
+      const fireCloverVFX = (
+        type: CloverVFXTrigger['type'],
+        tSlots: number[],
+        tSide: 'hero' | 'enemy',
+      ) => {
+        if (actor.heroId !== 'clover' || !tSlots.length) return;
+        window.dispatchEvent(new CustomEvent('clover-vfx', { detail: {
+          type,
+          actorSlot:   actor.slotIndex,
+          actorSide:   actor.side,
+          targetSlots: tSlots,
+          targetSide:  tSide,
+        } as CloverVFXTrigger }));
+      };
+
       // Non-ULT type mapping
       const nonUltType: VFXTrigger['type'] | null =
         ev.skill_slot === 0 ? 'lucas_basic' :
@@ -1191,16 +1320,25 @@ export function BattlePlayback({ battleLog, onVictory, onDefeat }: BattlePlaybac
           const tSlots = [...new Set(targets.filter(t => (t.dmg ?? 0) > 0).map(t => getUnit(t.uid)?.slotIndex ?? -1).filter(s => s >= 0))];
           fireVFX(nonUltType, tSlots.length ? tSlots : [dashTarget.slotIndex]);
         }
-        // ── Gorr VFX — dark-brown vertical slash ─────────────────────────
+        // ── Gorr VFX — flying slash (same asset as Fang) ─────────────────
         if (actor.heroId === 'gorr') {
+          const tSlots = [...new Set(targets.filter(t => (t.dmg ?? 0) > 0).map(t => getUnit(t.uid)?.slotIndex ?? -1).filter(s => s >= 0))];
           if (nonUltType) {
-            // basic / sk1 / sk2: vertical slash on each hit target
-            const tSlots = [...new Set(targets.filter(t => (t.dmg ?? 0) > 0).map(t => getUnit(t.uid)?.slotIndex ?? -1).filter(s => s >= 0))];
+            // basic / sk1 / sk2: one slash per hit target
             fireGorrVFX('gorr_basic', tSlots.length ? tSlots : [dashTarget.slotIndex], oppSide);
           } else if (slot === 4) {
-            // ULT: 2 full-height slashes across front + back enemy columns
-            fireGorrVFX('gorr_ult', [], oppSide);
+            // ULT: larger slashes to all hit targets (staggered in GorrVFX)
+            fireGorrVFX('gorr_ult', tSlots.length ? tSlots : [dashTarget.slotIndex], oppSide);
           }
+        }
+        // ── Fang VFX — flying slash (basic / sk1 first hit / sk2 / ult) ──
+        if (actor.heroId === 'fang') {
+          const tSlots = [...new Set(targets.filter(t => (t.dmg ?? 0) > 0).map(t => getUnit(t.uid)?.slotIndex ?? -1).filter(s => s >= 0))];
+          const fType: FangVFXTrigger['type'] =
+            slot === 4 ? 'fang_ult' :
+            slot === 2 ? 'fang_sk2' :
+            slot === 1 ? 'fang_sk1' : 'fang_basic';
+          fireFangVFX(fType, tSlots.length ? tSlots : [dashTarget.slotIndex], oppSide, 0);
         }
         // ── SFX at attack moment — driven by HERO_SKILL_ACTIONS ─────────
         { const sfx = actionDef?.sfx;
@@ -1211,7 +1349,7 @@ export function BattlePlayback({ battleLog, onVictory, onDefeat }: BattlePlaybac
           else if (sfx === 'heal')   playHealSfx();
           // 'bullet' is ranged-only; 'none'/'passive' = silent
         }
-        // ── Rock Slime ULT — stone spikes at each hit target ─────────────
+        // ── Rock Slime ULT — stone spikes at each hit target ──────��──────
         if (actor.name === 'RockSlime' && slot === 4) {
           const ts = [...new Set(
             targets.filter(t => (t.dmg ?? 0) > 0)
@@ -1244,6 +1382,15 @@ export function BattlePlayback({ battleLog, onVictory, onDefeat }: BattlePlaybac
           if (slot === 4) {
             const tgtUnit = getUnit(tgt.uid);
             if (tgtUnit) fireVFX('lucas_ult_hit', [tgtUnit.slotIndex], prevHit);
+          }
+          // ── Fang SK1: fire second slash VFX + SFX before second hit ──────
+          // prevHit >= 1 means this is the 2nd (or later) hit on the same target
+          if (actor.heroId === 'fang' && slot === 1 && prevHit >= 1) {
+            const tgtUnit = getUnit(tgt.uid);
+            if (tgtUnit) {
+              fireFangVFX('fang_sk1', [tgtUnit.slotIndex], oppSide, prevHit);
+              playLucasAttackSfx();
+            }
           }
           applyTarget(tgt, ev.skill_dtype ?? 'physical');
           const hitN = prevHit + 1;
@@ -1390,7 +1537,7 @@ export function BattlePlayback({ battleLog, onVictory, onDefeat }: BattlePlaybac
             fireSlimeVFX('waterslime_ult', [0], oppSide);
           }
         }
-        // ── End Slime VFX ─────────────────────────────────────────────────
+        // ── End Slime VFX ────���────────────────────────────────────────────
 
         // ── Craw VFX — white arrow projectile ────────────────────────────
         if (actor.heroId === 'craw') {
@@ -1414,30 +1561,89 @@ export function BattlePlayback({ battleLog, onVictory, onDefeat }: BattlePlaybac
         }
         // ── End Craw VFX ──────────────────────────────────────────────────
 
-        // ── Myko VFX — SK1 Iron Casing: shield drops onto Myko (reuse Emma shield) ─
+        // ── Sylvie VFX — crossbow bolt projectile ─────────────────────────
+        if (actor.heroId === 'sylvie') {
+          const ts = [...new Set(
+            targets.filter(t => (t.dmg ?? 0) > 0)
+                   .map(t => getUnit(t.uid)?.slotIndex ?? -1)
+                   .filter(s => s >= 0)
+          )];
+          if (slot === 0 || slot === 1) {
+            // basic / SK1 (Over Cover): single bolt to target
+            fireSylvieVFX('sylvie_bolt', ts.length ? ts : [], oppSide);
+          } else if (slot === 2) {
+            // SK2 (Scatter Volley): 2 bolts, staggered — may duplicate same slot
+            const tsFull = targets
+              .filter(t => (t.dmg ?? 0) > 0)
+              .map(t => getUnit(t.uid)?.slotIndex ?? -1)
+              .filter(s => s >= 0);
+            fireSylvieVFX('sylvie_sk2', tsFull.length ? tsFull : [], oppSide);
+          } else if (slot === 4) {
+            // ULT (Crossfire Storm): 2 bolts arc high then plunge
+            const tsFull = targets
+              .filter(t => (t.dmg ?? 0) > 0)
+              .map(t => getUnit(t.uid)?.slotIndex ?? -1)
+              .filter(s => s >= 0);
+            fireSylvieVFX('sylvie_ult', tsFull.length ? tsFull : [], oppSide);
+          }
+        }
+        // ── End Sylvie VFX ────────────────────────────────────────────────
+
+        // ── Myko VFX — SK1 Iron Casing: dedicated shield asset ───────────
         if (actor.heroId === 'myko' && slot === 1) {
-          window.dispatchEvent(new CustomEvent('emma-vfx', {
+          window.dispatchEvent(new CustomEvent('myko-vfx', {
             detail: {
-              type:        'emma_sk2',
-              actorSlot:   actor.slotIndex,
-              actorSide:   actor.side,
-              targetSlots: [actor.slotIndex],  // shield lands on Myko itself
-              targetSide:  actor.side,
-            } as EmmaVFXTrigger,
+              type:       'myko_shield',
+              targetSlot: actor.slotIndex,  // shield appears on Myko itself
+              targetSide: actor.side,
+            } as MykoVFXTrigger,
           }));
         }
         // ── End Myko VFX ──────────────────────────────────────────────────
+
+        // ── Clover VFX — heal orb flying to target ────────────────────────
+        if (actor.heroId === 'clover') {
+          // SK1: heal orb → lowest-HP ally (heal targets)
+          if (slot === 1) {
+            const ts = [...new Set(
+              targets.filter(t => (t.heal ?? 0) > 0)
+                     .map(t => getUnit(t.uid)?.slotIndex ?? -1)
+                     .filter(s => s >= 0)
+            )];
+            fireCloverVFX('clover_sk1', ts.length ? ts : [actor.slotIndex], actor.side);
+          }
+          // SK2 (Lucky Toss): HoT orb → random ally
+          if (slot === 2) {
+            const ts = [...new Set(
+              targets.filter(t => (t.heal ?? 0) > 0 || (t.hot_turns ?? 0) > 0)
+                     .map(t => getUnit(t.uid)?.slotIndex ?? -1)
+                     .filter(s => s >= 0)
+            )];
+            fireCloverVFX('clover_sk2', ts.length ? ts : [actor.slotIndex], actor.side);
+          }
+          // ULT (Bloom Cascade): orb per each healed ally
+          if (slot === 4) {
+            const ts = [...new Set(
+              targets.filter(t => (t.heal ?? 0) > 0)
+                     .map(t => getUnit(t.uid)?.slotIndex ?? -1)
+                     .filter(s => s >= 0)
+            )];
+            fireCloverVFX('clover_ult', ts.length ? ts : [actor.slotIndex], actor.side);
+          }
+        }
+        // ── End Clover VFX ────────────────────────────────────────────────
 
         // ── Skill SFX — ranged/support branch — driven by HERO_SKILL_ACTIONS ──
         // Adding a new hero? Set their sfx key in HERO_SKILL_ACTIONS above.
         // No more per-hero if/else chains needed here.
         { const sfx = actionDef?.sfx;
-          if      (sfx === 'bullet') playBulletSfx();
-          else if (sfx === 'water')  playWaterSfx();
-          else if (sfx === 'heal')   playHealSfx();
-          else if (sfx === 'shield') playShieldSfx();
-          else if (sfx === 'lucas')  playLucasAttackSfx();
-          else if (sfx === 'punch')  playPunchSfx();
+          if      (sfx === 'bullet')     playBulletSfx();
+          else if (sfx === 'craw_arrow') playCrawArrowSfx();
+          else if (sfx === 'water')      playWaterSfx();
+          else if (sfx === 'heal')       playHealSfx();
+          else if (sfx === 'shield')     playShieldSfx();
+          else if (sfx === 'lucas')      playLucasAttackSfx();
+          else if (sfx === 'punch')      playPunchSfx();
           // 'none' / 'passive' / undefined = silent
         }
         // ── End Skill SFX ─────────────────────────────────────────────────
@@ -1508,6 +1714,30 @@ export function BattlePlayback({ battleLog, onVictory, onDefeat }: BattlePlaybac
           else if (slot === 4) applyEffect(tgt.uid, 'myko_spore_toxin');
         }
         if (slot === 1) applyEffect(actor.uid, 'myko_iron_casing');
+      }
+
+      // ── Bolo — Goofy Punch stun (SK1, server-confirmed via stun_applied:true) ──
+      if (actor.heroId === 'bolo' && slot === 1) {
+        for (const tgt of hitTargets) {
+          if ((tgt as typeof tgt & { stun_applied?: boolean }).stun_applied) {
+            applyEffect(tgt.uid, 'bolo_stun');
+          }
+        }
+      }
+
+      // ── Clover — HoT effect pill on SK2 (Lucky Toss) and ULT (Bloom Cascade) ──
+      // hot_turns > 0 in target entry signals HoT was applied by server
+      if (actor.heroId === 'clover') {
+        if (slot === 2) {
+          for (const tgt of targets.filter(t => (t.hot_turns ?? 0) > 0)) {
+            applyEffect(tgt.uid, 'clover_sk2_hot');
+          }
+        }
+        if (slot === 4) {
+          for (const tgt of targets.filter(t => (t.hot_turns ?? 0) > 0)) {
+            applyEffect(tgt.uid, 'clover_ult_hot');
+          }
+        }
       }
 
       // ── Water Slime Soaking Field passive proc visual ─────────────────────
@@ -1664,6 +1894,10 @@ export function BattlePlayback({ battleLog, onVictory, onDefeat }: BattlePlaybac
       <SlimeVFX/>
       <GorrVFX/>
       <CrawVFX/>
+      <SylvieVFX/>
+      <FangVFX/>
+      <CloverVFX/>
+      <MykoVFX/>
 
       {/* Scene wrapper: cinematic zoom + global animation-pause */}
       <div

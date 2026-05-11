@@ -24,6 +24,10 @@ import SvgLibraryPage from './pages/SvgLibraryPage';
 import HeroPage from './pages/HeroPage';
 import LanguageSelectPage from './pages/LanguageSelectPage';
 import GameEnterPage from './pages/GameEnterPage';
+import DevPage from './pages/DevPage';
+import AdminPage from './pages/AdminPage';
+import SpriteEditor from './components/editor/SpriteEditor';
+import VfxEditor from './components/editor/VfxEditor';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -204,6 +208,22 @@ export const router = createBrowserRouter([
       {
         path: '/svg-library',
         element: <SvgLibraryPage />,
+      },
+      {
+        path: '/dev',
+        element: <DevPage />,
+      },
+      {
+        path: '/admin',
+        element: <AdminPage />,
+      },
+      {
+        path: '/sprite-editor',
+        element: <SpriteEditor />,
+      },
+      {
+        path: '/vfx-editor',
+        element: <VfxEditor />,
       },
       {
         path: '*',
