@@ -93,12 +93,13 @@ interface HeroMechanics {
   reactiveHealChance?: number;   // 0..1 probability
   reactiveHealRatio?: number;    // multiplier on M.ATK
   reactiveHealPassiveSlot?: number; // skill_slot that carries unlock_level
+  /** P.DEF ignore passive (SK2): per-tier ignore ratios [lv1, lv2, lv3, lv4] */
+  pdefIgnoreOnAttack?: number[];
 }
 
 const HERO_MECHANICS: Record<string, HeroMechanics> = {
   // ── Fang ─────────────────────────────────────────────────────────────────
   fang: {
-    sk2BeforeSk1:        true,   // ULT > SK2(if available) > SK1(always)
     sk1NoCooldown:       true,   // Twin Slash never goes on cooldown
     sk1HitCount:         2,      // Two hits on same target
     ultExecuteThreshold: 0.35,   // Execute bonus triggers below 35% HP
@@ -106,6 +107,7 @@ const HERO_MECHANICS: Record<string, HeroMechanics> = {
     onKillPatkStack:     true,   // Hunter's Mark: P.ATK +28% per kill
     onKillStackRatio:    0.28,
     onKillMaxStacks:     3,
+    pdefIgnoreOnAttack:  [0.20, 0.25, 0.30, 0.35], // Shadow Sprint: ignores % of target P.DEF
   },
   // ── Clover ───────────────────────────────────────────────────────────────
   clover: {
@@ -351,7 +353,19 @@ export function resolveTurnEngine(
         }
       }
 
-      const dmg    = calcDamage(actor, tgt, applyRatio, effectiveSkillDef.damage_type);
+      // Fang passive: Shadow Sprint (SK2) — ignores % of target P.DEF on every attack
+      let dmgTarget = tgt;
+      if (m.pdefIgnoreOnAttack) {
+        const sk2Tiers = actor.skills
+          .filter(s => s.skill_slot === 2 && s.skill_type === 'passive' && s.unlock_level <= actor.level)
+          .sort((a, b) => a.unlock_level - b.unlock_level);
+        const sk2Lv = sk2Tiers.length;
+        if (sk2Lv > 0) {
+          const ignoreRatio = m.pdefIgnoreOnAttack[sk2Lv - 1] ?? 0;
+          dmgTarget = { ...tgt, p_def: Math.round(tgt.p_def * (1 - ignoreRatio)) };
+        }
+      }
+      const dmg    = calcDamage(actor, dmgTarget, applyRatio, effectiveSkillDef.damage_type);
       const newHp  = Math.max(0, tgt.current_hp - dmg);
       const died   = newHp === 0;
 

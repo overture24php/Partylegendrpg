@@ -167,7 +167,7 @@ export default function HeroPage() {
           rarityLabel: heroCfg.label,
           rarityColor: heroCfg.fill,
           rarityShine: heroCfg.shine,
-          role:        oh.def.hero_type ?? '',
+          role:        HERO_GALLERY.find(h => h.heroId === hid)?.heroType ?? oh.def.hero_type ?? '',
           level:       oh.playerHero.level ?? 1,
           ilust:       getIlust(hid),
           stats: {
@@ -195,7 +195,7 @@ export default function HeroPage() {
       heroId:    hid,
       name:      oh.def.name ?? hid,
       rarity:    rar,
-      heroType:  oh.def.hero_type ?? '',
+      heroType:  HERO_GALLERY.find(h => h.heroId === hid)?.heroType ?? oh.def.hero_type ?? '',
       level:     oh.playerHero.level ?? 1,
       stars:     oh.playerHero.stars ?? heroCfg.stars,
       illustUrl: getIlust(hid),
@@ -255,21 +255,12 @@ export default function HeroPage() {
 
   // ─────────────────────────────────────────────────────────────────────────────
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100dvh', background: '#1a0535', overflow: 'hidden' }}>
+    <div style={{ position: 'relative', width: '100%', height: '100dvh', background: '#000', overflow: 'hidden' }}>
 
       {/* ── Background ── */}
       <div style={{ position:'absolute', inset:0,
-        backgroundImage:'url(https://res.cloudinary.com/dhkethrmc/image/upload/v1777419184/ChatGPT_Image_Apr_29_2026_06_32_08_AM_hch81k.png)',
-        backgroundSize:'cover', backgroundPosition:'center', opacity:0.4 }}/>
-      <div style={{ position:'absolute', inset:0,
-        background:'linear-gradient(180deg, rgba(26,5,53,0.7) 0%, rgba(26,5,53,0.85) 100%)',
-        pointerEvents:'none' }}/>
-      <div style={{ position:'absolute', inset:0,
-        background:'radial-gradient(ellipse 80% 60% at 50% 20%, rgba(120,40,200,0.2) 0%, transparent 70%)',
-        pointerEvents:'none' }}/>
-      <div style={{ position:'absolute', inset:0,
-        background:'radial-gradient(ellipse 60% 40% at 50% 90%, rgba(60,0,120,0.25) 0%, transparent 70%)',
-        pointerEvents:'none' }}/>
+        backgroundImage:'url(https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778828194/ChatGPT_Image_May_14_2026_04_43_32_PM_w6lcfz.png)',
+        backgroundSize:'cover', backgroundPosition:'center', opacity:1 }}/>
 
       {/* ── Tab buttons ── */}
       <div style={{ position:'absolute', top:'13%', left:'8px', zIndex:20,

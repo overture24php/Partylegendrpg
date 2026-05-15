@@ -47,7 +47,7 @@ export default function RegisterPage() {
 
       {/* Background image */}
       <img
-        src="https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777419184/ChatGPT_Image_Apr_29_2026_06_32_08_AM_hch81k.png"
+        src="https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778828194/ChatGPT_Image_May_14_2026_04_43_32_PM_w6lcfz.png"
         alt=""
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', zIndex: 0, pointerEvents: 'none', userSelect: 'none' }}
       />

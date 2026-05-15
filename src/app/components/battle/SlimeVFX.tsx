@@ -24,15 +24,89 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { applyChromaKey, getContentBounds } from '../../utils/chromaKey';
+import { getSpriteSize } from '../../data/spriteConfig';
+
+// ── Image asset URLs ──────────────────────────────────────────────────────────
+const BULLET_WSLIME_URL =
+  'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778742883/bulletwslime_tm4pis.png';
+const WAVE_WSLIME_ULT_URL =
+  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743516/wavewslime_qw0mir.png';
+const BULLET_ASLIME_URL =
+  'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778743504/bulletaslime_ugeyzj.png';
+const FLOOD_ASLIME_URL =
+  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743523/floodaslime_cnkxu0.png';
+const SPIKER_RSLIME_URL =
+  'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778743508/spikerslime_egaa7x.png';
+const SHIELD_RSLIME_URL =
+  'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778755854/shieldrslime_bnrdu9.png';
+
+// ── Loader for chroma-key canvas assets ──────────────────────────────────────
+type CanvasState = {
+  canvas: HTMLCanvasElement | null;
+  bounds: { x: number; y: number; w: number; h: number } | null;
+  cbs: Array<() => void>;
+};
+function makeCanvasState(): CanvasState { return { canvas: null, bounds: null, cbs: [] }; }
+function ensureCanvas(url: string, st: CanvasState, cb: () => void, needsChroma: boolean = true) {
+  if (st.canvas) { cb(); return; }
+  st.cbs.push(cb);
+  if (st.cbs.length > 1) return;
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    const c   = document.createElement('canvas');
+    c.width   = img.naturalWidth; c.height = img.naturalHeight;
+    const cx  = c.getContext('2d', { willReadFrequently: true })!;
+    cx.drawImage(img, 0, 0);
+    const d   = cx.getImageData(0, 0, c.width, c.height);
+    if (needsChroma) applyChromaKey(d.data);
+    cx.putImageData(d, 0, 0);
+    const b   = getContentBounds(d.data, c.width, c.height);
+    st.bounds = b ?? { x: 0, y: 0, w: c.width, h: c.height };
+    st.canvas = c;
+    st.cbs.forEach(f => f()); st.cbs.length = 0;
+  };
+  img.onerror = () => { st.cbs.length = 0; };
+  img.src = url;
+}
+
+// Slime image assets
+const wBulletSt  = makeCanvasState();
+const aBulletSt  = makeCanvasState();
+const rSpikeSt   = makeCanvasState();
+const rShieldSt  = makeCanvasState();
+const aFloodSt   = makeCanvasState();
+const wUltSt     = makeCanvasState(); // wave image for ULT
+
+function preloadSlimeAssets() {
+  ensureCanvas(BULLET_WSLIME_URL,   wBulletSt,  () => {}, false);
+  ensureCanvas(BULLET_ASLIME_URL,   aBulletSt,  () => {}, false);
+  ensureCanvas(SPIKER_RSLIME_URL,   rSpikeSt,   () => {}, false);
+  ensureCanvas(SHIELD_RSLIME_URL,   rShieldSt,  () => {}, false);
+  ensureCanvas(FLOOD_ASLIME_URL,    aFloodSt,   () => {}, true);
+  ensureCanvas(WAVE_WSLIME_ULT_URL, wUltSt,     () => {}, true);
+}
 
 // ── Layout constants (mirror BattlePlayback) ──────────────────────────────────
 const GRID_W = 368;
 const GRID_H = 310;
-const ROW_DATA = [
-  { slotW:  60, slotH:  60, col0X:  30, col1X: 278, y:   8 },
-  { slotW:  86, slotH:  86, col0X:  17, col1X: 265, y:  82 },
-  { slotW: 120, slotH: 120, col0X:   0, col1X: 248, y: 190 },
+const HERO_ROW_DATA = [
+  { slotW:  60, slotH:  60, col0X:  30, col1X: 154, y:   8 },
+  { slotW:  86, slotH:  86, col0X:  17, col1X: 141, y:  82 },
+  { slotW: 120, slotH: 120, col0X:   0, col1X: 124, y: 190 },
 ] as const;
+const ENEMY_ROW_DATA = [
+  { slotW:  60, slotH:  60, col0X: 154, col1X: 278, y:   8 },
+  { slotW:  86, slotH:  86, col0X: 154, col1X: 278, y:  82 },
+  { slotW: 120, slotH: 120, col0X: 154, col1X: 278, y: 190 },
+] as const;
+function getRow(side: 'hero' | 'enemy', ri: number) {
+  return (side === 'hero' ? HERO_ROW_DATA : ENEMY_ROW_DATA)[ri];
+}
+
+// innerHeight - ROW_FOOT_OFFSET[ri] = Y-coordinate of character's visual feet
+const ROW_FOOT_OFFSET = [242, 142, 60] as const;
 
 // ── Public trigger type ───────────────────────────────────────────────────────
 export type SlimeVFXTrigger = {
@@ -50,7 +124,7 @@ export type SlimeVFXTrigger = {
 function slotPos(side: 'hero' | 'enemy', slot: number) {
   const col = slot % 2;
   const ri  = Math.min(2, Math.floor(slot / 2));
-  const row = ROW_DATA[ri];
+  const row = getRow(side, ri);
   const gl  = side === 'hero' ? 12 : window.innerWidth - 12 - GRID_W;
   return {
     x:     gl + (col === 0 ? row.col0X : row.col1X) + row.slotW / 2,
@@ -84,6 +158,28 @@ type SpikeGroup = {
   retractMs: number;
 };
 
+/** Image-based projectile (Water/Acid Slime bullets) */
+type ImgProj = {
+  sx: number; sy: number;
+  ex: number; ey: number;
+  size:     number;
+  angle:    number;
+  startMs:  number;
+  travelMs: number;
+  fadeMs:   number;
+};
+
+/** Image-based overlay (wave / flood / spike image) */
+type ImgOverlay = {
+  cx: number; cy: number;
+  footY?: number; // if set: bottom-anchored draw (spike grows up from footY)
+  startW: number; endW: number;
+  startH: number; endH: number;
+  startMs: number;
+  growMs: number; holdMs: number; fadeMs: number;
+  flipX?: boolean; // mirror horizontally around cx
+};
+
 /** Acid Slime Basic / SK1 — green teardrop projectile */
 type Dewdrop = {
   sx: number; sy: number;
@@ -113,15 +209,30 @@ type AcidFlood = {
   fadeMs:    number;
 };
 
+/** Water Slime ULT — wave travels from screen center toward enemy formation then exits right */
+type WaterUltWave = {
+  startX:  number;  // spawn center X (screen center)
+  gl:      number;  // enemy grid left edge
+  groundY: number;
+  maxW:    number;
+  maxH:    number;
+  spawnMs: number;
+  totalMs: number;
+};
+
 // ── Module-level pools ────────────────────────────────────────────────────────
-const brownShields: BrownShield[] = [];
-const spikeGroups:  SpikeGroup[]  = [];
-const dewdrops:     Dewdrop[]     = [];
-const greenSlashes: GreenSlash[]  = [];
-const acidFloods:   AcidFlood[]   = [];
-// Water Slime pools — same types as acid counterparts, drawn with blue palette
-const waterDrops:  Dewdrop[]   = [];   // basic + sk1
-const waterFloods: AcidFlood[] = [];   // sk2 (small) + ult (large)
+const brownShields: BrownShield[]  = [];
+const spikeGroups:  SpikeGroup[]   = [];
+const dewdrops:     Dewdrop[]      = [];
+const greenSlashes: GreenSlash[]   = [];
+const acidFloods:   AcidFlood[]    = [];
+// Image-based pools
+const wBulletPool:  ImgProj[]      = [];
+const aBulletPool:  ImgProj[]      = [];
+const wUltPool:     WaterUltWave[] = [];
+const aFloodPool:   ImgOverlay[]   = [];
+const rSpikePool:   ImgOverlay[]   = [];
+const rShieldPool:  ImgOverlay[]   = [];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Spawners
@@ -199,60 +310,127 @@ function spawnAcidFlood(targetSide: 'hero' | 'enemy') {
   });
 }
 
-/** Water Slime Basic / SK1 — blue teardrop projectile. */
-function spawnWaterDrop(
+
+function spawnWBullet(
   actorSlot: number, actorSide: 'hero' | 'enemy',
-  tSlot: number,     tSide:     'hero' | 'enemy',
+  tSlot: number, tSide: 'hero' | 'enemy',
 ) {
-  const from = slotPos(actorSide, actorSlot);
-  const to   = slotPos(tSide, tSlot);
-  const sy   = from.y - from.slotH * 0.25;
-  const ey   = to.y   - to.slotH   * 0.25;
-  waterDrops.push({
-    sx: from.x, sy,
-    ex: to.x,   ey,
-    spawnMs:  performance.now(),
-    travelMs: 155, holdMs: 20, fadeMs: 75,
-    size:  24,
-    angle: Math.atan2(ey - sy, to.x - from.x),
-  });
+  ensureCanvas(BULLET_WSLIME_URL, wBulletSt, () => {
+    const from = slotPos(actorSide, actorSlot);
+    const to   = slotPos(tSide, tSlot);
+    const sy   = from.y - from.slotH * 0.25;
+    const ey   = to.y   - to.slotH   * 0.25;
+    wBulletPool.push({
+      sx: from.x, sy, ex: to.x, ey,
+      size: 56,
+      angle: Math.atan2(ey - sy, to.x - from.x),
+      startMs: performance.now(), travelMs: 155, fadeMs: 75,
+    });
+  }, false);
 }
 
-/** Water Slime SK2 (tidal wave) — small blue flood; ULT (tsunami) — large flood. */
-function spawnWaterFlood(targetSide: 'hero' | 'enemy', large: boolean) {
-  const gl      = targetSide === 'hero' ? 12 : window.innerWidth - 12 - GRID_W;
-  const centerX = gl + GRID_W / 2;
-  waterFloods.push({
-    centerX,
-    groundY:  window.innerHeight,
-    maxW:     GRID_W * (large ? 1.28 : 1.05),
-    maxH:     large ? 192 : 110,
-    spawnMs:  performance.now(),
-    expandMs: large ? 720 : 520,
-    holdMs:   large ? 600 : 400,
-    fadeMs:   large ? 480 : 340,
-  });
+function spawnABullet(
+  actorSlot: number, actorSide: 'hero' | 'enemy',
+  tSlot: number, tSide: 'hero' | 'enemy',
+) {
+  ensureCanvas(BULLET_ASLIME_URL, aBulletSt, () => {
+    const from = slotPos(actorSide, actorSlot);
+    const to   = slotPos(tSide, tSlot);
+    const sy   = from.y - from.slotH * 0.25;
+    const ey   = to.y   - to.slotH   * 0.25;
+    aBulletPool.push({
+      sx: from.x, sy, ex: to.x, ey,
+      size: 56,
+      angle: Math.atan2(ey - sy, to.x - from.x),
+      startMs: performance.now(), travelMs: 155, fadeMs: 75,
+    });
+  }, false);
 }
+
+function spawnWUlt(targetSide: 'hero' | 'enemy') {
+  ensureCanvas(WAVE_WSLIME_ULT_URL, wUltSt, () => {
+    const gl = targetSide === 'hero' ? 12 : window.innerWidth - 12 - GRID_W;
+    wUltPool.push({
+      startX:  window.innerWidth / 2,
+      gl,
+      groundY: window.innerHeight,
+      maxW:    GRID_W * 1.40,
+      maxH:    GRID_H * 1.15,
+      spawnMs: performance.now(),
+      totalMs: 1600,
+    });
+  }, true);
+}
+
+function spawnAFlood(targetSide: 'hero' | 'enemy') {
+  ensureCanvas(FLOOD_ASLIME_URL, aFloodSt, () => {
+    const gl  = targetSide === 'hero' ? 12 : window.innerWidth - 12 - GRID_W;
+    const cfg = getSpriteSize('vfx_aslime_flood');
+    aFloodPool.push({
+      cx: gl + GRID_W / 2,
+      cy: window.innerHeight - 80,
+      startW: cfg.w * 0.20, endW: cfg.w * 1.2,
+      startH: cfg.h * 0.20, endH: cfg.h,
+      startMs: performance.now(),
+      growMs: 580, holdMs: 500, fadeMs: 390,
+    });
+  }, true);
+}
+
+function spawnRSpike(targetSide: 'hero' | 'enemy', targetSlots: number[]) {
+  ensureCanvas(SPIKER_RSLIME_URL, rSpikeSt, () => {
+    for (const slot of targetSlots) {
+      const p     = slotPos(targetSide, slot);
+      const ri    = Math.min(2, Math.floor(slot / 2));
+      const footY = window.innerHeight - ROW_FOOT_OFFSET[ri];
+      const endH  = p.slotH * 2.5;
+      const endW  = p.slotH * 1.90;
+      rSpikePool.push({
+        cx: p.x, cy: footY - endH * 0.5, footY,
+        startW: endW * 0.15, endW,
+        startH: endH * 0.06, endH,
+        startMs: performance.now(),
+        growMs: 220, holdMs: 270, fadeMs: 210,
+      });
+    }
+  }, false);
+}
+
+function spawnRShield(targetSlot: number, targetSide: 'hero' | 'enemy', delay = 0) {
+  ensureCanvas(SHIELD_RSLIME_URL, rShieldSt, () => {
+    const p    = slotPos(targetSide, targetSlot);
+    const ri   = Math.min(2, Math.floor(targetSlot / 2));
+    const feet = window.innerHeight - ROW_FOOT_OFFSET[ri];
+    const endH = p.slotH * 2.10;
+    const endW = p.slotH * 1.90;
+    rShieldPool.push({
+      cx:      p.x,
+      cy:      feet - p.slotH * 0.90,
+      startW:  endW * 0.50, endW,
+      startH:  endH * 0.50, endH,
+      startMs: performance.now() + delay,
+      growMs:  220, holdMs: 380, fadeMs: 320,
+      flipX:   targetSide === 'enemy',
+    });
+  }, false);
+}
+
 
 // ── Entry dispatcher ──────────────────────────────────────────────────────────
 function onTrigger(e: SlimeVFXTrigger) {
   switch (e.type) {
     case 'rockslime_sk2':
       for (const s of e.targetSlots) {
-        const p = slotPos(e.targetSide, s);
-        spawnBrownShield(p.x, p.y, p.slotH);
+        spawnRShield(s, e.targetSide);
       }
       break;
     case 'rockslime_ult':
-      for (const s of e.targetSlots) {
-        const p = slotPos(e.targetSide, s);
-        spawnSpikeGroup(p.x, p.y + p.slotH * 0.46, p.slotH);
-      }
+      spawnRSpike(e.targetSide, e.targetSlots);
       break;
     case 'acidslime_basic':
     case 'acidslime_sk1':
       for (const s of e.targetSlots) {
-        spawnDewdrop(e.actorSlot, e.actorSide, s, e.targetSide);
+        spawnABullet(e.actorSlot, e.actorSide, s, e.targetSide);
       }
       break;
     case 'acidslime_sk2':
@@ -261,20 +439,18 @@ function onTrigger(e: SlimeVFXTrigger) {
       }
       break;
     case 'acidslime_ult':
-      spawnAcidFlood(e.targetSide);
+      spawnAFlood(e.targetSide);
       break;
     // ── Water Slime ────────────────────────────────────────────────────────
     case 'waterslime_basic':
     case 'waterslime_sk1':
+    case 'waterslime_sk2':
       for (const s of e.targetSlots) {
-        spawnWaterDrop(e.actorSlot, e.actorSide, s, e.targetSide);
+        spawnWBullet(e.actorSlot, e.actorSide, s, e.targetSide);
       }
       break;
-    case 'waterslime_sk2':
-      spawnWaterFlood(e.targetSide, false);
-      break;
     case 'waterslime_ult':
-      spawnWaterFlood(e.targetSide, true);
+      spawnWUlt(e.targetSide);
       break;
   }
 }
@@ -629,152 +805,127 @@ function drawAcidFlood(ctx: CanvasRenderingContext2D, f: AcidFlood, now: number)
   ctx.restore();
 }
 
-// ── Draw helpers for Water Slime ────────────────────────────────────────────
 
-/** Blue teardrop projectile — Water Slime basic / SK1. */
-function drawWaterDrop(ctx: CanvasRenderingContext2D, d: Dewdrop, now: number) {
-  const elapsed = now - d.spawnMs;
-  const total   = d.travelMs + d.holdMs + d.fadeMs;
-  if (elapsed < 0 || elapsed >= total) return;
-
-  let t: number, alpha: number;
-  if (elapsed < d.travelMs) {
-    t = elapsed / d.travelMs; alpha = 1;
-  } else if (elapsed < d.travelMs + d.holdMs) {
-    t = 1; alpha = 1;
-  } else {
-    t = 1; alpha = 1 - (elapsed - d.travelMs - d.holdMs) / d.fadeMs;
+// ── Canvas-state projectile draw (mirrors drawImgProjs but uses CanvasState) ──
+function drawCanvasProjs(
+  ctx: CanvasRenderingContext2D, now: number,
+  pool: ImgProj[], st: CanvasState,
+) {
+  const { canvas: sc, bounds: sb } = st;
+  if (!sc || !sb) return;
+  const { x: bx, y: by, w: bw, h: bh } = sb;
+  for (let i = pool.length - 1; i >= 0; i--) {
+    const p   = pool[i];
+    const age = now - p.startMs;
+    if (age >= p.travelMs + p.fadeMs) { pool.splice(i, 1); continue; }
+    const t     = Math.min(1, age / p.travelMs);
+    const ease  = 1 - (1 - t) * (1 - t);
+    const alpha = age < p.travelMs ? 1.0 : 1.0 - (age - p.travelMs) / p.fadeMs;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, alpha);
+    ctx.translate(p.sx + (p.ex - p.sx) * ease, p.sy + (p.ey - p.sy) * ease);
+    ctx.rotate(p.angle);
+    ctx.drawImage(sc, bx, by, bw, bh, -p.size / 2, -p.size / 2, p.size, p.size);
+    ctx.restore();
   }
-  alpha = c01(alpha);
+}
 
-  const ease = 1 - (1 - t) * (1 - t);
-  const cx   = lerp(d.sx, d.ex, ease);
-  const cy   = lerp(d.sy, d.ey, ease);
-  const r    = d.size * 0.52;
-  const tail = d.size * 1.35;
+// ── Water Slime ULT: wave travels from center screen to enemies, then exits right
+function drawWaterUltWave(ctx: CanvasRenderingContext2D, w: WaterUltWave, now: number) {
+  const { canvas: sc, bounds: sb } = wUltSt;
+  if (!sc || !sb) return;
+  const { x: bx, y: by, w: bw, h: bh } = sb;
+  const elapsed = now - w.spawnMs;
+  if (elapsed < 0 || elapsed >= w.totalMs) return;
+
+  const t    = elapsed / w.totalMs;
+  // Smooth-step movement: S-curve (slow start, fast middle, slow end is wrong for a wave)
+  // Use ease-in-out so wave accelerates then exits fast
+  const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+
+  // Wave travels from startX to completely off-screen right
+  const exitX  = window.innerWidth + w.maxW;
+  const cx     = w.startX + (exitX - w.startX) * ease;
+
+  // Size grows from 20% → 100% as cx approaches enemy formation center
+  const enemyCX  = w.gl + GRID_W / 2;
+  const growDist  = Math.max(1, enemyCX - w.startX);
+  const approachT = Math.max(0, Math.min(1, (cx - w.startX) / growDist));
+  const sizeEase  = 1 - (1 - approachT) * (1 - approachT);
+  const drawW     = w.maxW * (0.22 + 0.78 * sizeEase);
+  const drawH     = w.maxH * (0.18 + 0.82 * sizeEase);
+
+  // Fade in at spawn, fade out as left edge exits screen
+  const leftEdge = cx - drawW / 2;
+  const fadeInT  = Math.min(1, (cx - w.startX) / (drawW * 0.5));
+  const offRight = Math.max(0, leftEdge - window.innerWidth) / drawW;
+  const alpha    = fadeInT * Math.max(0, 1 - offRight * 2.5);
 
   ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(d.angle);
-
-  ctx.beginPath();
-  ctx.moveTo(0, -r);
-  ctx.arc(0, 0, r, -Math.PI / 2, Math.PI / 2, false);
-  ctx.quadraticCurveTo(-tail * 0.52, r * 0.64, -tail, 0);
-  ctx.quadraticCurveTo(-tail * 0.52, -r * 0.64, 0, -r);
-  ctx.closePath();
-
-  const grad = ctx.createLinearGradient(r * 0.5, 0, -tail, 0);
-  grad.addColorStop(0,    `rgba(224,242,254,${alpha})`);   // sky-100
-  grad.addColorStop(0.35, `rgba( 56,189,248,${alpha})`);   // sky-400
-  grad.addColorStop(1,    `rgba(  2,132,199,${alpha * 0.28})`); // sky-600
-  ctx.fillStyle   = grad;
-  ctx.shadowColor = `rgba(56,189,248,${alpha * 0.75})`;
-  ctx.shadowBlur  = 14;
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.arc(r * 0.32, -r * 0.24, r * 0.22, 0, Math.PI * 2);
-  ctx.fillStyle = `rgba(255,255,255,${alpha * 0.50})`;
-  ctx.shadowBlur = 0;
-  ctx.fill();
-
+  ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+  ctx.drawImage(sc, bx, by, bw, bh, cx - drawW / 2, w.groundY - drawH, drawW, drawH);
   ctx.restore();
 }
 
-/**
- * Blue water flood — Water Slime SK2 (tidal wave) and ULT (tsunami).
- * Same structure as drawAcidFlood but with sky-blue palette.
- */
-function drawWaterFlood(ctx: CanvasRenderingContext2D, f: AcidFlood, now: number) {
-  const elapsed = now - f.spawnMs;
-  const total   = f.expandMs + f.holdMs + f.fadeMs;
-  if (elapsed < 0 || elapsed >= total) return;
-
-  const expandT  = c01(elapsed / f.expandMs);
-  const easeW    = 1 - (1 - expandT) * (1 - expandT);
-  const currentW = f.maxW * easeW;
-
-  let alpha: number;
-  if (elapsed < f.expandMs + f.holdMs) {
-    alpha = Math.min(1, elapsed / (f.expandMs * 0.22));
-  } else {
-    alpha = 1 - (elapsed - f.expandMs - f.holdMs) / f.fadeMs;
-  }
-  alpha = c01(alpha);
-
-  const left  = f.centerX - currentW / 2;
-  const right = f.centerX + currentW / 2;
-  const wAmp  = 14;
-  const wFreq = 0.030;
-  const wSpd  = 0.0032;
-
-  const layers = [
-    { hFrac: 1.00, aScale: 0.32, phase: 0.0 },
-    { hFrac: 0.66, aScale: 0.24, phase: 1.5 },
-    { hFrac: 0.38, aScale: 0.16, phase: 2.9 },
-  ];
-
-  for (const lyr of layers) {
-    const lh     = f.maxH * lyr.hFrac;
-    const lAlpha = alpha * lyr.aScale;
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(left, f.groundY);
-    for (let x = left; x <= right + 6; x += 5) {
-      const clampedX = Math.min(x, right);
-      const wy = Math.sin(clampedX * wFreq + now * wSpd + lyr.phase) * wAmp;
-      ctx.lineTo(clampedX, f.groundY - lh + wy);
+// ── Image draw helpers ────────────────────────────────────────────────────────
+function drawImgOverlays(
+  ctx: CanvasRenderingContext2D, now: number,
+  pool: ImgOverlay[], st: CanvasState,
+) {
+  const { canvas: sc, bounds: sb } = st;
+  if (!sc || !sb) return;
+  const { x: bx, y: by, w: bw, h: bh } = sb;
+  for (let i = pool.length - 1; i >= 0; i--) {
+    const o   = pool[i];
+    const age = now - o.startMs;
+    if (age < 0) continue;
+    const tot = o.growMs + o.holdMs + o.fadeMs;
+    if (age >= tot) { pool.splice(i, 1); continue; }
+    let t: number, alpha: number;
+    if (age < o.growMs) {
+      t = age / o.growMs; alpha = t;
+    } else if (age < o.growMs + o.holdMs) {
+      t = 1; alpha = 1;
+    } else {
+      t = 1; alpha = 1 - (age - o.growMs - o.holdMs) / o.fadeMs;
     }
-    ctx.lineTo(right, f.groundY);
-    ctx.closePath();
-
-    const grad = ctx.createLinearGradient(f.centerX, f.groundY - lh, f.centerX, f.groundY);
-    grad.addColorStop(0,   `rgba( 56,189,248,${lAlpha})`);  // sky-400
-    grad.addColorStop(0.5, `rgba( 14,165,233,${lAlpha * 0.85})`); // sky-500
-    grad.addColorStop(1,   `rgba(  2,132,199,${lAlpha * 0.60})`); // sky-600
-    ctx.fillStyle   = grad;
-    ctx.shadowColor = `rgba(56,189,248,${alpha * 0.35})`;
-    ctx.shadowBlur  = 16;
-    ctx.fill();
+    const et = 1 - (1 - t) * (1 - t);
+    const w  = o.startW + (o.endW - o.startW) * et;
+    const h  = o.startH + (o.endH - o.startH) * et;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, alpha);
+    if (o.flipX) {
+      ctx.translate(o.cx * 2, 0);
+      ctx.scale(-1, 1);
+    }
+    if (o.footY !== undefined) {
+      ctx.drawImage(sc, bx, by, bw, bh, o.cx - w / 2, o.footY - h, w, h);
+    } else {
+      ctx.drawImage(sc, bx, by, bw, bh, o.cx - w / 2, o.cy - h / 2, w, h);
+    }
     ctx.restore();
   }
-
-  // Wave crest rim
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(left, f.groundY - f.maxH * 0.38);
-  for (let x = left; x <= right + 6; x += 5) {
-    const clampedX = Math.min(x, right);
-    const wy = Math.sin(clampedX * wFreq + now * wSpd) * wAmp;
-    ctx.lineTo(clampedX, f.groundY - f.maxH * 0.38 + wy);
-  }
-  ctx.strokeStyle = `rgba(125,211,252,${alpha * 0.95})`; // sky-300
-  ctx.lineWidth   = 2.5;
-  ctx.shadowColor = `rgba(56,189,248,${alpha * 0.75})`;
-  ctx.shadowBlur  = 14;
-  ctx.stroke();
-
-  // Spray droplets
-  for (let i = 0; i < 7; i++) {
-    const t    = (Math.sin(now * 0.0018 + i * 1.62) + 1) / 2;
-    const dropX = left + (right - left) * t;
-    const baseY = f.groundY - f.maxH * 0.38 + Math.sin(dropX * wFreq + now * wSpd) * wAmp;
-    const dropY = baseY - 5 - Math.abs(Math.sin(now * 0.004 + i * 0.9)) * 16;
-    ctx.beginPath();
-    ctx.arc(dropX, dropY, 3.0, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(186,230,253,${alpha * 0.72})`; // sky-200
-    ctx.shadowBlur  = 8;
-    ctx.shadowColor = `rgba(56,189,248,0.65)`;
-    ctx.fill();
-  }
-  ctx.restore();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Master draw tick
 // ─────────────────────────────────────────────────────────────────────────────
 function drawAll(ctx: CanvasRenderingContext2D, now: number) {
+  // Image-based water bullets (bg-removal) + image-based acid bullets
+  drawCanvasProjs(ctx, now, wBulletPool, wBulletSt);
+  drawCanvasProjs(ctx, now, aBulletPool, aBulletSt);
+  // Water Slime ULT waves
+  for (let i = wUltPool.length - 1; i >= 0; i--) {
+    const w = wUltPool[i];
+    if (now - w.spawnMs >= w.totalMs) { wUltPool.splice(i, 1); continue; }
+    drawWaterUltWave(ctx, w, now);
+  }
+  // Image-based overlays (canvas-state)
+  drawImgOverlays(ctx, now, aFloodPool, aFloodSt);
+  // Rock Slime image overlays (background-removal images)
+  drawImgOverlays(ctx, now, rShieldPool, rShieldSt);
+  drawImgOverlays(ctx, now, rSpikePool,  rSpikeSt);
+
   // Brown shields
   for (let i = brownShields.length - 1; i >= 0; i--) {
     const s       = brownShields[i];
@@ -838,25 +989,6 @@ function drawAll(ctx: CanvasRenderingContext2D, now: number) {
     drawAcidFlood(ctx, f, now);
   }
 
-  // Water drops (blue teardrop — Water Slime basic / SK1)
-  for (let i = waterDrops.length - 1; i >= 0; i--) {
-    const d       = waterDrops[i];
-    const elapsed = now - d.spawnMs;
-    if (elapsed >= d.travelMs + d.holdMs + d.fadeMs) {
-      waterDrops.splice(i, 1); continue;
-    }
-    drawWaterDrop(ctx, d, now);
-  }
-
-  // Water floods (blue wave — Water Slime SK2 / ULT)
-  for (let i = waterFloods.length - 1; i >= 0; i--) {
-    const f       = waterFloods[i];
-    const elapsed = now - f.spawnMs;
-    if (elapsed >= f.expandMs + f.holdMs + f.fadeMs) {
-      waterFloods.splice(i, 1); continue;
-    }
-    drawWaterFlood(ctx, f, now);
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -867,6 +999,7 @@ export function SlimeVFX() {
   const rafRef    = useRef(0);
 
   useEffect(() => {
+    preloadSlimeAssets();
     const onVFX = (ev: Event) =>
       onTrigger((ev as CustomEvent<SlimeVFXTrigger>).detail);
     window.addEventListener('slime-vfx', onVFX);
@@ -879,7 +1012,9 @@ export function SlimeVFX() {
     const hasParticles = () =>
       brownShields.length > 0 || spikeGroups.length > 0 ||
       dewdrops.length > 0 || greenSlashes.length > 0 || acidFloods.length > 0 ||
-      waterDrops.length > 0 || waterFloods.length > 0;
+      wBulletPool.length > 0 || aBulletPool.length > 0 ||
+      wUltPool.length > 0 || aFloodPool.length > 0 ||
+      rSpikePool.length > 0 || rShieldPool.length > 0;
 
     const loop = () => {
       const dpr = window.devicePixelRatio || 1;
@@ -908,8 +1043,12 @@ export function SlimeVFX() {
       dewdrops.length     = 0;
       greenSlashes.length = 0;
       acidFloods.length   = 0;
-      waterDrops.length   = 0;
-      waterFloods.length  = 0;
+      wBulletPool.length  = 0;
+      aBulletPool.length  = 0;
+      wUltPool.length     = 0;
+      aFloodPool.length   = 0;
+      rSpikePool.length   = 0;
+      rShieldPool.length  = 0;
     };
   }, []);
 
@@ -921,7 +1060,7 @@ export function SlimeVFX() {
         inset:         0,
         width:         '100vw',
         height:        '100vh',
-        zIndex:        300,
+        zIndex:        500,
         pointerEvents: 'none',
         display:       'block',
       }}

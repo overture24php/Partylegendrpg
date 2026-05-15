@@ -35,8 +35,8 @@ const CANVAS_H    = GRID_H;
 
 const ROW_DATA = [
   { slotW:  60, slotH:  60, off: 15, col0X:  30, col1X: 278, y:   8 }, // row 0 top/far
-  { slotW:  86, slotH:  86, off: 13, col0X:  17, col1X: 265, y:  82 }, // row 1 mid
-  { slotW: 120, slotH: 120, off: 17, col0X:   0, col1X: 248, y: 190 }, // row 2 bot/near
+  { slotW:  86, slotH:  86, off: 13, col0X:  17, col1X: 265, y:  52 }, // row 1 mid
+  { slotW: 120, slotH: 120, off: 17, col0X:   0, col1X: 248, y: 130 }, // row 2 bot/near
 ] as const;
 
 function slotGeo(slotIdx: number) {
@@ -61,13 +61,24 @@ function enemySlotAbs(slotIdx: number) {
 }
 
 // ─── VFX Registry ─────────────────────────────────────────────────────────────
-const SLASH_URL       = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778227653/edited-photo_ulx54j.png';
-const LUCAS_SLASH_URL = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778171220/ChatGPT_Image_May_7_2026_11_26_25_PM_otixhr.png';
-const EMMA_HEAL_URL   = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778176231/ChatGPT_Image_May_8_2026_12_44_40_AM_d2unfb.png';
-const EMMA_SHIELD_URL = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778176246/ChatGPT_Image_May_8_2026_12_46_59_AM_lv7xxy.png';
-const CLOVER_HEAL_URL = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778229880/ChatGPT_Image_May_8_2026_03_41_34_PM_cytadc.png';
-const MYKO_SHIELD_URL = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778229955/ChatGPT_Image_May_8_2026_03_45_29_PM_cuy7bo.png';
-const ARROW_URL       = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778258626/ChatGPT_Image_May_8_2026_11_22_35_PM_jxu2lv.png';
+const LUCAS_SLASH_URL    = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743519/slashlucas_shbdmd.png';
+const GORR_SLASH_URL     = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743521/slashgorr_vuccpo.png';
+const FANG_SLASH_URL     = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743508/slashfang_wlxt0j.png';
+const CRAW_BULLET_URL    = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778742882/bulletcraw.png_dqejai.png';
+const SYLVIE_BOLT_URL    = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778743501/bulletsylvie_yfg25d.png';
+const EMMA_BULLET_URL    = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778743496/bulletemma_sajf0q.png';
+const EMMA_HEAL_URL      = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743503/healemma_kgeprm.png';
+const EMMA_SHIELD_URL    = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743510/shieldemma_lac0xm.png';
+const CLOVER_HEAL_URL    = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778742883/herbclover_jdrdoi.png';
+const CLOVER_BULLET_URL  = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778743502/bulletclover_nhag80.png';
+const MYKO_SHIELD_URL    = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743520/shieldmyko_q12jq3.png';
+const MYKO_ULT_URL       = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743507/jamurmyko_d982w6.png';
+const BRENNAN_SHIELD_URL = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743518/shieldbrennan_i4ou5b.png';
+const WSLIME_BULLET_URL  = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778743525/bulletwslime_fhknr2.png';
+const WSLIME_WAVE_URL    = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743524/wavewslime_bptmpu.png';
+const ASLIME_BULLET_URL  = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778743504/bulletaslime_ugeyzj.png';
+const ASLIME_FLOOD_URL   = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743523/floodaslime_cnkxu0.png';
+const RSLIME_SPIKE_URL   = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743509/spikerslime_zvlqrn.png';
 
 export type SkillKey = 'bsc' | 'sk1' | 'sk2' | 'sk3' | 'ult';
 
@@ -77,14 +88,18 @@ export interface VfxEntry {
 type HeroSkillMap = Partial<Record<SkillKey, VfxEntry>>;
 
 const VFX_REGISTRY: Record<string, HeroSkillMap> = {
-  lucas:  { bsc: { configKey: 'vfx_lucas_slash', assetUrl: LUCAS_SLASH_URL, needsChroma: true, description: 'Sword swing — flies toward target, rotates to face travel dir' }, sk1: { configKey: 'vfx_lucas_slash', assetUrl: LUCAS_SLASH_URL, needsChroma: true, description: 'Power Slash × 1' }, sk2: { configKey: 'vfx_lucas_slash', assetUrl: LUCAS_SLASH_URL, needsChroma: true, description: 'Heavy Strike' }, ult: { configKey: 'vfx_lucas_slash', assetUrl: LUCAS_SLASH_URL, needsChroma: true, description: 'Supreme Slash × 3 (2.0× scale)' } },
-  emma:   { sk1: { configKey: 'vfx_emma_heal',   assetUrl: EMMA_HEAL_URL,   needsChroma: true, description: 'Heal orb — flies from Emma to lowest-HP ally' }, sk2: { configKey: 'vfx_emma_shield', assetUrl: EMMA_SHIELD_URL, needsChroma: true, description: 'Shield bubble on target' }, sk3: { configKey: 'vfx_emma_shield', assetUrl: EMMA_SHIELD_URL, needsChroma: true, description: 'Passive shield (same asset)' }, ult: { configKey: 'vfx_emma_heal', assetUrl: EMMA_HEAL_URL, needsChroma: true, description: 'Mass Heal — one orb per target' } },
-  gorr:   { bsc: { configKey: 'vfx_gorr_slash',  assetUrl: SLASH_URL, needsChroma: true, description: 'Shared slash asset × 1.0' }, sk1: { configKey: 'vfx_gorr_slash', assetUrl: SLASH_URL, needsChroma: true, description: 'Berserk Slash × 1.2' }, sk2: { configKey: 'vfx_gorr_slash', assetUrl: SLASH_URL, needsChroma: true, description: 'Rampage multi-target' }, ult: { configKey: 'vfx_gorr_slash', assetUrl: SLASH_URL, needsChroma: true, description: 'Bloodstorm × 2.2' } },
-  craw:   { bsc: { configKey: 'vfx_craw_slash',  assetUrl: ARROW_URL, needsChroma: false, description: 'Crossbow bolt arcs to target' }, sk1: { configKey: 'vfx_craw_slash', assetUrl: ARROW_URL, needsChroma: false, description: 'Arrow Shot' }, sk2: { configKey: 'vfx_craw_slash', assetUrl: ARROW_URL, needsChroma: false, description: 'Multi-Shot (2 projectiles)' }, ult: { configKey: 'vfx_craw_slash', assetUrl: ARROW_URL, needsChroma: false, description: 'Skypiercer Volley — plunges from above' } },
-  fang:   { bsc: { configKey: 'vfx_fang_slash',  assetUrl: SLASH_URL, needsChroma: true, description: 'Shared slash asset × 1.0' }, sk1: { configKey: 'vfx_fang_slash', assetUrl: SLASH_URL, needsChroma: true, description: 'Twin Slash — 2 angled projectiles 160ms apart' }, sk2: { configKey: 'vfx_fang_slash', assetUrl: SLASH_URL, needsChroma: true, description: 'Shadow Strike' }, ult: { configKey: 'vfx_fang_slash', assetUrl: SLASH_URL, needsChroma: true, description: 'Death Bound × 2.5 (execute)' } },
-  clover: { sk1: { configKey: 'vfx_clover_heal', assetUrl: CLOVER_HEAL_URL, needsChroma: true, description: 'Healing Herb orb → lowest-HP ally' }, sk2: { configKey: 'vfx_clover_heal', assetUrl: CLOVER_HEAL_URL, needsChroma: true, description: 'Lucky Toss → random ally' }, ult: { configKey: 'vfx_clover_heal', assetUrl: CLOVER_HEAL_URL, needsChroma: true, description: 'Bloom Cascade — one orb per ally' } },
-  myko:   { sk1: { configKey: 'vfx_myko_shield', assetUrl: MYKO_SHIELD_URL, needsChroma: true, description: 'Iron Casing — shield overlay on target' } },
-  sylvie: { bsc: { configKey: 'vfx_sylvie_bolt', assetUrl: ARROW_URL, needsChroma: false, description: 'Bolt arcs to target' }, sk1: { configKey: 'vfx_sylvie_bolt', assetUrl: ARROW_URL, needsChroma: false, description: 'Bolt Shot' }, sk2: { configKey: 'vfx_sylvie_bolt', assetUrl: ARROW_URL, needsChroma: false, description: 'Double Shot — 2 bolts 60ms stagger' }, ult: { configKey: 'vfx_sylvie_bolt', assetUrl: ARROW_URL, needsChroma: false, description: 'Crossfire Storm — plunges onto 2 targets' } },
+  lucas:     { bsc: { configKey: 'vfx_lucas_slash',    assetUrl: LUCAS_SLASH_URL,    needsChroma: true,  description: 'Sword swing — flies toward target' }, sk1: { configKey: 'vfx_lucas_slash', assetUrl: LUCAS_SLASH_URL, needsChroma: true, description: 'Power Slash × 1' }, sk2: { configKey: 'vfx_lucas_slash', assetUrl: LUCAS_SLASH_URL, needsChroma: true, description: 'Heavy Strike' }, ult: { configKey: 'vfx_lucas_slash', assetUrl: LUCAS_SLASH_URL, needsChroma: true, description: 'Supreme Slash × 3 (2.0× scale)' } },
+  emma:      { bsc: { configKey: 'vfx_emma_heal',      assetUrl: EMMA_BULLET_URL,    needsChroma: false, description: 'Basic bullet flies to target' }, sk1: { configKey: 'vfx_emma_heal', assetUrl: EMMA_HEAL_URL, needsChroma: true, description: 'Heal overlay at target' }, sk2: { configKey: 'vfx_emma_shield', assetUrl: EMMA_SHIELD_URL, needsChroma: true, description: 'Shield overlay on target' }, sk3: { configKey: 'vfx_emma_shield', assetUrl: EMMA_SHIELD_URL, needsChroma: true, description: 'Passive shield (same asset)' }, ult: { configKey: 'vfx_emma_heal', assetUrl: EMMA_HEAL_URL, needsChroma: true, description: 'Mass Heal — one overlay per target' } },
+  brennan:   { sk2: { configKey: 'vfx_brennan_shield', assetUrl: BRENNAN_SHIELD_URL, needsChroma: true,  description: 'Shield overlay on targets' } },
+  gorr:      { bsc: { configKey: 'vfx_gorr_slash',     assetUrl: GORR_SLASH_URL,     needsChroma: true,  description: 'Slash projectile × 1.0' }, sk1: { configKey: 'vfx_gorr_slash', assetUrl: GORR_SLASH_URL, needsChroma: true, description: 'Berserk Slash × 1.2' }, sk2: { configKey: 'vfx_gorr_slash', assetUrl: GORR_SLASH_URL, needsChroma: true, description: 'Rampage multi-target' }, ult: { configKey: 'vfx_gorr_slash', assetUrl: GORR_SLASH_URL, needsChroma: true, description: 'Bloodstorm × 2.2' } },
+  craw:      { bsc: { configKey: 'vfx_craw_slash',     assetUrl: CRAW_BULLET_URL,    needsChroma: false, description: 'Bullet arcs to target' }, sk1: { configKey: 'vfx_craw_slash', assetUrl: CRAW_BULLET_URL, needsChroma: false, description: 'Arrow Shot' }, sk2: { configKey: 'vfx_craw_slash', assetUrl: CRAW_BULLET_URL, needsChroma: false, description: 'Multi-Shot' }, ult: { configKey: 'vfx_craw_slash', assetUrl: CRAW_BULLET_URL, needsChroma: false, description: 'Skypiercer Volley — plunges from above' } },
+  fang:      { bsc: { configKey: 'vfx_fang_slash',     assetUrl: FANG_SLASH_URL,     needsChroma: true,  description: 'Fang slash × 1.0' }, sk1: { configKey: 'vfx_fang_slash', assetUrl: FANG_SLASH_URL, needsChroma: true, description: 'Twin Slash — 2 angled projectiles 160ms apart' }, sk2: { configKey: 'vfx_fang_slash', assetUrl: FANG_SLASH_URL, needsChroma: true, description: 'Shadow Strike' }, ult: { configKey: 'vfx_fang_slash', assetUrl: FANG_SLASH_URL, needsChroma: true, description: 'Death Bound × 2.5 (execute)' } },
+  clover:    { bsc: { configKey: 'vfx_clover_heal',    assetUrl: CLOVER_BULLET_URL,  needsChroma: false, description: 'Bullet projectile to target' }, sk1: { configKey: 'vfx_clover_heal', assetUrl: CLOVER_HEAL_URL, needsChroma: true, description: 'Healing Herb orb → ally' }, sk2: { configKey: 'vfx_clover_heal', assetUrl: CLOVER_HEAL_URL, needsChroma: true, description: 'Lucky Toss → ally' }, ult: { configKey: 'vfx_clover_heal', assetUrl: CLOVER_HEAL_URL, needsChroma: true, description: 'Bloom Cascade — one orb per ally' } },
+  myko:      { sk1: { configKey: 'vfx_myko_shield',    assetUrl: MYKO_SHIELD_URL,    needsChroma: true,  description: 'Iron Casing — shield overlay' }, ult: { configKey: 'vfx_myko_ult', assetUrl: MYKO_ULT_URL, needsChroma: true, description: 'Mushroom overlay per target' } },
+  sylvie:    { bsc: { configKey: 'vfx_sylvie_bolt',    assetUrl: SYLVIE_BOLT_URL,    needsChroma: false, description: 'Bolt arcs to target' }, sk1: { configKey: 'vfx_sylvie_bolt', assetUrl: SYLVIE_BOLT_URL, needsChroma: false, description: 'Bolt Shot' }, sk2: { configKey: 'vfx_sylvie_bolt', assetUrl: SYLVIE_BOLT_URL, needsChroma: false, description: 'Double Shot — 2 bolts 60ms stagger' }, ult: { configKey: 'vfx_sylvie_bolt', assetUrl: SYLVIE_BOLT_URL, needsChroma: false, description: 'Crossfire Storm — plunges onto 2 targets' } },
+  rockslime: { sk2: { configKey: 'vfx_rslime_spike',   assetUrl: RSLIME_SPIKE_URL,   needsChroma: true,  description: 'Stone shield overlay' }, ult: { configKey: 'vfx_rslime_spike', assetUrl: RSLIME_SPIKE_URL, needsChroma: true, description: 'Spike image per target' } },
+  acidslime: { bsc: { configKey: 'vfx_craw_slash',     assetUrl: ASLIME_BULLET_URL,  needsChroma: false, description: 'Acid bullet projectile' }, sk1: { configKey: 'vfx_craw_slash', assetUrl: ASLIME_BULLET_URL, needsChroma: false, description: 'Acid bullet' }, ult: { configKey: 'vfx_aslime_flood', assetUrl: ASLIME_FLOOD_URL, needsChroma: true, description: 'Acid flood overlay' } },
+  waterslime: { bsc: { configKey: 'vfx_craw_slash',    assetUrl: WSLIME_BULLET_URL,  needsChroma: false, description: 'Water bullet projectile' }, sk1: { configKey: 'vfx_craw_slash', assetUrl: WSLIME_BULLET_URL, needsChroma: false, description: 'Water bullet' }, ult: { configKey: 'vfx_wslime_wave', assetUrl: WSLIME_WAVE_URL, needsChroma: true, description: 'Tsunami wave overlay' } },
 };
 
 const SKILL_DEFS: { key: SkillKey; label: string; color: string }[] = [

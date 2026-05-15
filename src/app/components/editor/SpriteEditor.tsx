@@ -23,9 +23,20 @@ import { HERO_DEFS } from '../../data/heroDefs';
 
 // ── VFX asset URLs ─────────────────────────────────────────────────────────────
 const VFX_ITEMS = [
-  { key: 'vfx_lucas_slash',  label: 'Lucas — Slash VFX',    group: 'VFX Effects', url: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778171220/ChatGPT_Image_May_7_2026_11_26_25_PM_otixhr.png' },
-  { key: 'vfx_emma_heal',    label: 'Emma — Heal / Ult VFX', group: 'VFX Effects', url: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778176231/ChatGPT_Image_May_8_2026_12_44_40_AM_d2unfb.png' },
-  { key: 'vfx_emma_shield',  label: 'Emma — Shield VFX',    group: 'VFX Effects', url: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778176246/ChatGPT_Image_May_8_2026_12_46_59_AM_lv7xxy.png' },
+  { key: 'vfx_lucas_slash',    label: 'Lucas — Slash VFX',         group: 'VFX Effects', url: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743519/slashlucas_shbdmd.png' },
+  { key: 'vfx_emma_heal',      label: 'Emma — Heal VFX',           group: 'VFX Effects', url: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743503/healemma_kgeprm.png' },
+  { key: 'vfx_emma_shield',    label: 'Emma — Shield VFX',         group: 'VFX Effects', url: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743510/shieldemma_lac0xm.png' },
+  { key: 'vfx_gorr_slash',     label: 'Gorr — Slash VFX',          group: 'VFX Effects', url: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743521/slashgorr_vuccpo.png' },
+  { key: 'vfx_fang_slash',     label: 'Fang — Slash VFX',          group: 'VFX Effects', url: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743508/slashfang_wlxt0j.png' },
+  { key: 'vfx_craw_slash',     label: 'Craw — Bullet VFX',         group: 'VFX Effects', url: 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778742882/bulletcraw.png_dqejai.png' },
+  { key: 'vfx_sylvie_bolt',    label: 'Sylvie — Bolt VFX',         group: 'VFX Effects', url: 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778743501/bulletsylvie_yfg25d.png' },
+  { key: 'vfx_clover_heal',    label: 'Clover — Heal Herb VFX',    group: 'VFX Effects', url: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778742883/herbclover_jdrdoi.png' },
+  { key: 'vfx_myko_shield',    label: 'Myko — Shield VFX',         group: 'VFX Effects', url: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743520/shieldmyko_q12jq3.png' },
+  { key: 'vfx_myko_ult',       label: 'Myko — Mushroom Ult VFX',   group: 'VFX Effects', url: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743507/jamurmyko_d982w6.png' },
+  { key: 'vfx_brennan_shield', label: 'Brennan — Shield VFX',      group: 'VFX Effects', url: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743518/shieldbrennan_i4ou5b.png' },
+  { key: 'vfx_rslime_spike',   label: 'Rock Slime — Spike Ult VFX',group: 'VFX Effects', url: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743509/spikerslime_zvlqrn.png' },
+  { key: 'vfx_aslime_flood',   label: 'Acid Slime — Flood Ult VFX',group: 'VFX Effects', url: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743523/floodaslime_cnkxu0.png' },
+  { key: 'vfx_wslime_wave',    label: 'Water Slime — Wave Ult VFX',group: 'VFX Effects', url: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743524/wavewslime_bptmpu.png' },
 ] as const;
 
 // ── Slot reference data (matching BattlePlayback ROW_DATA) ─────────────────────

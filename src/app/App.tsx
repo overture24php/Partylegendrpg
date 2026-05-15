@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { RouterProvider } from 'react-router';
 import { router } from './routes';
 
+
 // ─── Game-wide drag & selection lock ─────────────────────────────────────────
 function useNoDrag() {
   useEffect(() => {

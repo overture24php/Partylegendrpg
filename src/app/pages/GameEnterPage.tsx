@@ -21,7 +21,7 @@ import { prewarmObtained, HeroData as PixiHeroData }  from '../components/PixiOb
 import { prewarmGallery, GalleryHeroData }             from '../components/PixiGalleryGrid';
 import { startBgm } from '../components/BgmController';
 
-const ENTER_ART = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778095697/ChatGPT_Image_May_7_2026_02_25_42_AM_irn4gb.png';
+const ENTER_ART = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778580975/ChatGPT_Image_May_12_2026_04_52_42_PM_snzvhg.png';
 
 // Minimum display time so the screen doesn't flash past instantly
 const MIN_DISPLAY_MS = 3200;

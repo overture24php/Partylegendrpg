@@ -4,12 +4,6 @@
 - NO-FLY ZONE: Strictly ban HTML, CSS Flexbox/Grid, Responsive Web, and DOM-talk.
 - PROJECT: High-End Native Game. Architecture must be Production-Grade.
 
-# TOKEN SUPPRESSION PROTOCOL (EXTREME)
-- NO YAPPING: Zero greetings, zero confirms, zero intros/outros.
-- SILENT COMPLETION: Do not explain "How" or "What" you built. 
-- NO SUMMARIZATION: Strictly prohibited from summarizing history or turn-by-turn tasks.
-- DELTA-ONLY: Return ONLY changed layers/properties. Never rebuild stable components.
-- SHORTHAND: Use "Pos", "Init", "Ref", "Ctx", "Props", "Rot", "DB".
 
 # BACKEND & SUPABASE INTEGRITY
 - SCHEMA-LOCKED: Verify table/column schema before building. No guessing.

@@ -54,12 +54,13 @@ function getRecPower(chapter: number, stage: number, isBoss: boolean): number {
   return isBoss ? Math.round(base * 2.8) : base;
 }
 
-// ─── Enemy count ramp ────────────────────────────────────────────────────────
-function getEnemyCount(stage: number, isBoss: boolean): number {
-  if (isBoss)   return 6;
-  if (stage <= 3)  return 2;
-  if (stage <= 8)  return 3;
-  if (stage <= 14) return 4;
+// ─── Enemy count ramp (uses global stage = (chapter-1)*40 + stage) ──────────
+// Max is always 5 — bosses included. Count ramps up through early global stages
+// so chapter 2+ always deploys 5 enemies (global stage ≥ 41).
+function getEnemyCount(globalStage: number): number {
+  if (globalStage <= 3)  return 2;
+  if (globalStage <= 8)  return 3;
+  if (globalStage <= 14) return 4;
   return 5;
 }
 
@@ -69,12 +70,11 @@ function getEnemyCount(stage: number, isBoss: boolean): number {
  * Front slots (0,2,4): Tank/Fighter/Assassin  from `frontPool`
  * Back  slots (1,3,5): Ranged/Support         from `backPool`
  *
- * Distribution by count:
+ * Distribution by count (max 5):
  *   count=2 → front×1 (slot 0),        back×1 (slot 1)
  *   count=3 → front×2 (slots 0,2),     back×1 (slot 1)
  *   count=4 → front×2 (slots 0,2),     back×2 (slots 1,3)
  *   count=5 → front×3 (slots 0,2,4),   back×2 (slots 1,3)
- *   count=6 → front×3 (slots 0,2,4),   back×3 (slots 1,3,5)
  */
 function buildSlots(
   frontPool: readonly string[],
@@ -178,11 +178,12 @@ function buildRewards(chapter: number, stage: number, isBoss: boolean) {
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 export function generateStageData(chapter: number, stage: number): StageClientData {
-  const isBoss = stage === 20 || stage === 40;
-  const names  = CHAPTER_NAMES[chapter - 1] ?? [];
-  const name   = names[stage - 1] ?? `Chapter ${chapter}-${stage}`;
-  const seed   = chapter * 10_000 + stage;
-  const count  = getEnemyCount(stage, isBoss);
+  const isBoss      = stage === 20 || stage === 40;
+  const globalStage = (chapter - 1) * 40 + stage;
+  const names       = CHAPTER_NAMES[chapter - 1] ?? [];
+  const name        = names[stage - 1] ?? `Chapter ${chapter}-${stage}`;
+  const seed        = chapter * 10_000 + stage;
+  const count       = getEnemyCount(globalStage);
 
   const enemySlots = isBoss
     ? buildSlots(BOSS_FRONT, BOSS_BACK, seed, count)

@@ -19,22 +19,43 @@ import { applyChromaKey, getContentBounds } from '../../utils/chromaKey';
 import { getSpriteSize } from '../../data/spriteConfig';
 
 // ── Asset URLs ─────────────────────────────────────────────────────────────────
+const BULLET_URL =
+  'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778743496/bulletemma_sajf0q.png';
 const HEAL_URL =
-  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778176231/ChatGPT_Image_May_8_2026_12_44_40_AM_d2unfb.png';
+  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743503/healemma_kgeprm.png';
 const SHIELD_URL =
-  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778176246/ChatGPT_Image_May_8_2026_12_46_59_AM_lv7xxy.png';
+  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743510/shieldemma_lac0xm.png';
 
 // ── Layout constants (mirror BattlePlayback) ──────────────────────────────────
 const GRID_W = 368;
 const GRID_H = 310;
-const ROW_DATA = [
-  { slotW:  60, slotH:  60, col0X:  30, col1X: 278, y:   8 },
-  { slotW:  86, slotH:  86, col0X:  17, col1X: 265, y:  82 },
-  { slotW: 120, slotH: 120, col0X:   0, col1X: 248, y: 190 },
+const HERO_ROW_DATA = [
+  { slotW:  60, slotH:  60, col0X:  30, col1X: 154, y:   8 },
+  { slotW:  86, slotH:  86, col0X:  17, col1X: 141, y:  82 },
+  { slotW: 120, slotH: 120, col0X:   0, col1X: 124, y: 190 },
 ] as const;
+const ENEMY_ROW_DATA = [
+  { slotW:  60, slotH:  60, col0X: 154, col1X: 278, y:   8 },
+  { slotW:  86, slotH:  86, col0X: 154, col1X: 278, y:  82 },
+  { slotW: 120, slotH: 120, col0X: 154, col1X: 278, y: 190 },
+] as const;
+function getRow(side: 'hero' | 'enemy', ri: number) {
+  return (side === 'hero' ? HERO_ROW_DATA : ENEMY_ROW_DATA)[ri];
+}
 
-// Per-row lift so effects land on upper body, not feet
-const ROW_BODY_LIFT = [70, 95, 110] as const;
+// Per-row lift so PROJECTILE ORIGINS land on upper body
+const ROW_BODY_LIFT = [70, 95, 170] as const;
+
+// Per-row foot-Y offset: innerHeight - ROW_FOOT_OFFSET[ri] = where this row's characters stand
+// Derived from: innerHeight - GRID_H + row.y + row.slotH
+//   row0: 310-8-60=242  row1: 310-82-86=142  row2: 310-190-120=0
+const ROW_FOOT_OFFSET = [242, 142, 60] as const;
+
+/** Returns the screen Y of a character's feet for the given slot. */
+function slotFootY(slot: number): number {
+  const ri = Math.min(2, Math.floor(slot / 2));
+  return window.innerHeight - ROW_FOOT_OFFSET[ri];
+}
 
 /** Reference "full human character" height in screen-px (matches Lucas/Emma sprite container). */
 const HERO_SPRITE_H = 280;
@@ -52,7 +73,7 @@ export type EmmaVFXTrigger = {
 function slotPos(side: 'hero' | 'enemy', slot: number) {
   const col  = slot % 2;
   const ri   = Math.min(2, Math.floor(slot / 2));
-  const row  = ROW_DATA[ri];
+  const row  = getRow(side, ri);
   const gl   = side === 'hero' ? 12 : window.innerWidth - 12 - GRID_W;
   return {
     x:     gl + (col === 0 ? row.col0X : row.col1X) + row.slotW / 2,
@@ -105,6 +126,7 @@ function ensureAsset(url: string, state: AssetState, cb: () => void) {
   img.src = url;
 }
 
+const bulletAsset = makeAsset();
 const healAsset   = makeAsset();
 const shieldAsset = makeAsset();
 
@@ -112,7 +134,7 @@ const shieldAsset = makeAsset();
 // Particle pool types
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Gemini-star projectile (basic attack — canvas drawn) */
+/** Basic-attack bullet (image-based) */
 type GeminiProj = {
   sx: number; sy: number;
   ex: number; ey: number;
@@ -147,6 +169,7 @@ type ShieldOverlay = {
   growMs:  number;
   holdMs:  number;
   fadeMs:  number;
+  flip:    boolean; // true → mirror horizontally (enemy side faces left)
 };
 
 // Module-level pools
@@ -161,17 +184,19 @@ const shieldPool:      ShieldOverlay[] = [];
 
 function spawnProj(actorSlot: number, actorSide: 'hero' | 'enemy',
                    tSlot: number, tSide: 'hero' | 'enemy') {
-  const from = slotPos(actorSide, actorSlot);
-  const to   = slotPos(tSide, tSlot);
-  const sy   = from.y;
-  const ey   = to.y;
-  projPool.push({
-    sx: from.x, sy,
-    ex: to.x,   ey,
-    spawnMs:  performance.now(),
-    travelMs: 185, holdMs: 30, fadeMs: 70,
-    size:  72,
-    angle: Math.atan2(ey - sy, to.x - from.x),
+  ensureAsset(BULLET_URL, bulletAsset, () => {
+    const from = slotPos(actorSide, actorSlot);
+    const to   = slotPos(tSide, tSlot);
+    const sy   = from.y;
+    const ey   = to.y;
+    projPool.push({
+      sx: from.x, sy,
+      ex: to.x,   ey,
+      spawnMs:  performance.now(),
+      travelMs: 185, holdMs: 30, fadeMs: 70,
+      size:  72,
+      angle: Math.atan2(ey - sy, to.x - from.x),
+    });
   });
 }
 
@@ -198,34 +223,39 @@ function spawnHealProj(actorSlot: number, actorSide: 'hero' | 'enemy',
   });
 }
 
-/** Instant heal overlay at target — same grow/hold/fade as shield, uses heal asset */
+/** Instant heal overlay at target — size scales with target's slot height */
 function spawnHealOverlay(tSlot: number, tSide: 'hero' | 'enemy', delay = 0) {
   ensureAsset(HEAL_URL, healAsset, () => {
-    const { x, y } = slotPos(tSide, tSlot);
-    const cfg = getSpriteSize('vfx_emma_heal');
+    const sp   = slotPos(tSide, tSlot);
+    // Scale to target body — large front-row targets get a larger heal glow
+    const endH = sp.slotH * 2.5;
+    const endW = endH * (healAsset.aspect || 1);
+    const cy   = slotFootY(tSlot) + 10 - endH / 2;
     healOverlayPool.push({
-      cx:      x,
-      cy:      y,
-      startH:  cfg.h * 0.45,
-      endH:    cfg.h,
-      startW:  cfg.w * 0.45,
-      endW:    cfg.w,
+      cx:      sp.x,
+      cy,
+      startH:  endH * 0.45,
+      endH,
+      startW:  endW * 0.45,
+      endW,
       startMs: performance.now(),
       delay,
       growMs:  200,
       holdMs:  350,
       fadeMs:  260,
+      flip:    false,
     });
   });
 }
 
 function spawnShieldOverlay(tSlot: number, tSide: 'hero' | 'enemy', delay = 0) {
   ensureAsset(SHIELD_URL, shieldAsset, () => {
-    const { x, y } = slotPos(tSide, tSlot);
-    const cfg = getSpriteSize('vfx_emma_shield');
+    const { x } = slotPos(tSide, tSlot);
+    const cfg    = getSpriteSize('vfx_emma_shield');
+    const cy     = slotFootY(tSlot) + 10 - cfg.h / 2;
     shieldPool.push({
       cx:      x,
-      cy:      y,
+      cy,
       startH:  cfg.h * 0.50,
       endH:    cfg.h,
       startW:  cfg.w * 0.50,
@@ -235,6 +265,7 @@ function spawnShieldOverlay(tSlot: number, tSide: 'hero' | 'enemy', delay = 0) {
       growMs:  220,
       holdMs:  420,
       fadeMs:  320,
+      flip:    tSide === 'enemy',
     });
   });
 }
@@ -275,64 +306,38 @@ function spawnUlt(_actorSlot: number, _actorSide: 'hero' | 'enemy',
 // Draw helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** 4-pointed Gemini star (canvas-drawn, unchanged from v1) */
-function draw4Star(ctx: CanvasRenderingContext2D,
-                   cx: number, cy: number, size: number,
-                   rot: number, alpha: number) {
-  const outerR = size, innerR = size * 0.16, pts = 4;
-  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, outerR * 0.9);
-  grad.addColorStop(0,    `rgba(255,255,255,${alpha})`);
-  grad.addColorStop(0.22, `rgba(230,230,248,${alpha * 0.92})`);
-  grad.addColorStop(0.55, `rgba(188,188,215,${alpha * 0.55})`);
-  grad.addColorStop(1.00, `rgba(160,160,195,0)`);
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(rot);
-  ctx.beginPath();
-  for (let i = 0; i < pts * 2; i++) {
-    const r = i % 2 === 0 ? outerR : innerR;
-    const a = (i * Math.PI / pts) - Math.PI / 2;
-    if (i === 0) ctx.moveTo(r * Math.cos(a), r * Math.sin(a));
-    else         ctx.lineTo(r * Math.cos(a), r * Math.sin(a));
-  }
-  ctx.closePath();
-  ctx.fillStyle   = grad;
-  ctx.shadowColor = `rgba(210,215,255,${alpha * 0.65})`;
-  ctx.shadowBlur  = 12;
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(0, 0, size * 0.07, 0, Math.PI * 2);
-  ctx.fillStyle   = `rgba(255,255,255,${alpha * 0.90})`;
-  ctx.shadowBlur  = 6;
-  ctx.fill();
-  ctx.restore();
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Master render tick
 // ─────────────────────────────────────────────────────────────────────────────
 function drawPools(ctx: CanvasRenderingContext2D, now: number) {
 
-  // ── Gemini star (basic) ───────────────────────────────────────────────────
-  for (let i = projPool.length - 1; i >= 0; i--) {
-    const p       = projPool[i];
-    const elapsed = now - p.spawnMs;
-    const total   = p.travelMs + p.holdMs + p.fadeMs;
-    if (elapsed >= total) { projPool.splice(i, 1); continue; }
-    let t: number, alpha: number;
-    if (elapsed < p.travelMs) {
-      t = elapsed / p.travelMs; alpha = 1;
-    } else if (elapsed < p.travelMs + p.holdMs) {
-      t = 1; alpha = 1;
-    } else {
-      t = 1; alpha = 1 - (elapsed - p.travelMs - p.holdMs) / p.fadeMs;
+  // ── Basic bullet (image-based) ────────────────────────────────────────────
+  if (bulletAsset.canvas && bulletAsset.bounds) {
+    const { x: bx, y: by, w: bw, h: bh } = bulletAsset.bounds;
+    for (let i = projPool.length - 1; i >= 0; i--) {
+      const p       = projPool[i];
+      const elapsed = now - p.spawnMs;
+      const total   = p.travelMs + p.holdMs + p.fadeMs;
+      if (elapsed >= total) { projPool.splice(i, 1); continue; }
+      let t: number, alpha: number;
+      if (elapsed < p.travelMs) {
+        t = elapsed / p.travelMs; alpha = 1;
+      } else if (elapsed < p.travelMs + p.holdMs) {
+        t = 1; alpha = 1;
+      } else {
+        t = 1; alpha = 1 - (elapsed - p.travelMs - p.holdMs) / p.fadeMs;
+      }
+      const ease = 1 - (1 - t) * (1 - t);
+      const cx   = p.sx + (p.ex - p.sx) * ease;
+      const cy   = p.sy + (p.ey - p.sy) * ease;
+      ctx.save();
+      ctx.globalAlpha = c01(alpha);
+      ctx.translate(cx, cy);
+      ctx.rotate(p.angle);
+      ctx.drawImage(bulletAsset.canvas, bx, by, bw, bh, -p.size / 2, -p.size / 2, p.size, p.size);
+      ctx.restore();
     }
-    const ease  = 1 - (1 - t) * (1 - t);
-    const cx    = p.sx + (p.ex - p.sx) * ease;
-    const cy    = p.sy + (p.ey - p.sy) * ease;
-    const rot   = p.angle + elapsed * 0.004;
-    const scale = t < 1 ? 1 : 1 + (1 - alpha) * 0.45;
-    draw4Star(ctx, cx, cy, p.size * scale, rot, c01(alpha));
   }
 
   // ── Heal projectiles (legacy — no longer used but kept for safety) ────────
@@ -384,7 +389,9 @@ function drawPools(ctx: CanvasRenderingContext2D, now: number) {
       }
       ctx.save();
       ctx.globalAlpha = c01(alpha);
-      ctx.drawImage(healAsset.canvas, bx, by, bw, bh, p.cx - w / 2, p.cy - h / 2, w, h);
+      ctx.translate(p.cx, p.cy);
+      if (p.flip) ctx.scale(-1, 1);
+      ctx.drawImage(healAsset.canvas, bx, by, bw, bh, -w / 2, -h / 2, w, h);
       ctx.restore();
     }
   }
@@ -415,7 +422,9 @@ function drawPools(ctx: CanvasRenderingContext2D, now: number) {
       }
       ctx.save();
       ctx.globalAlpha = c01(alpha);
-      ctx.drawImage(shieldAsset.canvas, bx, by, bw, bh, p.cx - w / 2, p.cy - h / 2, w, h);
+      ctx.translate(p.cx, p.cy);
+      if (p.flip) ctx.scale(-1, 1);
+      ctx.drawImage(shieldAsset.canvas, bx, by, bw, bh, -w / 2, -h / 2, w, h);
       ctx.restore();
     }
   }
@@ -429,7 +438,8 @@ export function EmmaVFX() {
   const rafRef    = useRef(0);
 
   useEffect(() => {
-    // Pre-load both assets immediately
+    // Pre-load all assets immediately
+    ensureAsset(BULLET_URL, bulletAsset, () => {});
     ensureAsset(HEAL_URL,   healAsset,   () => {});
     ensureAsset(SHIELD_URL, shieldAsset, () => {});
 
@@ -471,8 +481,8 @@ export function EmmaVFX() {
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.clearRect(0, 0, pw, ph);
-        const hasParticles =
-          projPool.length > 0 || healPool.length > 0 || healOverlayPool.length > 0 || shieldPool.length > 0;
+        const hasParticles = projPool.length > 0 || healPool.length > 0 ||
+          healOverlayPool.length > 0 || shieldPool.length > 0;
         if (hasParticles) {
           ctx.save();
           ctx.scale(dpr, dpr);
@@ -500,7 +510,7 @@ export function EmmaVFX() {
         inset:         0,
         width:         '100vw',
         height:        '100vh',
-        zIndex:        300,
+        zIndex:        500,
         pointerEvents: 'none',
         display:       'block',
       }}

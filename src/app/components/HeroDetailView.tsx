@@ -415,7 +415,7 @@ function fiveStarPath(cx: number, cy: number, R: number, r: number): string {
 }
 
 // ─── Background ───────────────────────────────────────────────────────────────
-const HERO_DETAIL_BG = 'https://res.cloudinary.com/dhkethrmc/image/upload/v1777381178/ChatGPT_Image_Apr_28_2026_07_59_00_PM_ud1ln3.png';
+const HERO_DETAIL_BG = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778656008/ChatGPT_Image_May_13_2026_01_59_32_PM_n7fx7u.png';
 
 // ── Main Component ───────────────────────────────────────────────────────────
 export function HeroDetailView({

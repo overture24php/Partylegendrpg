@@ -16,6 +16,23 @@ import {
 import { LockedHeroCard } from './LockedHeroCard';
 import { HeroCard } from './HeroCard';
 import { HeroCardAnimated } from './HeroCardAnimated';
+import { HERO_DEFS } from '../data/heroDefs';
+
+// ─── Utility to extract skill info from HERO_DEFS ────────────────────────────
+function getSkillInfo(heroName: string, slotKey: string): any {
+  const slotMap: Record<string, number> = { sk1: 1, sk2: 2, sk3: 3, ult: 4 };
+  const slotNum = slotMap[slotKey];
+  const heroDef = HERO_DEFS.find(h => h.name === heroName);
+  if (!heroDef || !heroDef.skills) return null;
+  const skillDef = heroDef.skills.find(s => s.slot === slotNum);
+  if (!skillDef) return null;
+  return {
+    name: skillDef.name,
+    description: skillDef.description,
+    ratioLevels: skillDef.ratioLevels,
+    iconUrl: skillDef.iconUrl || '',
+  };
+}
 
 // ─── Rarity accent colors ─────────────────────────────────────────────────────
 const RARITY_CFG: Record<string, { color: string }> = {
@@ -533,7 +550,7 @@ function SkillPopup({ d }: { d: PopupData }) {
               <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                 <span style={{ fontFamily: "'Roboto Condensed',sans-serif", fontSize: 'clamp(9px,1.3vw,11px)', color: locked ? 'rgba(180,180,220,0.7)' : '#F97316' }}>{r.label}</span>
                 <span style={{ fontFamily: "'Roboto Condensed',sans-serif", fontSize: 'clamp(9px,1.3vw,11px)', fontWeight: 700, color: locked ? 'rgba(200,200,240,0.8)' : '#FFD700', whiteSpace: 'nowrap' }}>
-                  {cur}{locked && <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.85em' }}> preview</span>}
+                  {cur}
                 </span>
               </div>
             );
@@ -542,7 +559,7 @@ function SkillPopup({ d }: { d: PopupData }) {
       )}
       {locked && (
         <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(150,150,200,0.15)', fontFamily: "'Roboto Condensed',sans-serif", fontSize: 9, color: 'rgba(180,180,220,0.5)' }}>
-          Full ratios visible after obtaining this hero.
+          Unlock level required: {unlockLv}
         </div>
       )}
     </div>
@@ -596,7 +613,7 @@ export function HeroPreviewView({ name, rarity, heroType, ilust, onClose }: Hero
 
   function buildPopup(key: string): PopupData {
     const state    = { sk1, sk2, sk3, ult }[key]!;
-    const info     = SD[name]?.[key] ?? null;
+    const info     = SD[name]?.[key] ?? getSkillInfo(name, key) ?? null;
     const unlockLv = SKILL_UNLOCK[key][0];
     return {
       info,
@@ -605,8 +622,8 @@ export function HeroPreviewView({ name, rarity, heroType, ilust, onClose }: Hero
       unlockLv,
       genericName: GENERIC_NAMES[key] ?? 'Skill',
       genericDesc: state.locked
-        ? `This skill unlocks when ${name} reaches level ${unlockLv}.`
-        : `Obtain ${name} to view detailed skill information.`,
+        ? `Unlocks at level ${unlockLv}.`
+        : `Skill details not yet available for ${name}.`,
     };
   }
 

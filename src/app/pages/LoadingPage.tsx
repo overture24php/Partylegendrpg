@@ -8,17 +8,17 @@ import { useAuth } from '../context/AuthContext';
 import { ALL_SKILL_ICON_URLS, warmSkillIconCache } from '../utils/skillIconCache';
 
 // ─── Loading Page Art ─────────────────────────────────────────────────────────
-const LOADING_ART = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778095671/ChatGPT_Image_May_7_2026_02_21_36_AM_pluxid.png';
+const LOADING_ART = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778580970/ChatGPT_Image_May_12_2026_05_13_43_PM_tzps4j.png';
 
 // ─── Backgrounds ──────────────────────────────────────────────────────────────
 const SPLASH_IMG     = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1776874245/Splash_screen_aygb5n.png';
-const INTRO_BG       = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777395784/ChatGPT_Image_Apr_29_2026_12_02_36_AM_p3z4gf.png';
-const GAME_BG        = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777396811/ChatGPT_Image_Apr_29_2026_12_19_32_AM_squmiv.png';
+const INTRO_BG       = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778581178/ChatGPT_Image_May_12_2026_05_19_10_PM_gge7ua.png';
+const GAME_BG        = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778581730/ChatGPT_Image_May_12_2026_05_27_59_PM_nk8qi9.png';
 const HERO_DETAIL_BG = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777381178/ChatGPT_Image_Apr_28_2026_07_59_00_PM_ud1ln3.png';
 const LOGIN_BG       = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777419184/ChatGPT_Image_Apr_29_2026_06_32_08_AM_hch81k.png';
 const MAP_URL        = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777566900/ChatGPT_Image_Apr_30_2026_11_34_05_PM_ptwl1w.png';
-const GRASS_URL      = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777571911/ChatGPT_Image_May_1_2026_12_57_58_AM_xgzne0.png';
-const BATTLE_BG_URL  = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777582000/35957be7-1c54-4274-80bf-dbabbd1d8a99.png';
+const GRASS_URL      = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778582261/ChatGPT_Image_May_12_2026_05_36_52_PM_acnp8s.png';
+const BATTLE_BG_URL  = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778582261/ChatGPT_Image_May_12_2026_05_36_52_PM_acnp8s.png';
 
 // ─── Card illustrations ───────────────────────────────────────────────────────
 const LUCAS_CARD_ILUST = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777386997/LUCAS_tyqcnf.png';
@@ -31,22 +31,34 @@ const MYKO_CARD_ILUST  = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_au
 const BANNER_TAVERN = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777895161/60d9c15d-f208-4d63-b2ac-9c93cde4e1a5.png';
 
 // ─── Battle sprites ───────────────────────────────────────────────────────────
-const LUCAS_IDLE_BATTLE  = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777630336/idle_luk_mobysy.png';
-const EMMA_IDLE_BATTLE   = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777630434/idle_em_p8uxjs.png';
-const EMMA_ACTION        = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777630357/act_em_fnrl1t.png';
-const GORR_IDLE_BATTLE   = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919607/ChatGPT_Image_May_5_2026_01_23_54_AM_nhkzmq.png';
-const GORR_ACTION        = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919615/ChatGPT_Image_May_5_2026_01_31_48_AM_m65s2g.png';
-const CRAW_IDLE_BATTLE   = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919783/ChatGPT_Image_May_5_2026_01_26_59_AM_zfdewm.png';
-const CRAW_ACTION        = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919799/ChatGPT_Image_May_5_2026_01_27_08_AM_p8yjub.png';
-const MYKO_IDLE_BATTLE   = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778005026/ChatGPT_Image_May_6_2026_01_01_00_AM_bhjzhr.png';
-const MYKO_ACTION        = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778005040/ChatGPT_Image_May_6_2026_01_03_49_AM_sirb54.png';
-const WATER_SLIME_TEAM   = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777907811/7d3947a5-76a6-4422-9dc6-1eb5fd4d29bd.png';
+const LUCAS_IDLE_BATTLE  = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778581164/ChatGPT_Image_May_12_2026_05_17_54_PM_qpcmql.png';
+const LUCAS_ACTION_BATTLE= 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778581168/ChatGPT_Image_May_12_2026_05_18_02_PM_z86xuq.png';
+const EMMA_IDLE_BATTLE   = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778582268/ChatGPT_Image_May_12_2026_05_36_13_PM_qjuyrf.png';
+const EMMA_ACTION        = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778582682/ChatGPT_Image_May_12_2026_05_43_02_PM_f7qdru.png';
+const BRENNAN_IDLE_BATTLE= 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778583271/ChatGPT_Image_May_12_2026_05_53_56_PM_togkgz.png';
+const BRENNAN_ACTION     = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778583274/ChatGPT_Image_May_12_2026_05_54_05_PM_hajvwj.png';
+const SYLVIE_IDLE_BATTLE = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778580980/ChatGPT_Image_May_12_2026_04_43_15_PM_t7x8y6.png';
+const SYLVIE_ACTION      = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778580985/ChatGPT_Image_May_12_2026_05_00_54_PM_fxc6xq.png';
+const GORR_IDLE_BATTLE   = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778652441/ChatGPT_Image_May_12_2026_07_53_17_PM_ozxezi.png';
+const GORR_ACTION        = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778652445/ChatGPT_Image_May_12_2026_07_38_40_PM_vm3jgr.png';
+const CRAW_IDLE_BATTLE   = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655882/ChatGPT_Image_May_13_2026_01_18_14_PM_cpsmfh.png';
+const CRAW_ACTION        = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655888/ChatGPT_Image_May_13_2026_01_18_55_PM_latgcz.png';
+const MYKO_IDLE_BATTLE   = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655921/ChatGPT_Image_May_13_2026_01_22_27_PM_o4bmxo.png';
+const MYKO_ACTION        = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655927/ChatGPT_Image_May_13_2026_01_20_03_PM_rrxuvi.png';
+const FANG_IDLE_BATTLE   = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655909/ChatGPT_Image_May_13_2026_01_20_59_PM_eahwgh.png';
+const FANG_ACTION        = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655913/ChatGPT_Image_May_13_2026_01_21_29_PM_dsydt0.png';
+const CLOVER_IDLE_BATTLE = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655952/ChatGPT_Image_May_13_2026_01_22_50_PM_xgsxyn.png';
+const CLOVER_ACTION      = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655958/ChatGPT_Image_May_13_2026_01_23_38_PM_sd92n5.png';
+const BOLO_IDLE_BATTLE   = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655977/ChatGPT_Image_May_13_2026_01_25_09_PM_vvn2zp.png';
+const BOLO_ACTION        = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655988/ChatGPT_Image_May_13_2026_01_28_44_PM_oxtxu1.png';
+const QUILL_IDLE_BATTLE  = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655966/ChatGPT_Image_May_13_2026_01_24_15_PM_pzebat.png';
+const QUILL_ACTION       = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655972/ChatGPT_Image_May_13_2026_01_24_51_PM_fscxoj.png';
 
 // ─── Static sprites ───────────────────────────────────────────────────────────
 const LUCAS_ACTION  = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777631550/act_luc_mhmivj.png';
-const RSLIME_IDLE   = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777634810/Gemini_Generated_Image_c7qsl1c7qsl1c7qs_mekkjz.png';
-const ASLIME_IDLE   = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777634782/ChatGPT_Image_May_1_2026_06_25_59_PM_dsoxsd.png';
-const WSLIME_IDLE   = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777545810/ChatGPT_Image_Apr_30_2026_05_40_35_PM_w370l3.png';
+const RSLIME_IDLE   = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655860/ChatGPT_Image_May_13_2026_01_16_26_PM_zsqkno.png';
+const ASLIME_IDLE   = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655816/ChatGPT_Image_May_12_2026_06_50_49_PM_jf5slk.png';
+const WSLIME_IDLE   = 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778652452/ChatGPT_Image_May_12_2026_06_45_40_PM_aftzie.png';
 
 // ─── Slime gallery cards ──────────────────────────────────────────────────────
 const RSLIME_CARD = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777545681/ChatGPT_Image_Apr_30_2026_05_38_28_PM_wzt4ox.png';
@@ -78,6 +90,14 @@ const STATIC_IMGS: string[] = [
   MAP_URL, GRASS_URL, BATTLE_BG_URL,
   LUCAS_ACTION, RSLIME_IDLE, ASLIME_IDLE, WSLIME_IDLE,
   RSLIME_CARD, ASLIME_CARD, WSLIME_CARD,
+  // bgremoval battle sprites (already transparent, no chroma needed)
+  GORR_IDLE_BATTLE, GORR_ACTION,
+  CRAW_IDLE_BATTLE, CRAW_ACTION,
+  MYKO_IDLE_BATTLE, MYKO_ACTION,
+  FANG_IDLE_BATTLE, FANG_ACTION,
+  CLOVER_IDLE_BATTLE, CLOVER_ACTION,
+  BOLO_IDLE_BATTLE, BOLO_ACTION,
+  QUILL_IDLE_BATTLE, QUILL_ACTION,
 ];
 
 const CHROMA_SINGLE: [string, string][] = [
@@ -87,56 +107,20 @@ const CHROMA_SINGLE: [string, string][] = [
   [GORR_CARD_ILUST,   GORR_CARD_ILUST],
   [CRAW_CARD_ILUST,   CRAW_CARD_ILUST],
   [MYKO_CARD_ILUST,   MYKO_CARD_ILUST],
-  [LUCAS_IDLE_BATTLE, LUCAS_IDLE_BATTLE],
-  [EMMA_IDLE_BATTLE,  EMMA_IDLE_BATTLE],
-  [EMMA_ACTION,       EMMA_ACTION],
-  [GORR_IDLE_BATTLE,  GORR_IDLE_BATTLE],
-  [GORR_ACTION,       GORR_ACTION],
-  [CRAW_IDLE_BATTLE,  CRAW_IDLE_BATTLE],
-  [CRAW_ACTION,       CRAW_ACTION],
-  [MYKO_IDLE_BATTLE,  MYKO_IDLE_BATTLE],
-  [MYKO_ACTION,       MYKO_ACTION],
-  [WATER_SLIME_TEAM,  WATER_SLIME_TEAM],
-  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058505/ChatGPT_Image_May_6_2026_03_43_11_PM_xagzjf.png',
-   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058505/ChatGPT_Image_May_6_2026_03_43_11_PM_xagzjf.png'],
-  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058539/ChatGPT_Image_May_6_2026_03_43_22_PM_ejhf1t.png',
-   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058539/ChatGPT_Image_May_6_2026_03_43_22_PM_ejhf1t.png'],
-  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058739/ChatGPT_Image_May_6_2026_03_45_46_PM_plgice.png',
-   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058739/ChatGPT_Image_May_6_2026_03_45_46_PM_plgice.png'],
-  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058786/ChatGPT_Image_May_6_2026_03_55_39_PM_dssunr.png',
-   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058786/ChatGPT_Image_May_6_2026_03_55_39_PM_dssunr.png'],
-  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058829/ChatGPT_Image_May_6_2026_03_57_38_PM_jwipj1.png',
-   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058829/ChatGPT_Image_May_6_2026_03_57_38_PM_jwipj1.png'],
-  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058887/ChatGPT_Image_May_6_2026_04_00_04_PM_fattkj.png',
-   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058887/ChatGPT_Image_May_6_2026_04_00_04_PM_fattkj.png'],
-  // ── Bolo card + battle sprites ────────────────────────────────────────────
-  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778231010/ChatGPT_Image_May_8_2026_03_58_18_PM_bchzp9.png',
-   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778231010/ChatGPT_Image_May_8_2026_03_58_18_PM_bchzp9.png'],
-  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778231187/ChatGPT_Image_May_8_2026_04_06_08_PM_kvuuqu.png',
-   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778231187/ChatGPT_Image_May_8_2026_04_06_08_PM_kvuuqu.png'],
-  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778231197/ChatGPT_Image_May_8_2026_04_05_59_PM_ezsxxp.png',
-   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778231197/ChatGPT_Image_May_8_2026_04_05_59_PM_ezsxxp.png'],
-  // ── Quill card + battle sprites ────────────────────────────────────────────
-  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778238897/ChatGPT_Image_May_8_2026_06_13_09_PM_vnblpy.png',
-   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778238897/ChatGPT_Image_May_8_2026_06_13_09_PM_vnblpy.png'],
-  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778239096/ChatGPT_Image_May_8_2026_06_13_01_PM_qnx2nw.png',
-   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778239096/ChatGPT_Image_May_8_2026_06_13_01_PM_qnx2nw.png'],
-  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778239114/ChatGPT_Image_May_8_2026_06_12_47_PM_gke8kr.png',
-   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778239114/ChatGPT_Image_May_8_2026_06_12_47_PM_gke8kr.png'],
-  // ── Brennan card + battle sprites ────────────────────────────────────────
+  [LUCAS_IDLE_BATTLE,  LUCAS_IDLE_BATTLE],
+  [LUCAS_ACTION_BATTLE,LUCAS_ACTION_BATTLE],
+  [EMMA_IDLE_BATTLE,   EMMA_IDLE_BATTLE],
+  [EMMA_ACTION,        EMMA_ACTION],
+  // ── Brennan card + battle sprites (chroma) ────────────────────────────────
   ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778243229/ChatGPT_Image_May_8_2026_07_24_30_PM_t5y2zh.png',
    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778243229/ChatGPT_Image_May_8_2026_07_24_30_PM_t5y2zh.png'],
-  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778243245/ChatGPT_Image_May_8_2026_07_24_39_PM_mhzv50.png',
-   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778243245/ChatGPT_Image_May_8_2026_07_24_39_PM_mhzv50.png'],
-  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778243251/ChatGPT_Image_May_8_2026_07_24_56_PM_s0psbk.png',
-   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778243251/ChatGPT_Image_May_8_2026_07_24_56_PM_s0psbk.png'],
-  // ── Sylvie card + battle sprites ─────────────────────────────────────────
+  [BRENNAN_IDLE_BATTLE, BRENNAN_IDLE_BATTLE],
+  [BRENNAN_ACTION,      BRENNAN_ACTION],
+  // ── Sylvie card + battle sprites (chroma) ─────────────────────────────────
   ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778253528/ChatGPT_Image_May_8_2026_10_17_57_PM_bxj16w.png',
    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778253528/ChatGPT_Image_May_8_2026_10_17_57_PM_bxj16w.png'],
-  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778253581/ChatGPT_Image_May_8_2026_10_15_54_PM_pk4782.png',
-   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778253581/ChatGPT_Image_May_8_2026_10_15_54_PM_pk4782.png'],
-  ['https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778253798/ChatGPT_Image_May_8_2026_10_16_05_PM_miwleg.png',
-   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778253798/ChatGPT_Image_May_8_2026_10_16_05_PM_miwleg.png'],
+  [SYLVIE_IDLE_BATTLE,  SYLVIE_IDLE_BATTLE],
+  [SYLVIE_ACTION,       SYLVIE_ACTION],
 ];
 
 const TOTAL =

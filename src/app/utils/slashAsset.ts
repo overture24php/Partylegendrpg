@@ -11,7 +11,7 @@
 import { applyChromaKey, getContentBounds } from './chromaKey';
 
 const SLASH_URL =
-  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778227653/edited-photo_ulx54j.png';
+  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778743521/slashgorr_vuccpo.png';
 
 let _canvas: HTMLCanvasElement | null = null;
 let _bounds: { x: number; y: number; w: number; h: number } | null = null;

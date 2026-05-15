@@ -25,9 +25,9 @@ import { buildChapterStageMap } from '../data/stageData';
 import type { StageClientData } from '../data/stageData';
 
 
-const MAP_URL        = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777566900/ChatGPT_Image_Apr_30_2026_11_34_05_PM_ptwl1w.png';
-const GRASS_URL      = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777571911/ChatGPT_Image_May_1_2026_12_57_58_AM_xgzne0.png';
-const BATTLE_BG_URL  = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777582000/35957be7-1c54-4274-80bf-dbabbd1d8a99.png';
+const MAP_URL        = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778656121/ChatGPT_Image_May_13_2026_02_02_01_PM_jujdfe.png';
+const GRASS_URL      = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778582261/ChatGPT_Image_May_12_2026_05_36_52_PM_acnp8s.png';
+const BATTLE_BG_URL  = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778582261/ChatGPT_Image_May_12_2026_05_36_52_PM_acnp8s.png';
 const FOREST_URL     = 'https://images.unsplash.com/photo-1761800459257-51dc80488352?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080';
 const MOUNTAIN_URL   = 'https://images.unsplash.com/photo-1768065137304-530a5305ad1a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080';
 const DUNGEON_URL    = 'https://images.unsplash.com/photo-1728339097250-bf673536786f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080';
@@ -549,25 +549,25 @@ function BattleButton({ onToggle, open }: { onToggle: () => void; open: boolean 
 // ─── Enemy display data — all 10 C-Rarity heroes ─────────────────────────────
 const ENEMY_DEFS: Record<string, { name: string; rarity: string; heroType: string; ilust: string; rarityColor: string }> = {
   rock_slime:  { name: 'Rock Slime',  rarity: 'common', heroType: 'Tank',     rarityColor: '#22C55E',
-    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777545681/ChatGPT_Image_Apr_30_2026_05_38_28_PM_wzt4ox.png' },
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778652401/ChatGPT_Image_May_12_2026_07_24_04_PM_qvnqjk.png' },
   acid_slime:  { name: 'Acid Slime',  rarity: 'common', heroType: 'Ranged',   rarityColor: '#22C55E',
-    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777545738/ChatGPT_Image_Apr_30_2026_05_39_48_PM_oq2njh.png' },
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778652389/ChatGPT_Image_May_12_2026_06_50_18_PM_byiumx.png' },
   water_slime: { name: 'Water Slime', rarity: 'common', heroType: 'Support',  rarityColor: '#22C55E',
-    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777545810/ChatGPT_Image_Apr_30_2026_05_40_35_PM_w370l3.png' },
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778652396/ChatGPT_Image_May_12_2026_06_47_46_PM_wk9k7m.png' },
   gorr:        { name: 'Gorr',        rarity: 'common', heroType: 'Fighter',  rarityColor: '#22C55E',
-    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058398/ChatGPT_Image_May_6_2026_03_41_03_PM_hxymbk.png' },
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778652408/ChatGPT_Image_May_12_2026_07_32_27_PM_ueyyio.png' },
   craw:        { name: 'Craw',        rarity: 'common', heroType: 'Ranged',   rarityColor: '#22C55E',
-    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058474/ChatGPT_Image_May_6_2026_03_43_04_PM_u0dyy5.png' },
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778652416/ChatGPT_Image_May_12_2026_07_32_36_PM_hhrk5u.png' },
   myko:        { name: 'Myko',        rarity: 'common', heroType: 'Tank',     rarityColor: '#22C55E',
-    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058438/ChatGPT_Image_May_6_2026_03_42_51_PM_o43yt7.png' },
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778652422/ChatGPT_Image_May_12_2026_07_34_45_PM_a2hlnj.png' },
   fang:        { name: 'Fang',        rarity: 'common', heroType: 'Assassin', rarityColor: '#22C55E',
-    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058505/ChatGPT_Image_May_6_2026_03_43_11_PM_xagzjf.png' },
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778652429/ChatGPT_Image_May_12_2026_07_47_36_PM_gxbs4w.png' },
   clover:      { name: 'Clover',      rarity: 'common', heroType: 'Support',  rarityColor: '#22C55E',
-    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058786/ChatGPT_Image_May_6_2026_03_55_39_PM_dssunr.png' },
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778652436/ChatGPT_Image_May_12_2026_07_49_57_PM_hnci3z.png' },
   bolo:        { name: 'Bolo',        rarity: 'common', heroType: 'Fighter',  rarityColor: '#22C55E',
-    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778231010/ChatGPT_Image_May_8_2026_03_58_18_PM_bchzp9.png' },
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778655796/ChatGPT_Image_May_13_2026_01_17_27_PM_d2fpp3.png' },
   quill:       { name: 'Quill',       rarity: 'common', heroType: 'Assassin', rarityColor: '#22C55E',
-    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778238897/ChatGPT_Image_May_8_2026_06_13_09_PM_vnblpy.png' },
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778655803/ChatGPT_Image_May_13_2026_01_53_48_PM_p6uksj.png' },
 };
 
 // ─── Stage data — all chapters, generated from stageData.ts ──────────────────
@@ -862,7 +862,7 @@ ensureBattleIdleCss();
 // Size: 240��450px (1.5× the previous 160×300). Feet sit at slot bottom;
 // character crown is ~330px above the slot's top edge. Game-accurate scale.
 // ─── Team sprite — Lucas/Emma via chroma key; slimes use bg-removed Cloudinary URLs ──
-function BattleSlotSprite({ heroName }: { heroName: string }) {
+function BattleSlotSprite({ heroName, rowIdx = 0 }: { heroName: string; rowIdx?: number }) {
   const cfg = TEAM_SPRITE_CONFIG[heroName];
   // Always call hook — pass '' for non-chroma so hook returns null immediately
   const chromaUrl = useChromaKeyDataUrl(cfg?.chromaKey ? (cfg?.src ?? '') : '');
@@ -876,7 +876,7 @@ function BattleSlotSprite({ heroName }: { heroName: string }) {
   return (
     <div style={{
       position: 'absolute',
-      bottom: isSlime ? 0 : -4,
+      bottom: (isSlime ? 0 : -4) + (rowIdx === 2 ? 60 : 0),
       left: '50%',
       transform: `translateX(-50%)${cfg?.flipX ? ' scaleX(-1)' : ''}`,
       width: w,
@@ -930,7 +930,7 @@ const PASCAL_TO_HERO_ID: Record<string, string> = {};
 // Populated immediately below once HERO_ID_TO_SPRITE is declared — see comment there.
 
 // Enemy sprite — identical sizing logic to BattleSlotSprite, mirrored to face hero team
-function EnemySlotSprite({ enemyName }: { enemyName: string }) {
+function EnemySlotSprite({ enemyName, rowIdx = 0 }: { enemyName: string; rowIdx?: number }) {
   const heroId      = PASCAL_TO_HERO_ID[enemyName] ?? enemyName.toLowerCase().replace(/\s+/g, '_');
   const rawSrc      = ENEMY_SPRITES[enemyName] ?? '';
   const needsChroma = !BGREMOVE_ENEMIES.has(enemyName);
@@ -942,7 +942,7 @@ function EnemySlotSprite({ enemyName }: { enemyName: string }) {
   const animCls   = isSlime ? 'slime-bounce' : 'battle-idle-breathe';
   return (
     <div style={{
-      position: 'absolute', bottom: isSlime ? 0 : -4, left: '50%',
+      position: 'absolute', bottom: (isSlime ? 0 : -4) + (rowIdx === 2 ? 60 : 0), left: '50%',
       // scaleX(-1) flips to face the hero team (enemies are on the right side)
       transform: 'translateX(-50%) scaleX(-1)',
       width: w, height: h,
@@ -971,9 +971,15 @@ function EnemySlotSprite({ enemyName }: { enemyName: string }) {
 const GRID_W = 368;
 const GRID_H = 310;
 const ROW_DATA = [
-  { slotW: 60,  slotH: 60,  off: 15, col0X: 30,  col1X: 278, y: 8   }, // rowIdx 0 top/far
-  { slotW: 86,  slotH: 86,  off: 13, col0X: 17,  col1X: 265, y: 82  }, // rowIdx 1 mid
-  { slotW: 120, slotH: 120, off: 17, col0X: 0,   col1X: 248, y: 190 }, // rowIdx 2 bot/near
+  { slotW: 60,  slotH: 60,  off: 15, col0X: 30, col1X: 154, y: 8   }, // rowIdx 0 top/far  (hero)
+  { slotW: 86,  slotH: 86,  off: 13, col0X: 17, col1X: 141, y: 82  }, // rowIdx 1 mid       (hero)
+  { slotW: 120, slotH: 120, off: 17, col0X: 0,  col1X: 124, y: 190 }, // rowIdx 2 bot/near  (hero)
+] as const;
+// Enemy formation: flat vertical (||) — same col0X/col1X for all rows
+const ENEMY_ROW_DATA = [
+  { slotW: 60,  slotH: 60,  off: 15, col0X: 154, col1X: 278, y: 8   },
+  { slotW: 86,  slotH: 86,  off: 13, col0X: 154, col1X: 278, y: 82  },
+  { slotW: 120, slotH: 120, off: 17, col0X: 154, col1X: 278, y: 190 },
 ] as const;
 
 function FormationGrid({ side, heroSlots, onSlotClick }: {
@@ -991,14 +997,14 @@ function FormationGrid({ side, heroSlots, onSlotClick }: {
         const rowIdx  = Math.floor(i / 2); // 0=top, 1=mid, 2=bot
         const isFront = isHero ? (colIdx === 1) : (colIdx === 0);
         const rowZ    = rowIdx * 2 + (isFront ? 2 : 1);
-        const row     = ROW_DATA[rowIdx];
+        const row     = (isHero ? ROW_DATA : ENEMY_ROW_DATA)[rowIdx];
         const slotX   = colIdx === 0 ? row.col0X : row.col1X;
 
-        // SVG polygon colours
-        const fillClr = assigned ? (isHero ? 'rgba(10,28,12,0.88)' : 'rgba(28,8,8,0.88)')
-                                 : (isHero ? 'rgba(30,200,80,0.07)' : 'rgba(220,50,30,0.07)');
-        const strkClr = assigned ? (isHero ? 'rgba(80,220,120,0.60)' : 'rgba(220,80,60,0.60)')
-                                 : (isHero ? 'rgba(80,220,120,0.32)' : 'rgba(220,80,60,0.32)');
+        // SVG polygon colours — enemy slots always transparent; hero slot same when assigned vs empty
+        const fillClr = !isHero ? 'transparent'
+                      : 'rgba(30,200,80,0.07)';
+        const strkClr = !isHero ? 'transparent'
+                      : 'rgba(80,220,120,0.32)';
 
         // Trapezoid: wide at bottom (y=slotH), narrow at top (y=0)
         const pts    = `${row.off},0 ${row.slotW - row.off},0 ${row.slotW},${row.slotH} 0,${row.slotH}`;
@@ -1031,7 +1037,7 @@ function FormationGrid({ side, heroSlots, onSlotClick }: {
             )}
 
             {assigned ? (
-              isHero ? <BattleSlotSprite heroName={assigned}/> : <EnemySlotSprite enemyName={assigned}/>
+              isHero ? <BattleSlotSprite heroName={assigned} rowIdx={rowIdx}/> : <EnemySlotSprite enemyName={assigned} rowIdx={rowIdx}/>
             ) : (
               <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', pointerEvents: 'none' }}>
                 <svg width={iconSz} height={iconSz} viewBox="0 0 24 24" fill="none">
@@ -1316,9 +1322,6 @@ function BattleView({ onBack, stageId = '1-1', onStageWin }: {
           <div style={{ position: 'absolute', top: 'clamp(98px,17dvh,128px)', bottom: 0, left: 0, right: 0 }}>
             <div style={{ position: 'absolute', left: 12, bottom: 0, overflow: 'visible' }}>
               <FormationGrid side="hero" heroSlots={heroSlots} onSlotClick={handleSlotClick}/>
-            </div>
-            <div style={{ position: 'absolute', left: '50%', bottom: 48, transform: 'translateX(-50%)', pointerEvents: 'none' }}>
-              <div style={{ fontFamily: FP, fontSize: 30, fontWeight: 900, color: 'rgba(255,60,60,0.85)', letterSpacing: '0.08em', textShadow: '0 0 22px rgba(255,60,60,0.55), 0 2px 10px rgba(0,0,0,0.95)' }}>VS</div>
             </div>
             <div style={{ position: 'absolute', right: 12, bottom: 0, overflow: 'visible' }}>
               <FormationGrid side="enemy" heroSlots={enemySlots}/>

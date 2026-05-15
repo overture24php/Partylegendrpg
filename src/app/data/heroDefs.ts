@@ -92,9 +92,11 @@ export interface HeroSkillDef {
   executeThreshold?: number;
   executeMult?:      number;
   /** Passive trigger type — drives in-function event hooks. */
-  passiveType?:      'on_kill_patk_stack' | 'reactive_ally_hit' | 'reactive_self_hit' | 'low_hp_once';
+  passiveType?:      'on_kill_patk_stack' | 'reactive_ally_hit' | 'reactive_self_hit' | 'low_hp_once' | 'pdef_ignore_on_attack' | 'on_turn_matk_stack' | 'on_kill_matk_hit_random';
   /** Max stacks for stack-based passives. */
   maxStacks?:        number;
+  /** Per-level values for passives (e.g. P.DEF ignore %). */
+  passiveValues?:    number[];
 }
 
 // ─── Hero stats block (maps to hero_definitions DB columns) ──────────────────
@@ -276,7 +278,7 @@ export const HERO_DEFS: HeroFullDef[] = [
   // ── Lucas — Fighter (B Rare) ─────────────────────────────────────────────────
   {
     heroId: 'lucas', name: 'Lucas', rarity: 'rare', heroType: 'Fighter',
-    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777386997/LUCAS_tyqcnf.png',
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778652359/ChatGPT_Image_May_12_2026_06_12_42_PM_qpmufz.png',
     gachaWeight: 60,
     battleReady: true,
     stats: {
@@ -286,8 +288,8 @@ export const HERO_DEFS: HeroFullDef[] = [
       growth_p_def: 4, growth_m_def: 4,
     },
     sprites: {
-      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777630336/idle_luk_mobysy.png',
-      actionUrl:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778171314/ChatGPT_Image_May_7_2026_11_12_56_PM_i1q3sx.png',
+      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778581164/ChatGPT_Image_May_12_2026_05_17_54_PM_qpcmql.png',
+      actionUrl:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778581168/ChatGPT_Image_May_12_2026_05_18_02_PM_z86xuq.png',
       actionMethod: 'chroma',
       isHumanHero: true, appearsAsEnemy: false,
       enemyNeedsChroma: false, enemyNeedsBgRemoval: false,
@@ -306,7 +308,7 @@ export const HERO_DEFS: HeroFullDef[] = [
         ratioLevels: [
           { label: 'Damage', values: ['165% P.ATK', '200% P.ATK', '240% P.ATK', '290% P.ATK'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550813/s1lukas_wrrnuo.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695232/s1lucas_tg9lmj.png',
         slot: 1, unlockLevel: 1, skillType: 'damage', damageType: 'physical',
         targetType: 'single', damageRatio: 1.65,
         moveType: 'melee_dash', sfxKey: 'lucas',
@@ -318,7 +320,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Damage',      values: ['180% P.ATK', '215% P.ATK', '258% P.ATK', '310% P.ATK'] },
           { label: 'P.DEF Shred', values: ['−80', '−100', '−125', '−150'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550848/ChatGPT_Image_Apr_30_2026_07_02_57_PM_kbtfs3.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695224/s2lucas_cub3wd.png',
         slot: 2, unlockLevel: 21, skillType: 'damage', damageType: 'physical',
         targetType: 'single', damageRatio: 1.80,
         moveType: 'melee_dash', sfxKey: 'lucas',
@@ -330,7 +332,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'P.ATK / Stack (compounding)', values: ['+8%', '+8%', '+8%', '+8%'] },
           { label: 'Max Stacks',                  values: ['5', '5', '5', '5'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550841/psvluk_b0quhw.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695243/s3lucas_ofqmbe.png',
         slot: 3, unlockLevel: 41, skillType: 'passive', damageType: 'none',
         targetType: 'passive', damageRatio: 0.00,
         moveType: 'passive', sfxKey: 'none',
@@ -343,7 +345,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Dmg / Hit (P.ATK)', values: ['100%', '125%', '155%', '195%'] },
           { label: 'Total (3 hits)',     values: ['300% P.ATK', '375% P.ATK', '465% P.ATK', '585% P.ATK'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550833/ultlukas_jcehyx.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695251/s4lucas_fcdwdn.png',
         slot: 4, unlockLevel: 61, skillType: 'damage', damageType: 'physical',
         targetType: 'front_aoe', damageRatio: 3.00,
         moveType: 'melee_aoe_center', sfxKey: 'lucas',
@@ -354,7 +356,7 @@ export const HERO_DEFS: HeroFullDef[] = [
   // ── Emma — Support (B Rare) ──────────────────────────────────────────────────
   {
     heroId: 'emma', name: 'Emma', rarity: 'rare', heroType: 'Support',
-    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777387003/emma_aqsnsd.png',
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778652368/ChatGPT_Image_May_12_2026_06_14_41_PM_zgrrmd.png',
     gachaWeight: 60,
     battleReady: true,
     stats: {
@@ -364,8 +366,8 @@ export const HERO_DEFS: HeroFullDef[] = [
       growth_p_def: 4, growth_m_def: 4,
     },
     sprites: {
-      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777630434/idle_em_p8uxjs.png',
-      actionUrl:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777630357/act_em_fnrl1t.png',
+      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778582268/ChatGPT_Image_May_12_2026_05_36_13_PM_qjuyrf.png',
+      actionUrl:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778582682/ChatGPT_Image_May_12_2026_05_43_02_PM_f7qdru.png',
       actionMethod: 'chroma',
       isHumanHero: true, appearsAsEnemy: false,
       enemyNeedsChroma: false, enemyNeedsBgRemoval: false,
@@ -384,7 +386,7 @@ export const HERO_DEFS: HeroFullDef[] = [
         ratioLevels: [
           { label: 'Heal (M.ATK)', values: ['170% M.ATK', '210% M.ATK', '260% M.ATK', '320% M.ATK'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550127/s1emma_1d4245.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695226/s1emma_i7mlep.png',
         slot: 1, unlockLevel: 1, skillType: 'heal', damageType: 'magical',
         targetType: 'single_lowest_hp_ally', damageRatio: 1.70,
         moveType: 'ranged_place', sfxKey: 'heal',
@@ -395,7 +397,7 @@ export const HERO_DEFS: HeroFullDef[] = [
         ratioLevels: [
           { label: 'Shield (M.ATK)', values: ['140% M.ATK', '175% M.ATK', '215% M.ATK', '265% M.ATK'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550505/ChatGPT_Image_Apr_30_2026_06_53_05_PM_s9ssbz.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695222/s2emma_x3axeo.png',
         slot: 2, unlockLevel: 21, skillType: 'buff', damageType: 'magical',
         targetType: 'single_ally_maxhp', damageRatio: 1.40,
         moveType: 'self_only', sfxKey: 'shield',
@@ -406,7 +408,7 @@ export const HERO_DEFS: HeroFullDef[] = [
         ratioLevels: [
           { label: 'Shield / Ally (M.ATK)', values: ['90% M.ATK', '115% M.ATK', '145% M.ATK', '185% M.ATK'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550512/ChatGPT_Image_Apr_30_2026_ffPM_m405s1.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695238/s3emma_vuygqp.png',
         slot: 3, unlockLevel: 41, skillType: 'passive', damageType: 'none',
         targetType: 'passive_init', damageRatio: 0.90,
         moveType: 'passive', sfxKey: 'shield',
@@ -417,7 +419,7 @@ export const HERO_DEFS: HeroFullDef[] = [
         ratioLevels: [
           { label: 'Heal × All Allies (M.ATK)', values: ['120% M.ATK', '150% M.ATK', '188% M.ATK', '235% M.ATK'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777550533/ultema_vshlxt.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695249/s4emma_el8mj7.png',
         slot: 4, unlockLevel: 61, skillType: 'heal_aoe', damageType: 'magical',
         targetType: 'all_allies', damageRatio: 1.20,
         moveType: 'ranged_place', sfxKey: 'heal',
@@ -435,7 +437,7 @@ export const HERO_DEFS: HeroFullDef[] = [
   // Synergy: Emma (she heals, he shields & stuns), Clover (she HOTs, he walls).
   {
     heroId: 'brennan', name: 'Brennan', rarity: 'rare', heroType: 'Tank',
-    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778243229/ChatGPT_Image_May_8_2026_07_24_30_PM_t5y2zh.png',
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778652381/ChatGPT_Image_May_12_2026_06_41_40_PM_kaflow.png',
     gachaWeight: 60,
     battleReady: true,
     // ↓ Engine-derived — do NOT hand-code. Edit HERO_VARIANTS['brennan'] in balanceEngine.ts.
@@ -443,8 +445,8 @@ export const HERO_DEFS: HeroFullDef[] = [
     // Growth (×0.09):  hp:195  p_atk:4  m_atk:3  p_def:20  m_def:18
     stats: engineStats('brennan', 'Tank', 'rare'),
     sprites: {
-      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778243245/ChatGPT_Image_May_8_2026_07_24_39_PM_mhzv50.png',
-      actionUrl:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778243251/ChatGPT_Image_May_8_2026_07_24_56_PM_s0psbk.png',
+      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778583271/ChatGPT_Image_May_12_2026_05_53_56_PM_togkgz.png',
+      actionUrl:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778583274/ChatGPT_Image_May_12_2026_05_54_05_PM_hajvwj.png',
       actionMethod: 'chroma',
       isHumanHero: true, appearsAsEnemy: false,
       enemyNeedsChroma: false, enemyNeedsBgRemoval: false,
@@ -463,7 +465,7 @@ export const HERO_DEFS: HeroFullDef[] = [
         ratioLevels: [
           { label: 'Damage (P.DEF)', values: ['80%', '98%', '120%', '146%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778252823/sk1ben_anmvl0.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695226/s1brennan_l4vwom.png',
         slot: 1, unlockLevel: 1, skillType: 'damage', damageType: 'physical',
         targetType: 'single', damageRatio: 0.80,
         moveType: 'melee_dash', sfxKey: 'punch',
@@ -475,7 +477,7 @@ export const HERO_DEFS: HeroFullDef[] = [
         ratioLevels: [
           { label: 'HP Shield (P.DEF)', values: ['55%', '68%', '84%', '104%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778252833/sk2ben_kbih5d.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695218/s2brennan_qfyvxi.png',
         slot: 2, unlockLevel: 21, skillType: 'buff', damageType: 'none',
         targetType: 'single_lowest_hp_ally', damageRatio: 0.55,
         moveType: 'self_only', sfxKey: 'shield',
@@ -487,7 +489,7 @@ export const HERO_DEFS: HeroFullDef[] = [
         ratioLevels: [
           { label: 'Max HP Bonus (% of own P.DEF)', values: ['+30%', '+38%', '+48%', '+60%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778252839/sk3ben_uul3ub.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695236/s3brennan_bpfhlz.png',
         slot: 3, unlockLevel: 41, skillType: 'passive', damageType: 'none',
         targetType: 'passive_init', damageRatio: 0.30,
         moveType: 'passive', sfxKey: 'none',
@@ -503,7 +505,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Stun Duration',            values: ['1 turn', '1 turn', '1 turn', '1 turn'] },
           { label: 'Stun Chance / Target',     values: ['100%', '100%', '100%', '100%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778252845/sk4ben_x6skcw.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695248/s4brennan_egieut.png',
         slot: 4, unlockLevel: 61, skillType: 'damage', damageType: 'physical',
         targetType: 'front_aoe', damageRatio: 0.70,
         moveType: 'melee_aoe_center', sfxKey: 'punch',
@@ -523,7 +525,7 @@ export const HERO_DEFS: HeroFullDef[] = [
   // Synergy: Lucas (armor rend → Sylvie cleans up), Brennan (Sylvie threatens ranged while Brennan walls front).
   {
     heroId: 'sylvie', name: 'Sylvie', rarity: 'rare', heroType: 'Ranged',
-    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778253528/ChatGPT_Image_May_8_2026_10_17_57_PM_bxj16w.png',
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778652376/ChatGPT_Image_May_12_2026_06_20_12_PM_vpquq4.png',
     gachaWeight: 60,
     battleReady: true,
     // ↓ Engine-derived — do NOT hand-code. Edit HERO_VARIANTS['sylvie'] in balanceEngine.ts.
@@ -531,8 +533,8 @@ export const HERO_DEFS: HeroFullDef[] = [
     // Growth (×0.09):  hp:74  p_atk:25  m_atk:18  p_def:8  m_def:8
     stats: engineStats('sylvie', 'Ranged', 'rare'),
     sprites: {
-      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778253581/ChatGPT_Image_May_8_2026_10_15_54_PM_pk4782.png',
-      actionUrl:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778253798/ChatGPT_Image_May_8_2026_10_16_05_PM_miwleg.png',
+      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778580980/ChatGPT_Image_May_12_2026_04_43_15_PM_t7x8y6.png',
+      actionUrl:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778580985/ChatGPT_Image_May_12_2026_05_00_54_PM_fxc6xq.png',
       actionMethod: 'chroma',
       isHumanHero: true, appearsAsEnemy: false,
       enemyNeedsChroma: false, enemyNeedsBgRemoval: false,
@@ -552,7 +554,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Damage (P.ATK)', values: ['160%', '195%', '238%', '290%'] },
           { label: 'Target',         values: ['Back Row', 'Back Row', 'Back Row', 'Back Row'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778257924/sk1sil_eeynic.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695241/s1sylvie_krsofb.png',
         slot: 1, unlockLevel: 1, skillType: 'damage', damageType: 'physical',
         targetType: 'single_back', damageRatio: 1.60,
         moveType: 'ranged_place', sfxKey: 'craw_arrow',
@@ -565,7 +567,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Damage per Bolt (P.ATK)', values: ['105%', '128%', '156%', '192%'] },
           { label: 'Bolts',                   values: ['×2', '×2', '×2', '×2'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778257930/sk2sil_vefcgf.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695233/s2sylvie_leod2u.png',
         slot: 2, unlockLevel: 21, skillType: 'damage', damageType: 'physical',
         targetType: 'two_front_random', damageRatio: 1.05,
         moveType: 'ranged_place', sfxKey: 'craw_arrow',
@@ -577,7 +579,7 @@ export const HERO_DEFS: HeroFullDef[] = [
         ratioLevels: [
           { label: 'Speed Bonus (self)', values: ['+12%', '+15%', '+20%', '+26%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778257936/sk3sil_itblzj.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695244/s3sylvie_sravk1.png',
         slot: 3, unlockLevel: 41, skillType: 'passive', damageType: 'none',
         targetType: 'passive_init', damageRatio: 0.12,
         moveType: 'passive', sfxKey: 'none',
@@ -595,7 +597,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Damage per Bolt (P.ATK)', values: ['160%', '195%', '238%', '290%'] },
           { label: 'Targets',                 values: ['Top-2 HP Front', 'Top-2 HP Front', 'Top-2 HP Front', 'Top-2 HP Front'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778257944/sk4sil_z96li3.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695256/s4sylvie_hw8a57.png',
         slot: 4, unlockLevel: 61, skillType: 'damage', damageType: 'physical',
         targetType: 'two_front_highest_hp', damageRatio: 1.60,
         moveType: 'ranged_place', sfxKey: 'craw_arrow',
@@ -1253,7 +1255,7 @@ export const HERO_DEFS: HeroFullDef[] = [
   // ── Rock Slime — Tank (C) ────────────────────────────────────────────────────
   {
     heroId: 'rock_slime', name: 'Rock Slime', rarity: 'common', heroType: 'Tank',
-    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777545681/ChatGPT_Image_Apr_30_2026_05_38_28_PM_wzt4ox.png',
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778652401/ChatGPT_Image_May_12_2026_07_24_04_PM_qvnqjk.png',
     gachaWeight: 100,
     battleReady: true,
     stats: {
@@ -1263,10 +1265,11 @@ export const HERO_DEFS: HeroFullDef[] = [
       growth_p_def: 2, growth_m_def: 2,
     },
     sprites: {
-      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777634810/Gemini_Generated_Image_c7qsl1c7qsl1c7qs_mekkjz.png',
-      actionUrl:  null, actionMethod: null,
+      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655860/ChatGPT_Image_May_13_2026_01_16_26_PM_zsqkno.png',
+      actionUrl:  'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655860/ChatGPT_Image_May_13_2026_01_16_26_PM_zsqkno.png',
+      actionMethod: 'bgremoval',
       isHumanHero: false, appearsAsEnemy: true,
-      enemyNeedsChroma: true, enemyNeedsBgRemoval: false,
+      enemyNeedsChroma: false, enemyNeedsBgRemoval: true,
     },
     skills: [
       {
@@ -1283,7 +1286,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Damage (P.ATK)',      values: ['100%', '122%', '148%', '180%'] },
           { label: 'P.DEF Buff (2 turns)', values: ['+8% P.DEF', '+11% P.DEF', '+14% P.DEF', '+18% P.DEF'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777565812/s1rlime_hfstrz.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695239/s1rslime_kdcgmq.png',
         slot: 1, unlockLevel: 1, skillType: 'damage', damageType: 'physical',
         targetType: 'single', damageRatio: 1.00,
         moveType: 'melee_dash', sfxKey: 'punch',
@@ -1294,7 +1297,7 @@ export const HERO_DEFS: HeroFullDef[] = [
         ratioLevels: [
           { label: 'Shield (own Max HP)', values: ['12% Max HP', '15% Max HP', '19% Max HP', '24% Max HP'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777565820/s2rslime_shjl5b.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695231/s2rslime_f4guov.png',
         slot: 2, unlockLevel: 21, skillType: 'buff', damageType: 'none',
         targetType: 'hp_shield_self', damageRatio: 0.12,
         moveType: 'self_only', sfxKey: 'shield',
@@ -1305,7 +1308,7 @@ export const HERO_DEFS: HeroFullDef[] = [
         ratioLevels: [
           { label: 'Basic Atk Bonus (P.DEF)', values: ['+10% P.DEF', '+14% P.DEF', '+19% P.DEF', '+25% P.DEF'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777565826/s3rslime_vip7sb.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695244/s3rslime_kqx7xf.png',
         slot: 3, unlockLevel: 41, skillType: 'passive', damageType: 'none',
         targetType: 'passive', damageRatio: 0.00,
         moveType: 'passive', sfxKey: 'none',
@@ -1317,7 +1320,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Dmg Front Row (P.DEF)', values: ['55% P.DEF', '70% P.DEF', '88% P.DEF', '110% P.DEF'] },
           { label: 'P.DEF Boost (2T)',      values: ['+18%', '+24%', '+30%', '+38%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777565833/s4rslime_duuc2g.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695254/s4rslime_xxpz1q.png',
         slot: 4, unlockLevel: 61, skillType: 'damage', damageType: 'physical',
         targetType: 'front_aoe', damageRatio: 0.55,
         moveType: 'melee_aoe_center', sfxKey: 'punch',
@@ -1328,7 +1331,7 @@ export const HERO_DEFS: HeroFullDef[] = [
   // ── Acid Slime — Ranged (C) ──────────────────────────────────────────────────
   {
     heroId: 'acid_slime', name: 'Acid Slime', rarity: 'common', heroType: 'Ranged',
-    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777545738/ChatGPT_Image_Apr_30_2026_05_39_48_PM_oq2njh.png',
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778652389/ChatGPT_Image_May_12_2026_06_50_18_PM_byiumx.png',
     gachaWeight: 100,
     battleReady: true,
     stats: {
@@ -1338,8 +1341,9 @@ export const HERO_DEFS: HeroFullDef[] = [
       growth_p_def: 1, growth_m_def: 1,
     },
     sprites: {
-      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1777634782/ChatGPT_Image_May_1_2026_06_25_59_PM_dsoxsd.png',
-      actionUrl:  null, actionMethod: null,
+      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655816/ChatGPT_Image_May_12_2026_06_50_49_PM_jf5slk.png',
+      actionUrl:  'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655816/ChatGPT_Image_May_12_2026_06_50_49_PM_jf5slk.png',
+      actionMethod: 'bgremoval',
       isHumanHero: false, appearsAsEnemy: true,
       enemyNeedsChroma: false, enemyNeedsBgRemoval: true,
     },
@@ -1358,7 +1362,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Damage (P.ATK)',    values: ['105%', '128%', '155%', '188%'] },
           { label: 'P.DEF Shred (2T)', values: ['−8%', '−10%', '−13%', '−17%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777806549/sk1acd_nqz0x5.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695207/s1aslime_owvcru.png',
         slot: 1, unlockLevel: 1, skillType: 'damage', damageType: 'physical',
         targetType: 'single_back', damageRatio: 1.05,
         moveType: 'ranged_place', sfxKey: 'water',
@@ -1370,7 +1374,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Dmg (×2 targets)',  values: ['68%', '84%', '102%', '124%'] },
           { label: 'Stun Chance / Tgt', values: ['16%', '20%', '26%', '33%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777806563/sk2acd_x4d8qu.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695214/s2aslime_bchbeb.png',
         slot: 2, unlockLevel: 21, skillType: 'damage', damageType: 'physical',
         targetType: 'two_front_random', damageRatio: 0.68,
         moveType: 'ranged_place', sfxKey: 'water',
@@ -1381,7 +1385,7 @@ export const HERO_DEFS: HeroFullDef[] = [
         ratioLevels: [
           { label: 'Contact Dmg (P.ATK)', values: ['10% P.ATK', '14% P.ATK', '19% P.ATK', '25% P.ATK'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777806571/sk3acd_gh45ki.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695236/s3aslime_uohsyk.png',
         slot: 3, unlockLevel: 41, skillType: 'passive', damageType: 'none',
         targetType: 'passive', damageRatio: 0.00,
         moveType: 'passive', sfxKey: 'none',
@@ -1394,7 +1398,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Dmg All (P.ATK)',      values: ['78%', '96%', '118%', '144%'] },
           { label: 'P.DEF Shred All (2T)', values: ['−10%', '−13%', '−17%', '−22%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777806578/sk4acd_mcmpzu.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695251/s4aslime_mz3vyv.png',
         slot: 4, unlockLevel: 61, skillType: 'damage', damageType: 'physical',
         targetType: 'all_enemies', damageRatio: 0.78,
         moveType: 'ranged_place', sfxKey: 'water',
@@ -1405,7 +1409,7 @@ export const HERO_DEFS: HeroFullDef[] = [
   // ── Water Slime — Support (C) ────────────────────────────────────────────────
   {
     heroId: 'water_slime', name: 'Water Slime', rarity: 'common', heroType: 'Support',
-    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777545810/ChatGPT_Image_Apr_30_2026_05_40_35_PM_w370l3.png',
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778652396/ChatGPT_Image_May_12_2026_06_47_46_PM_wk9k7m.png',
     gachaWeight: 100,
     battleReady: true,
     stats: {
@@ -1415,10 +1419,11 @@ export const HERO_DEFS: HeroFullDef[] = [
       growth_p_def: 2, growth_m_def: 2,
     },
     sprites: {
-      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777907811/7d3947a5-76a6-4422-9dc6-1eb5fd4d29bd.png',
-      actionUrl:  null, actionMethod: null,
+      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778652452/ChatGPT_Image_May_12_2026_06_45_40_PM_aftzie.png',
+      actionUrl:  'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778652452/ChatGPT_Image_May_12_2026_06_45_40_PM_aftzie.png',
+      actionMethod: 'bgremoval',
       isHumanHero: false, appearsAsEnemy: true,
-      enemyNeedsChroma: true, enemyNeedsBgRemoval: false,
+      enemyNeedsChroma: false, enemyNeedsBgRemoval: true,
     },
     skills: [
       {
@@ -1435,7 +1440,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Damage (M.ATK)',  values: ['82% M.ATK', '100% M.ATK', '122% M.ATK', '148% M.ATK'] },
           { label: 'Speed Slow (2T)', values: ['−18% Spd', '−24% Spd', '−30% Spd', '−38% Spd'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777807420/sk1wtr.pg_fbx8a0.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695213/s1wslime_hiue5v.png',
         slot: 1, unlockLevel: 1, skillType: 'damage', damageType: 'magical',
         targetType: 'highest_speed', damageRatio: 0.82,
         moveType: 'ranged_place', sfxKey: 'water',
@@ -1447,7 +1452,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Dmg / Target (M.ATK)', values: ['58% M.ATK', '72% M.ATK', '88% M.ATK', '108% M.ATK'] },
           { label: 'M.DEF Shred (2T)',      values: ['−12%', '−16%', '−21%', '−27%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777807428/sk2wtr_vmi777.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695230/s2wslime_nwbn4l.png',
         slot: 2, unlockLevel: 21, skillType: 'damage', damageType: 'magical',
         targetType: 'two_front_highest_hp', damageRatio: 0.58,
         moveType: 'ranged_place', sfxKey: 'water',
@@ -1458,7 +1463,7 @@ export const HERO_DEFS: HeroFullDef[] = [
         ratioLevels: [
           { label: 'Ally Bonus vs. Debuffed (M.ATK)', values: ['+8% M.ATK', '+12% M.ATK', '+16% M.ATK', '+22% M.ATK'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777807444/sk3wtr_fedwpe.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695246/s3wslime_fjmrdv.png',
         slot: 3, unlockLevel: 41, skillType: 'passive', damageType: 'none',
         targetType: 'passive', damageRatio: 0.00,
         moveType: 'passive', sfxKey: 'none',
@@ -1471,7 +1476,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'P.DEF + M.DEF Shred (2T)', values: ['−10% each', '−13% each', '−17% each', '−22% each'] },
           { label: 'Stun Chance / Turn (2T)',   values: ['12%', '16%', '21%', '27%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777807456/sk4wtr_fbixax.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695255/s4wlime_ffsowm.png',
         slot: 4, unlockLevel: 61, skillType: 'damage', damageType: 'magical',
         targetType: 'all_enemies', damageRatio: 0.72,
         moveType: 'ranged_place', sfxKey: 'water',
@@ -1482,7 +1487,7 @@ export const HERO_DEFS: HeroFullDef[] = [
   // ── Gorr — Fighter (C) ───────────────────────────────────────────────────────
   {
     heroId: 'gorr', name: 'Gorr', rarity: 'common', heroType: 'Fighter',
-    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058398/ChatGPT_Image_May_6_2026_03_41_03_PM_hxymbk.png',
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778652408/ChatGPT_Image_May_12_2026_07_32_27_PM_ueyyio.png',
     gachaWeight: 100,
     battleReady: true,
     stats: {
@@ -1492,11 +1497,11 @@ export const HERO_DEFS: HeroFullDef[] = [
       growth_p_def: 2, growth_m_def: 2,
     },
     sprites: {
-      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919607/ChatGPT_Image_May_5_2026_01_23_54_AM_nhkzmq.png',
-      actionUrl:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919615/ChatGPT_Image_May_5_2026_01_31_48_AM_m65s2g.png',
-      actionMethod: 'chroma',
+      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778652441/ChatGPT_Image_May_12_2026_07_53_17_PM_ozxezi.png',
+      actionUrl:  'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778652445/ChatGPT_Image_May_12_2026_07_38_40_PM_vm3jgr.png',
+      actionMethod: 'bgremoval',
       isHumanHero: true, appearsAsEnemy: true,
-      enemyNeedsChroma: true, enemyNeedsBgRemoval: false,
+      enemyNeedsChroma: false, enemyNeedsBgRemoval: true,
     },
     skills: [
       {
@@ -1513,7 +1518,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Damage (P.ATK)',         values: ['140%', '170%', '205%', '250%'] },
           { label: 'Bleed/Turn (P.ATK, 2T)', values: ['18%', '22%', '28%', '35%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002904/sk1gor_wkgpaz.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695228/s1gorr_rixif5.png',
         slot: 1, unlockLevel: 1, skillType: 'damage', damageType: 'physical',
         targetType: 'single_lowest_hp', damageRatio: 1.40,
         moveType: 'melee_dash', sfxKey: 'lucas',
@@ -1525,7 +1530,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Damage (P.ATK)',        values: ['158%', '192%', '232%', '282%'] },
           { label: 'P.ATK Debuff Tgt (2T)', values: ['−15%', '−20%', '−26%', '−33%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002911/sk2gor_grkelh.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695226/s2gorr_f4wbo0.png',
         slot: 2, unlockLevel: 21, skillType: 'damage', damageType: 'physical',
         targetType: 'single', damageRatio: 1.58,
         moveType: 'melee_dash', sfxKey: 'lucas',
@@ -1536,7 +1541,7 @@ export const HERO_DEFS: HeroFullDef[] = [
         ratioLevels: [
           { label: 'Lifesteal (% of dmg dealt)', values: ['8%', '10%', '13%', '17%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002917/sk3gor_ppjc9j.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695241/s3gorr_kgcdh7.png',
         slot: 3, unlockLevel: 41, skillType: 'passive', damageType: 'none',
         targetType: 'passive', damageRatio: 0.00,
         moveType: 'passive', sfxKey: 'none',
@@ -1549,7 +1554,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Base Dmg All (P.ATK)',     values: ['88%', '108%', '132%', '160%'] },
           { label: 'Bonus vs Bleeding targets', values: ['+30%', '+35%', '+40%', '+48%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002925/sk4gor_axfkc2.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695252/s4gorr_cwgbei.png',
         slot: 4, unlockLevel: 61, skillType: 'damage', damageType: 'physical',
         targetType: 'all_enemies', damageRatio: 0.88,
         moveType: 'melee_aoe_center', sfxKey: 'lucas',
@@ -1560,7 +1565,7 @@ export const HERO_DEFS: HeroFullDef[] = [
   // ── Craw — Ranged (C) ────────────────────────────────────────────────────────
   {
     heroId: 'craw', name: 'Craw', rarity: 'common', heroType: 'Ranged',
-    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058474/ChatGPT_Image_May_6_2026_03_43_04_PM_u0dyy5.png',
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778652416/ChatGPT_Image_May_12_2026_07_32_36_PM_hhrk5u.png',
     gachaWeight: 100,
     battleReady: true,
     stats: {
@@ -1570,11 +1575,11 @@ export const HERO_DEFS: HeroFullDef[] = [
       growth_p_def: 1, growth_m_def: 1,
     },
     sprites: {
-      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919783/ChatGPT_Image_May_5_2026_01_26_59_AM_zfdewm.png',
-      actionUrl:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777919799/ChatGPT_Image_May_5_2026_01_27_08_AM_p8yjub.png',
-      actionMethod: 'chroma',
+      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655882/ChatGPT_Image_May_13_2026_01_18_14_PM_cpsmfh.png',
+      actionUrl:  'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655888/ChatGPT_Image_May_13_2026_01_18_55_PM_latgcz.png',
+      actionMethod: 'bgremoval',
       isHumanHero: true, appearsAsEnemy: true,
-      enemyNeedsChroma: true, enemyNeedsBgRemoval: false,
+      enemyNeedsChroma: false, enemyNeedsBgRemoval: true,
     },
     skills: [
       {
@@ -1592,7 +1597,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Wound Chance',       values: ['30%', '38%', '48%', '60%'] },
           { label: 'Wound: Dmg Taken +', values: ['+10%', '+13%', '+17%', '+22%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002931/sk1craw_cgwnc7.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695227/s1craw_kk1gnd.png',
         slot: 1, unlockLevel: 1, skillType: 'damage', damageType: 'physical',
         targetType: 'single_random', damageRatio: 1.15,
         moveType: 'ranged_place', sfxKey: 'craw_arrow',
@@ -1604,7 +1609,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Damage (P.ATK)',        values: ['130%', '158%', '192%', '232%'] },
           { label: 'Blind (2T) Miss Chance', values: ['35%', '45%', '55%', '65%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002935/sk2craw_hmjjoz.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695221/s2craw_jw8klq.png',
         slot: 2, unlockLevel: 21, skillType: 'damage', damageType: 'physical',
         targetType: 'single_highest_patk', damageRatio: 1.30,
         moveType: 'ranged_place', sfxKey: 'craw_arrow',
@@ -1616,7 +1621,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'P.ATK Boost (perm, 1×)', values: ['+25%', '+30%', '+36%', '+44%'] },
           { label: 'Speed Boost (perm, 1×)', values: ['+12%', '+15%', '+18%', '+22%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002946/sk3craw_f6s5e5.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695236/s3craw_dbr8a2.png',
         slot: 3, unlockLevel: 41, skillType: 'passive', damageType: 'none',
         targetType: 'passive', damageRatio: 0.00,
         moveType: 'passive', sfxKey: 'none',
@@ -1629,7 +1634,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Dmg All (P.ATK)',     values: ['72%', '88%', '108%', '130%'] },
           { label: 'Wound All (2T) Dmg+', values: ['+10%', '+13%', '+17%', '+22%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778002939/sk4craw_zg73ez.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695250/s4craw_flzkxc.png',
         slot: 4, unlockLevel: 61, skillType: 'damage', damageType: 'physical',
         targetType: 'all_enemies', damageRatio: 0.72,
         moveType: 'ranged_place', sfxKey: 'craw_arrow',
@@ -1640,7 +1645,7 @@ export const HERO_DEFS: HeroFullDef[] = [
   // ── Myko — Tank (C) ─────────────────────────────────────────────────────────
   {
     heroId: 'myko', name: 'Myko', rarity: 'common', heroType: 'Tank',
-    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058438/ChatGPT_Image_May_6_2026_03_42_51_PM_o43yt7.png',
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778652422/ChatGPT_Image_May_12_2026_07_34_45_PM_a2hlnj.png',
     gachaWeight: 100,
     battleReady: true,
     stats: {
@@ -1650,11 +1655,11 @@ export const HERO_DEFS: HeroFullDef[] = [
       growth_p_def: 11, growth_m_def: 10,
     },
     sprites: {
-      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778005026/ChatGPT_Image_May_6_2026_01_01_00_AM_bhjzhr.png',
-      actionUrl:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778005040/ChatGPT_Image_May_6_2026_01_03_49_AM_sirb54.png',
-      actionMethod: 'chroma',
+      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655921/ChatGPT_Image_May_13_2026_01_22_27_PM_o4bmxo.png',
+      actionUrl:  'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655927/ChatGPT_Image_May_13_2026_01_20_03_PM_rrxuvi.png',
+      actionMethod: 'bgremoval',
       isHumanHero: true, appearsAsEnemy: true,
-      enemyNeedsChroma: true, enemyNeedsBgRemoval: false,
+      enemyNeedsChroma: false, enemyNeedsBgRemoval: true,
     },
     skills: [
       {
@@ -1670,7 +1675,7 @@ export const HERO_DEFS: HeroFullDef[] = [
         ratioLevels: [
           { label: 'HP Shield (Max HP)', values: ['12%', '16%', '20%', '25%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009427/sk1myk_nr36fc.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695233/s1myko_k4yo36.png',
         slot: 1, unlockLevel: 1, skillType: 'buff', damageType: 'none',
         targetType: 'hp_shield_self', damageRatio: 0.12,
         moveType: 'self_only', sfxKey: 'shield',
@@ -1682,7 +1687,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Damage (P.DEF)',          values: ['90%', '110%', '135%', '165%'] },
           { label: 'Spore Rot P.ATK − (2T)', values: ['15%', '18%', '22%', '28%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009434/sk2myk_nry1oe.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695229/s2myko_dfzd3y.png',
         slot: 2, unlockLevel: 21, skillType: 'damage', damageType: 'physical',
         targetType: 'front_aoe', damageRatio: 0.90,
         moveType: 'melee_aoe_center', sfxKey: 'punch',
@@ -1693,7 +1698,7 @@ export const HERO_DEFS: HeroFullDef[] = [
         ratioLevels: [
           { label: 'Heal per Hit (P.DEF)', values: ['18%', '25%', '32%', '40%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009440/sk3myk_oc94bf.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695245/s3myko_tq5uku.png',
         slot: 3, unlockLevel: 41, skillType: 'passive', damageType: 'none',
         targetType: 'passive', damageRatio: 0.00,
         moveType: 'passive', sfxKey: 'none',
@@ -1706,7 +1711,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Damage All (P.DEF)',       values: ['85%', '105%', '130%', '160%'] },
           { label: 'Spore Toxin/Turn (P.DEF)', values: ['15%', '20%', '26%', '34%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778009488/sk4myk_egyexz.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695254/s4myko_qnjeyw.png',
         slot: 4, unlockLevel: 61, skillType: 'damage', damageType: 'magical',
         targetType: 'all_enemies', damageRatio: 0.85,
         moveType: 'melee_aoe_center', sfxKey: 'punch',
@@ -1717,7 +1722,7 @@ export const HERO_DEFS: HeroFullDef[] = [
   // ── Fang — Assassin (C) ──────────────────────────────────────────────────────
   {
     heroId: 'fang', name: 'Fang', rarity: 'common', heroType: 'Assassin',
-    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058505/ChatGPT_Image_May_6_2026_03_43_11_PM_xagzjf.png',
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778652429/ChatGPT_Image_May_12_2026_07_47_36_PM_gxbs4w.png',
     gachaWeight: 100,
     battleReady: true,
     sk2BeforeSk1: true,
@@ -1728,11 +1733,11 @@ export const HERO_DEFS: HeroFullDef[] = [
       growth_p_def: 5, growth_m_def: 6,
     },
     sprites: {
-      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058539/ChatGPT_Image_May_6_2026_03_43_22_PM_ejhf1t.png',
-      actionUrl:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058739/ChatGPT_Image_May_6_2026_03_45_46_PM_plgice.png',
-      actionMethod: 'chroma',
+      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655909/ChatGPT_Image_May_13_2026_01_20_59_PM_eahwgh.png',
+      actionUrl:  'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655913/ChatGPT_Image_May_13_2026_01_21_29_PM_dsydt0.png',
+      actionMethod: 'bgremoval',
       isHumanHero: true, appearsAsEnemy: true,
-      enemyNeedsChroma: true, enemyNeedsBgRemoval: false,
+      enemyNeedsChroma: false, enemyNeedsBgRemoval: true,
     },
     skills: [
       {
@@ -1749,7 +1754,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Damage per Hit (P.ATK)', values: ['90%', '110%', '135%', '165%'] },
           { label: 'Hits',                   values: ['×2',  '×2',   '×2',   '×2'  ] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066250/sk1fang_lzaud9.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695232/s1fang_v4rjns.png',
         slot: 1, unlockLevel: 1, skillType: 'damage', damageType: 'physical',
         targetType: 'twin_slash', damageRatio: 0.90,
         moveType: 'melee_dash', sfxKey: 'lucas',
@@ -1757,14 +1762,15 @@ export const HERO_DEFS: HeroFullDef[] = [
       },
       {
         name: 'Shadow Sprint',
-        description: 'Fang blurs through the entire front row in a single pass, slashing every enemy in the line simultaneously.',
+        description: "Passive. Fang's relentless assault tears through enemy defenses — each of his attacks ignores a portion of the target's Physical Defense.",
         ratioLevels: [
-          { label: 'Damage per Enemy (P.ATK)', values: ['75%', '92%', '112%', '138%'] },
+          { label: 'P.DEF Ignored', values: ['20%', '25%', '30%', '35%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066256/sk2fang_mkmdui.png',
-        slot: 2, unlockLevel: 21, skillType: 'damage', damageType: 'physical',
-        targetType: 'front_aoe', damageRatio: 0.75,
-        moveType: 'melee_aoe_center', sfxKey: 'lucas',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695222/s2fang_k0x9kl.png',
+        slot: 2, unlockLevel: 21, skillType: 'passive', damageType: 'none',
+        targetType: 'self', damageRatio: 0.00,
+        moveType: 'passive', passiveType: 'pdef_ignore_on_attack',
+        passiveValues: [0.20, 0.25, 0.30, 0.35],
       },
       {
         name: "Hunter's Mark",
@@ -1773,7 +1779,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'P.ATK Stack / Kill', values: ['+28%', '+36%', '+46%', '+58%'] },
           { label: 'Max Stacks',         values: ['3', '3', '3', '3'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066265/sk3fang_wdo19c.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695240/s3fang_nvxavq.png',
         slot: 3, unlockLevel: 41, skillType: 'passive', damageType: 'none',
         targetType: 'passive_kill_stack', damageRatio: 0.00,
         moveType: 'passive', sfxKey: 'none',
@@ -1786,7 +1792,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Damage (P.ATK)',        values: ['260%', '320%', '395%', '480%'] },
           { label: 'Execute Bonus (<35% HP)', values: ['×3', '×3', '×3', '×3'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066271/sk4fang_msdipt.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695251/s4fang_blxzqv.png',
         slot: 4, unlockLevel: 61, skillType: 'damage', damageType: 'physical',
         targetType: 'single_lowest_hp', damageRatio: 2.60,
         moveType: 'melee_dash', sfxKey: 'lucas',
@@ -1798,7 +1804,7 @@ export const HERO_DEFS: HeroFullDef[] = [
   // ── Clover — Support (C) ─────────────────────────────────────────────────────
   {
     heroId: 'clover', name: 'Clover', rarity: 'common', heroType: 'Support',
-    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058786/ChatGPT_Image_May_6_2026_03_55_39_PM_dssunr.png',
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778652436/ChatGPT_Image_May_12_2026_07_49_57_PM_hnci3z.png',
     gachaWeight: 100,
     battleReady: true,
     stats: {
@@ -1808,11 +1814,11 @@ export const HERO_DEFS: HeroFullDef[] = [
       growth_p_def: 6, growth_m_def: 10,
     },
     sprites: {
-      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058829/ChatGPT_Image_May_6_2026_03_57_38_PM_jwipj1.png',
-      actionUrl:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778058887/ChatGPT_Image_May_6_2026_04_00_04_PM_fattkj.png',
-      actionMethod: 'chroma',
+      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655952/ChatGPT_Image_May_13_2026_01_22_50_PM_xgsxyn.png',
+      actionUrl:  'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655958/ChatGPT_Image_May_13_2026_01_23_38_PM_sd92n5.png',
+      actionMethod: 'bgremoval',
       isHumanHero: true, appearsAsEnemy: true,
-      enemyNeedsChroma: true, enemyNeedsBgRemoval: false,
+      enemyNeedsChroma: false, enemyNeedsBgRemoval: true,
     },
     skills: [
       {
@@ -1828,7 +1834,7 @@ export const HERO_DEFS: HeroFullDef[] = [
         ratioLevels: [
           { label: 'Heal (M.ATK)', values: ['130% M.ATK', '160% M.ATK', '195% M.ATK', '240% M.ATK'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066277/sk1clov_pwyu2r.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695226/s1clov_tszbd9.png',
         slot: 1, unlockLevel: 1, skillType: 'heal', damageType: 'magical',
         targetType: 'single_lowest_hp_ally', damageRatio: 1.30,
         moveType: 'ranged_place', sfxKey: 'heal',
@@ -1840,7 +1846,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'HoT / Turn (M.ATK)', values: ['55% M.ATK', '68% M.ATK', '83% M.ATK', '100% M.ATK'] },
           { label: 'Duration',           values: ['3 turns', '3 turns', '3 turns', '3 turns'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066283/sk2clov_ebrxbb.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695218/s2clov_b5hz84.png',
         slot: 2, unlockLevel: 21, skillType: 'hot', damageType: 'magical',
         targetType: 'single_random_ally', damageRatio: 0.55,
         moveType: 'ranged_place', sfxKey: 'heal',
@@ -1852,7 +1858,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Reactive Heal (M.ATK)', values: ['40% M.ATK', '50% M.ATK', '62% M.ATK', '78% M.ATK'] },
           { label: 'Trigger Chance',        values: ['35%', '35%', '35%', '35%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066288/sk3clov_p4van1.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695239/s3clov_qcc7ds.png',
         slot: 3, unlockLevel: 41, skillType: 'passive', damageType: 'none',
         targetType: 'passive_ally_hit', damageRatio: 0.40,
         moveType: 'passive', sfxKey: 'none',
@@ -1865,7 +1871,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Burst Heal / Ally (M.ATK)', values: ['90% M.ATK', '112% M.ATK', '138% M.ATK', '168% M.ATK'] },
           { label: 'HoT / Turn (M.ATK, 3T)',    values: ['38% M.ATK', '46% M.ATK', '56% M.ATK', '68% M.ATK'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778066294/sk4clov_hysri6.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695249/s4clov_mn55ew.png',
         slot: 4, unlockLevel: 61, skillType: 'heal_aoe', damageType: 'magical',
         targetType: 'all_allies', damageRatio: 0.90,
         moveType: 'ranged_place', sfxKey: 'heal',
@@ -1876,7 +1882,7 @@ export const HERO_DEFS: HeroFullDef[] = [
   // ── Bolo — Fighter (C) ───────────────────────────────────────────────────────
   {
     heroId: 'bolo', name: 'Bolo', rarity: 'common', heroType: 'Fighter',
-    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778231010/ChatGPT_Image_May_8_2026_03_58_18_PM_bchzp9.png',
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778655796/ChatGPT_Image_May_13_2026_01_17_27_PM_d2fpp3.png',
     gachaWeight: 100,
     battleReady: true,
     // ↓ Engine-derived — do NOT hand-code. Edit HERO_VARIANTS['bolo'] in balanceEngine.ts.
@@ -1884,11 +1890,11 @@ export const HERO_DEFS: HeroFullDef[] = [
     // Resolved: base_hp:1320 growth_hp:92  base_p_atk:130 growth_p_atk:9
     //           base_p_def:130 growth_p_def:9  base_speed:54
     sprites: {
-      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778231187/ChatGPT_Image_May_8_2026_04_06_08_PM_kvuuqu.png',
-      actionUrl:  'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778231197/ChatGPT_Image_May_8_2026_04_05_59_PM_ezsxxp.png',
-      actionMethod: 'chroma',
+      idleUrl:    'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655977/ChatGPT_Image_May_13_2026_01_25_09_PM_vvn2zp.png',
+      actionUrl:  'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655988/ChatGPT_Image_May_13_2026_01_28_44_PM_oxtxu1.png',
+      actionMethod: 'bgremoval',
       isHumanHero: true, appearsAsEnemy: true,
-      enemyNeedsChroma: true, enemyNeedsBgRemoval: false,
+      enemyNeedsChroma: false, enemyNeedsBgRemoval: true,
     },
     skills: [
       {
@@ -1905,7 +1911,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'Damage (P.ATK)',  values: ['145%', '175%', '210%', '255%'] },
           { label: 'Stun Chance',     values: ['35%',  '42%',  '52%',  '65%' ] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778239141/sk1bol_di1n0b.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695219/s1bolo_tm5crw.png',
         slot: 1, unlockLevel: 1, skillType: 'damage', damageType: 'physical',
         targetType: 'single', damageRatio: 1.45,
         moveType: 'melee_dash', sfxKey: 'punch',
@@ -1916,7 +1922,7 @@ export const HERO_DEFS: HeroFullDef[] = [
         ratioLevels: [
           { label: 'Damage All Front (P.ATK)', values: ['105%', '128%', '155%', '188%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778239155/sk2bol_a8nmw8.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695218/s2bolo_drtgsf.png',
         slot: 2, unlockLevel: 21, skillType: 'damage', damageType: 'physical',
         targetType: 'front_aoe', damageRatio: 1.05,
         moveType: 'melee_aoe_center', sfxKey: 'punch',
@@ -1928,7 +1934,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'P.ATK / Stack (on hit)', values: ['+5%', '+6%', '+8%', '+10%'] },
           { label: 'Max Stacks',             values: ['4',   '4',   '4',   '4'   ] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778239162/sk3bol_qsnicj.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695236/s3bolo_nix16w.png',
         slot: 3, unlockLevel: 41, skillType: 'passive', damageType: 'none',
         targetType: 'passive', damageRatio: 0.05,
         moveType: 'passive', sfxKey: 'none',
@@ -1940,7 +1946,7 @@ export const HERO_DEFS: HeroFullDef[] = [
         ratioLevels: [
           { label: 'Damage All (P.ATK)', values: ['90%', '110%', '135%', '165%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778239168/sk4bol_bxjrm6.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695246/s4bolo_sup6qn.png',
         slot: 4, unlockLevel: 61, skillType: 'damage', damageType: 'physical',
         targetType: 'all_enemies', damageRatio: 0.90,
         moveType: 'melee_aoe_center', sfxKey: 'punch',
@@ -1957,7 +1963,7 @@ export const HERO_DEFS: HeroFullDef[] = [
   // Counter to: Fighters & heavy P.ATK dealers. Countered by: M.ATK, fast casters.
   {
     heroId: 'quill', name: 'Quill', rarity: 'common', heroType: 'Assassin',
-    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778238897/ChatGPT_Image_May_8_2026_06_13_09_PM_vnblpy.png',
+    ilust: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778655803/ChatGPT_Image_May_13_2026_01_53_48_PM_p6uksj.png',
     gachaWeight: 100,
     battleReady: true,
     // ↓ Engine-derived — edit HERO_VARIANTS['quill'] in balanceEngine.ts.
@@ -1965,11 +1971,11 @@ export const HERO_DEFS: HeroFullDef[] = [
     // Resolved: base_hp:864 growth_hp:60  base_p_atk:165 growth_p_atk:12
     //           base_p_def:106 growth_p_def:7  base_speed:173
     sprites: {
-      idleUrl:   'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778239096/ChatGPT_Image_May_8_2026_06_13_01_PM_qnx2nw.png',
-      actionUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778239114/ChatGPT_Image_May_8_2026_06_12_47_PM_gke8kr.png',
-      actionMethod: 'chroma',
+      idleUrl:   'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655966/ChatGPT_Image_May_13_2026_01_24_15_PM_pzebat.png',
+      actionUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778655972/ChatGPT_Image_May_13_2026_01_24_51_PM_fscxoj.png',
+      actionMethod: 'bgremoval',
       isHumanHero: true, appearsAsEnemy: true,
-      enemyNeedsChroma: true, enemyNeedsBgRemoval: false,
+      enemyNeedsChroma: false, enemyNeedsBgRemoval: true,
     },
     skills: [
       {
@@ -1985,7 +1991,7 @@ export const HERO_DEFS: HeroFullDef[] = [
         ratioLevels: [
           { label: 'Damage (P.ATK)', values: ['155%', '188%', '228%', '278%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778240747/sk1quill_sxuazo.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695242/s1quill_ezatl3.png',
         slot: 1, unlockLevel: 1, skillType: 'damage', damageType: 'physical',
         targetType: 'single', damageRatio: 1.55,
         moveType: 'melee_dash', sfxKey: 'punch',
@@ -1996,7 +2002,7 @@ export const HERO_DEFS: HeroFullDef[] = [
         ratioLevels: [
           { label: 'Damage (P.ATK)', values: ['185%', '225%', '272%', '330%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778240767/sk2quill_diuxf3.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695232/s2quill_rhh6hh.png',
         slot: 2, unlockLevel: 21, skillType: 'damage', damageType: 'physical',
         targetType: 'single_highest_patk', damageRatio: 1.85,
         moveType: 'melee_dash', sfxKey: 'punch',
@@ -2008,7 +2014,7 @@ export const HERO_DEFS: HeroFullDef[] = [
           { label: 'P.DEF / Stack (on hit)', values: ['+8%', '+10%', '+13%', '+16%'] },
           { label: 'Max Stacks',             values: ['5',   '5',    '5',    '5'  ] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778240776/sk3quill_pemdai.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695244/s3quill_j9yodf.png',
         slot: 3, unlockLevel: 41, skillType: 'passive', damageType: 'none',
         targetType: 'passive', damageRatio: 0.08,
         moveType: 'passive', sfxKey: 'none',
@@ -2020,7 +2026,7 @@ export const HERO_DEFS: HeroFullDef[] = [
         ratioLevels: [
           { label: 'Damage (P.ATK)', values: ['240%', '295%', '360%', '440%'] },
         ],
-        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778240783/sk4quill_ykgrvh.png',
+        iconUrl: 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778695255/s4quill_ni1vkb.png',
         slot: 4, unlockLevel: 61, skillType: 'damage', damageType: 'physical',
         targetType: 'single_highest_patk', damageRatio: 2.40,
         moveType: 'melee_dash', sfxKey: 'punch',

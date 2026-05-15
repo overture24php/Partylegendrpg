@@ -39,6 +39,8 @@ import { CloverVFX } from './CloverVFX';
 import type { CloverVFXTrigger } from './CloverVFX';
 import { MykoVFX } from './MykoVFX';
 import type { MykoVFXTrigger } from './MykoVFX';
+import { BrennanVFX } from './BrennanVFX';
+import type { BrennanVFXTrigger } from './BrennanVFX';
 import { SylvieVFX } from './SylvieVFX';
 import type { SylvieVFXTrigger } from './SylvieVFX';
 
@@ -71,11 +73,22 @@ const HERO_SKILL_ACTIONS: Record<string, Record<number, SkillAction>> = Object.f
 // ─── Formation layout ��────────────────────────────────────────────────────────
 const GRID_W = 368;
 const GRID_H = 310;
-const ROW_DATA = [
-  { slotW: 60,  slotH: 60,  col0X: 30,  col1X: 278, y: 8   },
-  { slotW: 86,  slotH: 86,  col0X: 17,  col1X: 265, y: 82  },
-  { slotW: 120, slotH: 120, col0X: 0,   col1X: 248, y: 190 },
+// Hero: mirrors formation exactly — row0=small/top/far, row2=large/bot/near
+const HERO_ROW_DATA = [
+  { slotW: 60,  slotH: 60,  col0X: 30, col1X: 154, y: 8   },
+  { slotW: 86,  slotH: 86,  col0X: 17, col1X: 141, y: 82  },
+  { slotW: 120, slotH: 120, col0X: 0,  col1X: 124, y: 190 },
 ] as const;
+// Enemy: flat vertical (||) — same col0X/col1X for all rows, no diagonal
+const ENEMY_ROW_DATA = [
+  { slotW: 60,  slotH: 60,  col0X: 154, col1X: 278, y: 8   },
+  { slotW: 86,  slotH: 86,  col0X: 154, col1X: 278, y: 82  },
+  { slotW: 120, slotH: 120, col0X: 154, col1X: 278, y: 190 },
+] as const;
+const ROW_DATA = HERO_ROW_DATA; // kept for backward-compat with non-side-aware helpers
+function getRow(side: 'hero'|'enemy', ri: number) {
+  return (side === 'hero' ? HERO_ROW_DATA : ENEMY_ROW_DATA)[ri];
+}
 
 // ─── Asset maps (auto-derived from heroDefs) ──────────────────────────────────
 // To add a new hero: fill in sprites.* in heroDefs.ts.
@@ -295,7 +308,7 @@ type UnitState = {
 
 // ─── Cinematic helpers ────────────────────────────────────────────────────────
 function calcSpotlightPos(side: 'hero'|'enemy', si: number) {
-  const col = si % 2, ri = Math.floor(si / 2), row = ROW_DATA[ri];
+  const col = si % 2, ri = Math.floor(si / 2), row = getRow(side, ri);
   const slotX = col === 0 ? row.col0X : row.col1X;
   const W = window.innerWidth, H = window.innerHeight;
   const gl = side === 'hero' ? 12 : W - 12 - GRID_W;
@@ -304,7 +317,7 @@ function calcSpotlightPos(side: 'hero'|'enemy', si: number) {
   return { x: cx, y: side === 'hero' ? (sb + 4) - 338 * 0.45 : (sb - 4) - 180 * 0.45 };
 }
 function calcZoomOrigin(side: 'hero'|'enemy', si: number) {
-  const col = si % 2, ri = Math.floor(si / 2), row = ROW_DATA[ri];
+  const col = si % 2, ri = Math.floor(si / 2), row = getRow(side, ri);
   const slotX = col === 0 ? row.col0X : row.col1X;
   const W = window.innerWidth, wH = Math.max(200, window.innerHeight - 128);
   const gl = side === 'hero' ? 12 : W - 12 - GRID_W;
@@ -316,13 +329,13 @@ function calcZoomOrigin(side: 'hero'|'enemy', si: number) {
 function calcDashVec(aS: 'hero'|'enemy', aSlot: number, tSlot: number) {
   const W = window.innerWidth;
   const cx = (s: 'hero'|'enemy', sl: number) => {
-    const c = sl % 2, r = ROW_DATA[Math.floor(sl / 2)];
+    const c = sl % 2, r = getRow(s, Math.floor(sl / 2));
     return (s === 'hero' ? 12 : W - 12 - GRID_W) + (c === 0 ? r.col0X : r.col1X) + r.slotW / 2;
   };
   const ax = cx(aS, aSlot), tS = aS === 'hero' ? 'enemy' : 'hero', tx = cx(tS, tSlot);
   const stopX = aS === 'hero' ? tx - 98 : tx + 98;
   const x = aS === 'hero' ? Math.max(0, stopX - ax) : Math.min(0, stopX - ax);
-  const ar = ROW_DATA[Math.floor(aSlot / 2)], tr = ROW_DATA[Math.floor(tSlot / 2)];
+  const ar = getRow(aS, Math.floor(aSlot / 2)), tr = getRow(tS, Math.floor(tSlot / 2));
   return { x, y: (tr.y + tr.slotH) - (ar.y + ar.slotH) };
 }
 
@@ -406,7 +419,7 @@ function calcHeadY(natW: number, natH: number, cW: number, cH: number): number {
   return Math.max(0, Math.round(cH - renderedH));
 }
 
-const HERO_SLIME_NAMES = new Set(['RockSlime', 'AcidSlime', 'WaterSlime']);
+const HERO_SLIME_NAMES = new Set(['RockSlime', 'AcidSlime', 'WaterSlime', 'Rock Slime', 'Acid Slime', 'Water Slime']);
 
 function HeroBattleSprite({ unit, floats }: { unit: UnitState; floats: FloatNum[] }) {
   const { name, heroId, animPhase, dashOffsetX, dashOffsetY, currentHp, maxHp, shield, rage, lucasStacks, statusEffects } = unit;
@@ -434,7 +447,8 @@ function HeroBattleSprite({ unit, floats }: { unit: UnitState; floats: FloatNum[
   const _cfg         = getSpriteSize(`sprite_${heroId}_${showAct ? 'action' : 'idle'}`);
   const spriteW      = _cfg.w;
   const spriteH      = _cfg.h;
-  const spriteBottom = isSlime ? 0 : -4;
+  const _ri          = Math.min(2, Math.floor(unit.slotIndex / 2));
+  const spriteBottom = (isSlime ? 0 : -4) + (_ri === 2 ? 60 : 0);
 
   // ── Adaptive head position ─────────────────────────────────────────────────
   // Recomputed on every image load via onCharImgLoad (below).
@@ -548,8 +562,8 @@ function HeroBattleSprite({ unit, floats }: { unit: UnitState; floats: FloatNum[
         <RageBar rage={rage} width={72}/>
       </div>
       {floats.map(f => (
-        <div key={f.id} className="bp-float-num" style={{ left: `calc(50% + ${f.ox}px)`, color: f.type === 'heal' ? '#4ade80' : f.type === 'magic' ? '#60a5fa' : f.type === 'wpassive' ? '#38bdf8' : f.type === 'bleed' ? '#f87171' : '#fc7d7d' }}>
-          {f.type === 'heal' ? `+${f.value}` : f.type === 'wpassive' ? '✦M' : f.type === 'bleed' ? `🩸-${f.value}` : `-${f.value}`}
+        <div key={f.id} className="bp-float-num" style={{ left: `calc(50% + ${f.ox}px)`, color: f.type === 'heal' ? '#4ade80' : f.type === 'magic' ? '#60a5fa' : f.type === 'bleed' ? '#f87171' : '#fc7d7d' }}>
+          {f.type === 'heal' ? `+${f.value}` : f.type === 'bleed' ? `🩸-${f.value}` : `-${f.value}`}
         </div>
       ))}
       <div className={flipCls} style={{ width: '100%', height: '100%', transformOrigin: 'center', position: 'relative', zIndex: 1 }}>
@@ -594,7 +608,8 @@ function EnemyBattleSprite({ unit, floats }: { unit: UnitState; floats: FloatNum
   const _cfg         = getSpriteSize(`sprite_${heroId}_${showAct ? 'action' : 'idle'}`);
   const espriteW     = _cfg.w;
   const espriteH     = _cfg.h;
-  const spriteBottom = isHumanEnemy ? -4 : 0; // matches HeroBattleSprite
+  const _ri          = Math.min(2, Math.floor(unit.slotIndex / 2));
+  const spriteBottom = (isHumanEnemy ? -4 : 0) + (_ri === 2 ? 60 : 0);
 
   // ── Adaptive head position (same logic as HeroBattleSprite) ───────────────
   const [headY, setHeadY] = useState<number | null>(null);
@@ -667,8 +682,8 @@ function EnemyBattleSprite({ unit, floats }: { unit: UnitState; floats: FloatNum
       </div>
       {/* Floats sit outside the flip stack so numbers always read left-to-right */}
       {floats.map(f => (
-        <div key={f.id} className="bp-float-num" style={{ left: `calc(50% + ${f.ox}px)`, color: f.type === 'heal' ? '#4ade80' : f.type === 'magic' ? '#60a5fa' : f.type === 'wpassive' ? '#38bdf8' : f.type === 'bleed' ? '#f87171' : '#fc7d7d' }}>
-          {f.type === 'heal' ? `+${f.value}` : f.type === 'wpassive' ? '✦M' : f.type === 'bleed' ? `🩸-${f.value}` : `-${f.value}`}
+        <div key={f.id} className="bp-float-num" style={{ left: `calc(50% + ${f.ox}px)`, color: f.type === 'heal' ? '#4ade80' : f.type === 'magic' ? '#60a5fa' : f.type === 'bleed' ? '#f87171' : '#fc7d7d' }}>
+          {f.type === 'heal' ? `+${f.value}` : f.type === 'bleed' ? `🩸-${f.value}` : `-${f.value}`}
         </div>
       ))}
       {/* flipCls div: bp-flip-wind animates scaleX 1→-1, bp-flip-rev -1→1.
@@ -707,10 +722,10 @@ function BattleFieldSide({ units, side, floatNums }: { units: UnitState[]; side:
     <div style={{ position: 'relative', width: GRID_W, height: GRID_H, overflow: 'visible' }}>
       {units.filter(u => u.side === side).map(unit => {
         if (unit.animPhase === 'dead') return null;
-        const col = unit.slotIndex % 2, row = ROW_DATA[Math.floor(unit.slotIndex / 2)];
+        const col = unit.slotIndex % 2, ri = Math.floor(unit.slotIndex / 2), row = getRow(side, ri);
         const slotX = col === 0 ? row.col0X : row.col1X;
         const front = side === 'hero' ? (col === 1) : (col === 0);
-        const rowZ = Math.floor(unit.slotIndex / 2) * 2 + (front ? 2 : 1);
+        const rowZ = ri * 2 + (front ? 2 : 1);
         const floats = floatNums.filter(f => f.uid === unit.uid);
         return (
           <div key={unit.uid} style={{ position: 'absolute', left: slotX, top: row.y, width: row.slotW, height: row.slotH, overflow: 'visible', zIndex: rowZ }}>
@@ -1092,7 +1107,10 @@ export function BattlePlayback({ battleLog, onVictory, onDefeat }: BattlePlaybac
       const actor = getUnit(ev.actor!);
       if (!actor || actor.animPhase === 'dead') return;
 
-      const isMelee  = MELEE_IDS.includes((actor.heroType ?? '').toLowerCase());
+      // Use heroDefs as authoritative source for heroType; server battle log may have stale DB values
+      const localHeroDef  = HERO_DEFS.find(d => d.heroId === actor.heroId);
+      const resolvedType  = (localHeroDef?.heroType ?? actor.heroType ?? '').toLowerCase();
+      const isMelee  = MELEE_IDS.includes(resolvedType);
       // ── slot: hoisted first — used by ALL branches including passive check ─
       const slot     = ev.skill_slot ?? 0;
       // slot 3 = passive proc — no cinematic, no actor flip animations
@@ -1105,8 +1123,13 @@ export function BattlePlayback({ battleLog, onVictory, onDefeat }: BattlePlaybac
       const moveType   = actionDef?.move ?? (isMelee ? 'melee_dash' : 'ranged_place');
       const useMelee   = moveType === 'melee_dash' || moveType === 'melee_aoe_center';
 
-      // Find first damage target for dash direction
-      const firstDmgTarget = targets.find(t => (t.dmg ?? 0) > 0 && !stateRef.current.find(u => u.uid === t.uid && u.animPhase === 'dead'));
+      // Find first damage target for dash direction.
+      // For melee: if every damage target is already in 'dead' animPhase (killed by a
+      // simultaneous earlier event in the same batch), fall back to any damage target
+      // so the hero still dashes instead of attacking in place.
+      const firstDmgTarget =
+        targets.find(t => (t.dmg ?? 0) > 0 && !stateRef.current.find(u => u.uid === t.uid && u.animPhase === 'dead'))
+        ?? (useMelee ? targets.find(t => (t.dmg ?? 0) > 0) : undefined);
       const dashTarget     = firstDmgTarget ? getUnit(firstDmgTarget.uid) : null;
       let   dv             = (useMelee && dashTarget) ? calcDashVec(actor.side, actor.slotIndex, dashTarget.slotIndex) : { x: 0, y: 0 };
 
@@ -1350,7 +1373,7 @@ export function BattlePlayback({ battleLog, onVictory, onDefeat }: BattlePlaybac
           // 'bullet' is ranged-only; 'none'/'passive' = silent
         }
         // ── Rock Slime ULT — stone spikes at each hit target ──────��──────
-        if (actor.name === 'RockSlime' && slot === 4) {
+        if (actor.heroId === 'rock_slime' && slot === 4) {
           const ts = [...new Set(
             targets.filter(t => (t.dmg ?? 0) > 0)
                    .map(t => getUnit(t.uid)?.slotIndex ?? -1)
@@ -1466,9 +1489,9 @@ export function BattlePlayback({ battleLog, onVictory, onDefeat }: BattlePlaybac
         // ── End Emma VFX ──────────────────────────────────────────────────
 
         // ── Rock Slime VFX ────────────────────────────────────────────────
-        // Only SK2 (self-shield, no dmg target) reaches the ranged branch.
-        // Basic/SK1/ULT → isMelee branch. Passive (slot 3) → no targets.
-        if (actor.name === 'RockSlime') {
+        // SK2 (self-shield) always reaches here; ULT is a safety fallback for
+        // the rare case where dashTarget was null despite useMelee being true.
+        if (actor.heroId === 'rock_slime') {
           if (slot === 2) {
             // SK2 — Rock Shell: brown stone shield drops on self
             const ts = [...new Set(
@@ -1477,15 +1500,23 @@ export function BattlePlayback({ battleLog, onVictory, onDefeat }: BattlePlaybac
                      .filter(s => s >= 0)
             )];
             fireSlimeVFX('rockslime_sk2', ts.length ? ts : [actor.slotIndex], actor.side);
+          } else if (slot === 4) {
+            // ULT fallback — spikes still fire even if hero attacked in place
+            const ts = [...new Set(
+              targets.filter(t => (t.dmg ?? 0) > 0 || t.hpDelta !== 0)
+                     .map(t => getUnit(t.uid)?.slotIndex ?? -1)
+                     .filter(s => s >= 0)
+            )];
+            if (ts.length) fireSlimeVFX('rockslime_ult', ts, oppSide);
           }
         }
 
         // ── Acid Slime VFX ────────────────────────────────────────────────
-        if (actor.name === 'AcidSlime') {
+        if (actor.heroId === 'acid_slime') {
           if (slot === 0) {
             // Basic attack: green dewdrop to damage target
             const ts = [...new Set(
-              targets.filter(t => (t.dmg ?? 0) > 0)
+              targets.filter(t => (t.dmg ?? 0) > 0 || t.hpDelta !== 0)
                      .map(t => getUnit(t.uid)?.slotIndex ?? -1)
                      .filter(s => s >= 0)
             )];
@@ -1493,7 +1524,7 @@ export function BattlePlayback({ battleLog, onVictory, onDefeat }: BattlePlaybac
           } else if (slot === 1) {
             // SK1 — Acid Spit: same dewdrop, back-row target
             const ts = [...new Set(
-              targets.filter(t => (t.dmg ?? 0) > 0)
+              targets.filter(t => (t.dmg ?? 0) > 0 || t.hpDelta !== 0)
                      .map(t => getUnit(t.uid)?.slotIndex ?? -1)
                      .filter(s => s >= 0)
             )];
@@ -1501,7 +1532,7 @@ export function BattlePlayback({ battleLog, onVictory, onDefeat }: BattlePlaybac
           } else if (slot === 2) {
             // SK2 — Corrosive Splash: green vertical slash on each target
             const ts = [...new Set(
-              targets.filter(t => (t.dmg ?? 0) > 0)
+              targets.filter(t => (t.dmg ?? 0) > 0 || t.hpDelta !== 0)
                      .map(t => getUnit(t.uid)?.slotIndex ?? -1)
                      .filter(s => s >= 0)
             )];
@@ -1512,23 +1543,23 @@ export function BattlePlayback({ battleLog, onVictory, onDefeat }: BattlePlaybac
           }
         }
         // ── Water Slime VFX ───────────────────────────────────────────────
-        if (actor.name === 'WaterSlime') {
+        if (actor.heroId === 'water_slime') {
           if (slot === 0) {
             // Basic — blue teardrop to single damage target
             const ts = [...new Set(
-              targets.filter(t => (t.dmg ?? 0) > 0)
+              targets.filter(t => (t.dmg ?? 0) > 0 || t.hpDelta !== 0)
                      .map(t => getUnit(t.uid)?.slotIndex ?? -1)
                      .filter(s => s >= 0)
             )];
             fireSlimeVFX('waterslime_basic', ts, oppSide);
           } else if (slot === 1) {
-            // SK1 — Bubble Heal: blue teardrop to lowest-HP ally
+            // SK1 — Water Jet: Deals magic damage
             const ts = [...new Set(
-              targets.filter(t => (t.heal ?? 0) > 0)
+              targets.filter(t => (t.dmg ?? 0) > 0 || t.hpDelta !== 0)
                      .map(t => getUnit(t.uid)?.slotIndex ?? -1)
                      .filter(s => s >= 0)
             )];
-            if (ts.length) fireSlimeVFX('waterslime_sk1', ts, actor.side);
+            if (ts.length) fireSlimeVFX('waterslime_sk1', ts, oppSide);
           } else if (slot === 2) {
             // SK2 — Tidal Wave: small blue flood over enemies
             fireSlimeVFX('waterslime_sk2', [0], oppSide);
@@ -1589,20 +1620,65 @@ export function BattlePlayback({ battleLog, onVictory, onDefeat }: BattlePlaybac
         }
         // ── End Sylvie VFX ────────────────────────────────────────────────
 
-        // ── Myko VFX — SK1 Iron Casing: dedicated shield asset ───────────
+        // ── Myko VFX — SK1 Iron Casing / ULT ────────────────────────────
         if (actor.heroId === 'myko' && slot === 1) {
           window.dispatchEvent(new CustomEvent('myko-vfx', {
             detail: {
               type:       'myko_shield',
-              targetSlot: actor.slotIndex,  // shield appears on Myko itself
+              actorSlot:  actor.slotIndex,
+              actorSide:  actor.side,
+              targetSlot: actor.slotIndex,
               targetSide: actor.side,
+            } as MykoVFXTrigger,
+          }));
+        }
+        if (actor.heroId === 'myko' && slot === 4) {
+          const ts = [...new Set(
+            targets.filter(t => (t.dmg ?? 0) > 0)
+                   .map(t => getUnit(t.uid)?.slotIndex ?? -1)
+                   .filter(s => s >= 0)
+          )];
+          window.dispatchEvent(new CustomEvent('myko-vfx', {
+            detail: {
+              type:        'myko_ult',
+              actorSlot:   actor.slotIndex,
+              actorSide:   actor.side,
+              targetSlot:  ts[0] ?? actor.slotIndex,
+              targetSlots: ts.length ? ts : [actor.slotIndex],
+              targetSide:  oppSide,
             } as MykoVFXTrigger,
           }));
         }
         // ── End Myko VFX ──────────────────────────────────────────────────
 
+        // ── Brennan VFX — SK2 shield on allies ───────────────────────────
+        if (actor.heroId === 'brennan' && slot === 2) {
+          const ts = [...new Set(
+            targets.filter(t => (t.shield ?? 0) > 0 || (t.heal ?? 0) > 0)
+                   .map(t => getUnit(t.uid)?.slotIndex ?? -1)
+                   .filter(s => s >= 0)
+          )];
+          window.dispatchEvent(new CustomEvent('brennan-vfx', {
+            detail: {
+              type:        'brennan_shield',
+              targetSlots: ts.length ? ts : [actor.slotIndex],
+              targetSide:  actor.side,
+            } as BrennanVFXTrigger,
+          }));
+        }
+        // ── End Brennan VFX ───────────────────────────────────────────────
+
         // ── Clover VFX — heal orb flying to target ────────────────────────
         if (actor.heroId === 'clover') {
+          // Basic attack (slot 0): bullet → damage target
+          if (slot === 0) {
+            const ts = [...new Set(
+              targets.filter(t => (t.dmg ?? 0) > 0)
+                     .map(t => getUnit(t.uid)?.slotIndex ?? -1)
+                     .filter(s => s >= 0)
+            )];
+            fireCloverVFX('clover_basic', ts, oppSide);
+          }
           // SK1: heal orb → lowest-HP ally (heal targets)
           if (slot === 1) {
             const ts = [...new Set(
@@ -1673,21 +1749,21 @@ export function BattlePlayback({ battleLog, onVictory, onDefeat }: BattlePlaybac
       // Rules: non-stackable (fixed id) → applyEffect refreshes; stackable → new id per hit.
       // Only apply to living targets that were actually hit.
       const hitTargets = targets.filter(t => (t.dmg ?? 0) > 0);
-      if (actor.name === 'WaterSlime') {
+      if (actor.heroId === 'water_slime') {
         for (const tgt of hitTargets) {
           if (slot === 1) applyEffect(tgt.uid, 'wslime_slow');     // Water Jet → speed slow 2T
           else if (slot === 2) applyEffect(tgt.uid, 'wslime_mdef');// Tidal Surge → M.DEF shred 2T
           else if (slot === 4) applyEffect(tgt.uid, 'wslime_ult'); // Deluge Wave → P/M.DEF shred 2T
         }
       }
-      if (actor.name === 'AcidSlime') {
+      if (actor.heroId === 'acid_slime') {
         for (const tgt of hitTargets) {
           if (slot === 1) applyEffect(tgt.uid, 'aslime_pdef');     // Acid Spit → P.DEF shred 2T
           else if (slot === 2) applyEffect(tgt.uid, 'aslime_stun');// Corrosive Splash → stun chance 1T
           else if (slot === 4) applyEffect(tgt.uid, 'aslime_pdef4');// Acid Flood → P.DEF shred 2T
         }
       }
-      if (actor.name === 'RockSlime') {
+      if (actor.heroId === 'rock_slime') {
         // Self-buffs — actor is the bearer
         if (slot === 1) applyEffect(actor.uid, 'rslime_pdef1');    // Boulder Dash → P.DEF buff 2T
         if (slot === 4) applyEffect(actor.uid, 'rslime_ult_b');    // Spike Eruption → P.DEF + reflect 2T
@@ -1740,17 +1816,6 @@ export function BattlePlayback({ battleLog, onVictory, onDefeat }: BattlePlaybac
         }
       }
 
-      // ── Water Slime Soaking Field passive proc visual ─────────────────────
-      // When any hero attacks an enemy that carries a Water Slime debuff,
-      // show ✦M float to signal the 8% M.ATK bonus damage was applied.
-      // (Actual damage already included in server total — this is visual only.)
-      if (actor.side === 'hero') {
-        for (const tgt of hitTargets) {
-          if (hasWsDebuff(tgt.uid)) {
-            addFloat(tgt.uid, 0, 'wpassive');
-          }
-        }
-      }
 
       // ── Passive proc (slot 3): Cornered Rat one-time self-buff pill ──────
       if (isPassiveProc && ev.hero_id === 'craw' && ev.skill_name === 'Cornered Rat') {
@@ -1898,6 +1963,7 @@ export function BattlePlayback({ battleLog, onVictory, onDefeat }: BattlePlaybac
       <FangVFX/>
       <CloverVFX/>
       <MykoVFX/>
+      <BrennanVFX/>
 
       {/* Scene wrapper: cinematic zoom + global animation-pause */}
       <div

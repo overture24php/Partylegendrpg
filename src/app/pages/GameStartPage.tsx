@@ -8,7 +8,7 @@ import type { TranslationKey } from '../i18n/translations';
 import { GamePageLayout } from '../components/GamePageLayout';
 import { playBtnSound } from '../utils/buttonSound';
 
-const BG = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777396811/ChatGPT_Image_Apr_29_2026_12_19_32_AM_squmiv.png';
+const BG = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778581730/ChatGPT_Image_May_12_2026_05_27_59_PM_nk8qi9.png';
 
 const COLS = 8;
 const ROWS = 12;

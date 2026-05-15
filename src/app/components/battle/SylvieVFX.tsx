@@ -22,7 +22,7 @@ import { getSpriteSize } from '../../data/spriteConfig';
 
 // ── Bolt image ────────────────────────────────────────────────────────────────
 const BOLT_URL =
-  'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778258626/ChatGPT_Image_May_8_2026_11_22_35_PM_jxu2lv.png';
+  'https://res.cloudinary.com/dhkethrmc/image/upload/e_background_removal/f_png,q_auto/v1778743501/bulletsylvie_yfg25d.png';
 
 let _boltImg: HTMLImageElement | null = null;
 const _boltCbs: Array<() => void> = [];
@@ -45,13 +45,21 @@ function ensureBolt(cb: () => void): void {
 // ── Grid layout ───────────────────────────────────────────────────────────────
 const GRID_W = 368;
 const GRID_H = 310;
-const ROW_DATA = [
-  { slotW: 60,  slotH: 60,  col0X: 30,  col1X: 278, y: 8   },
-  { slotW: 86,  slotH: 86,  col0X: 17,  col1X: 265, y: 82  },
-  { slotW: 120, slotH: 120, col0X: 0,   col1X: 248, y: 190 },
+const HERO_ROW_DATA = [
+  { slotW: 60,  slotH: 60,  col0X: 30,  col1X: 154, y: 8   },
+  { slotW: 86,  slotH: 86,  col0X: 17,  col1X: 141, y: 82  },
+  { slotW: 120, slotH: 120, col0X: 0,   col1X: 124, y: 190 },
 ] as const;
+const ENEMY_ROW_DATA = [
+  { slotW: 60,  slotH: 60,  col0X: 154, col1X: 278, y: 8   },
+  { slotW: 86,  slotH: 86,  col0X: 154, col1X: 278, y: 82  },
+  { slotW: 120, slotH: 120, col0X: 154, col1X: 278, y: 190 },
+] as const;
+function getRow(side: 'hero' | 'enemy', rowI: number) {
+  return (side === 'hero' ? HERO_ROW_DATA : ENEMY_ROW_DATA)[rowI];
+}
 
-const ROW_BODY_LIFT = [70, 95, 110] as const;
+const ROW_BODY_LIFT = [70, 95, 170] as const;
 
 export type SylvieVFXTrigger = {
   type:        'sylvie_bolt' | 'sylvie_sk2' | 'sylvie_ult';
@@ -80,7 +88,7 @@ const c01  = (x: number) => Math.max(0, Math.min(1, x));
 function slotPos(side: 'hero' | 'enemy', slot: number) {
   const col  = slot % 2;
   const rowI = Math.min(2, Math.floor(slot / 2));
-  const row  = ROW_DATA[rowI];
+  const row  = getRow(side, rowI);
   const gl   = side === 'hero' ? 12 : window.innerWidth - 12 - GRID_W;
   return {
     x: gl + (col === 0 ? row.col0X : row.col1X) + row.slotW / 2,
@@ -275,7 +283,7 @@ export function SylvieVFX() {
         inset:         0,
         width:         '100vw',
         height:        '100vh',
-        zIndex:        300,
+        zIndex:        500,
         pointerEvents: 'none',
         display:       'block',
       }}

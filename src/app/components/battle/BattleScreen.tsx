@@ -211,6 +211,7 @@ const MAGIC_DMG_HEROES     = new Set(['WaterSlime','Myko']);
 const PDEF_SHRED_SKILLS    = new Set(['Lucas:sk2']);
 const PDEF_SHRED_VALS      = [80,100,125,150];
 const WARLORDS_EDGE_BONUS  = [0.08,0.14,0.20,0.28];
+const FANG_PDEF_IGNORE     = [0.20,0.25,0.30,0.35];
 const PDEF_K = 500;
 
 const SKILL_NAMES: Record<string,Partial<Record<string,string>>> = {
@@ -819,7 +820,12 @@ export function BattleScreen({units:initUnits,onVictory,onDefeat,sessionId}:{
       }
       // ── P.DEF mitigation: dmg × PDEF_K / (effectivePDef + PDEF_K) ────────
       // effectivePDef = base pDef − accumulated shred (Armor Rend debuff), min 0
-      const effectivePDef=Math.max(0,(tgt.pDef??0)-(tgt.pDefShred??0));
+      let effectivePDef=Math.max(0,(tgt.pDef??0)-(tgt.pDefShred??0));
+      // ── Fang passive: Shadow Sprint (sk2) — ignores % of target P.DEF ─────
+      if(att.name==='Fang'){
+        const sk2Lv=getSkillLv(att.level,'sk2');
+        if(sk2Lv>0) effectivePDef=Math.round(effectivePDef*(1-(FANG_PDEF_IGNORE[sk2Lv-1]??0)));
+      }
       const mitFactor=PDEF_K/(effectivePDef+PDEF_K); // 1.0 when pDef=0; decreases as pDef rises
       const raw=Math.max(1,Math.round(base*mult*mitFactor));
       const sa=Math.min(tgt.shield,raw), hp=Math.max(0,tgt.currentHp-(raw-sa));

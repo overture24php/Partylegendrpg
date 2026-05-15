@@ -5,7 +5,7 @@ import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { useLanguage } from '../context/LanguageContext';
 import { startBgm } from '../components/BgmController';
 
-const BG = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1777395784/ChatGPT_Image_Apr_29_2026_12_02_36_AM_p3z4gf.png';
+const BG = 'https://res.cloudinary.com/dhkethrmc/image/upload/f_auto,q_auto/v1778581178/ChatGPT_Image_May_12_2026_05_19_10_PM_gge7ua.png';
 
 export default function IntroPage() {
   const { t } = useLanguage();
